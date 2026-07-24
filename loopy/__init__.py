@@ -87,17 +87,36 @@ except ImportError:
     pass  # Optional dependencies
 
 # v0.5.0 — Production readiness modules
+# v0.6.0 — Critical gaps: streaming, multi-modal, compliance, explainability, A2A
+from loopy.a2a import (
+    A2AClient,
+    AgentCapability,
+    AgentCard,
+    AgentRegistry,
+    AgentRequest,
+    AgentResponse,
+)
 from loopy.audit import AuditReport, CheckItem, LoopAuditor, ReadinessLevel
+from loopy.compliance import (
+    AuditEntry,
+    AuditLogger,
+    ComplianceChecker,
+    ComplianceFramework,
+    DataClassification,
+)
 from loopy.cost import BudgetExceeded, CostReport, CostTracker
 from loopy.drift import DriftDetector, DriftIssue, DriftReport
+from loopy.explainability import DecisionStep, DecisionTrace, DecisionTracker, DecisionType
+from loopy.multimodal import MediaContent, MediaType, MultiModalBuilder, MultiModalMessage
 from loopy.observe import TraceExporter
 from loopy.patterns import LoopPattern, PatternCadence, PatternRegistry, RiskLevel
 from loopy.safety import EscalationReason, SafetyCheck, SafetyGate, SafetyResult
 from loopy.skills import Skill, SkillRegistry
 from loopy.state import LoopState, RunOutcome, RunRecord, StateManager
+from loopy.streaming import StreamBuffer, StreamChunk, Streamer, StreamEvent
 from loopy.verification import VerificationGate, VerificationStatus, VerifyResult
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 __all__ = [
     # Agentic Loop
@@ -217,4 +236,32 @@ __all__ = [
     "SafetyCheck",
     "SafetyResult",
     "EscalationReason",
+    # A2A
+    "AgentCard",
+    "AgentRegistry",
+    "A2AClient",
+    "AgentRequest",
+    "AgentResponse",
+    "AgentCapability",
+    # Compliance
+    "ComplianceFramework",
+    "DataClassification",
+    "AuditEntry",
+    "AuditLogger",
+    "ComplianceChecker",
+    # Explainability
+    "DecisionType",
+    "DecisionStep",
+    "DecisionTrace",
+    "DecisionTracker",
+    # Multi-modal
+    "MediaType",
+    "MediaContent",
+    "MultiModalMessage",
+    "MultiModalBuilder",
+    # Streaming
+    "StreamEvent",
+    "StreamChunk",
+    "StreamBuffer",
+    "Streamer",
 ]

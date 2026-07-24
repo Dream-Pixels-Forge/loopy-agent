@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-04-22
+
+### Added
+
+- **Streaming** — Real-time token-by-token output
+  - `Streamer` — Async stream collector with buffering
+  - `StreamChunk` — Token/tool/thinking/error events
+  - `StreamBuffer` — Configurable flush threshold
+  - SSE format export for HTTP streaming
+  
+- **Multi-modal** — Image, audio, video support
+  - `MediaContent` — Base64/URL media with OpenAI/Anthropic format conversion
+  - `MultiModalMessage` — Text + media messages
+  - `MultiModalBuilder` — Fluent API for building multi-modal messages
+  - File loading with auto MIME detection
+  
+- **Compliance** — Regulatory frameworks built-in
+  - `ComplianceChecker` — SOC2, GDPR, EU AI Act checks
+  - `AuditLogger` — JSONL audit trail for all agent actions
+  - `AuditEntry` — Structured audit records
+  - `DataClassification` — PUBLIC/INTERNAL/CONFIDENTIAL/RESTRICTED
+  
+- **Explainability** — Decision audit trail
+  - `DecisionTracker` — Track reasoning chains
+  - `DecisionTrace` — Full decision history with alternatives
+  - `DecisionStep` — Individual decisions with confidence scores
+  - JSON export for debugging and compliance
+  
+- **A2A Protocol** — Agent-to-Agent communication
+  - `AgentCard` — Agent identity and capabilities
+  - `AgentRegistry` — Discover agents by capability/pricing
+  - `A2AClient` — Call other agents with request/response
+  - `AgentCapability` — TEXT_GENERATION, CODE_GENERATION, etc.
+  
+- **Tests** — 50 new tests (199 total)
+
+### Changed
+
+- Version bumped to 0.6.0
+- Updated all exports in __init__.py (154 total)
+
+---
+
 ## [0.5.0] - 2026-04-22
 
 ### Added
