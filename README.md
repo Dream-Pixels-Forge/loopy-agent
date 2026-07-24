@@ -21,6 +21,7 @@
   <img src="https://img.shields.io/pypi/v/loopy-agent?color=orange&label=pypi" alt="PyPI">
   <img src="https://img.shields.io/pypi/pyversions/loopy-agent" alt="Python">
   <img src="https://img.shields.io/pypi/l/loopy-agent" alt="License">
+  <img src="https://github.com/Dream-Pixels-Forge/loopy-agent/actions/workflows/ci.yml/badge.svg" alt="CI">
 </p>
 
 ---
@@ -792,6 +793,55 @@ loopy eval run --suite math.json
 # Agent management
 loopy agent list
 ```
+
+---
+
+## 🚀 CI/CD & Releases
+
+GitHub Actions automate testing and publishing:
+
+| Workflow | Trigger | What it does |
+|----------|---------|-------------|
+| **CI** | Push/PR to master | Runs tests + lint on Python 3.10/3.11/3.12 |
+| **Release** | Tag `v*` pushed | Tests → Build → GitHub Release → PyPI publish |
+| **Publish** | GitHub Release created | Build → PyPI publish |
+
+### Releasing a new version
+
+```bash
+# One command — bumps version, tests, commits, tags, pushes
+./scripts/release.sh 0.5.1
+
+# GitHub Actions handles the rest:
+# 1. Runs tests
+# 2. Builds wheel + sdist
+# 3. Creates GitHub Release with artifacts
+# 4. Publishes to PyPI
+```
+
+Or manually:
+
+```bash
+# Bump version
+sed -i 's/version = ".*"/version = "0.5.1"/' pyproject.toml
+sed -i 's/__version__ = ".*"/__version__ = "0.5.1"/' loopy/__init__.py
+
+# Commit, tag, push
+git add -A && git commit -m "release: v0.5.1"
+git tag v0.5.1
+git push && git push --tags
+```
+
+### Required setup
+
+1. **PyPI API Token** — Add as GitHub secret `PYPI_API_TOKEN`
+   - Go to https://pypi.org/manage/account/token/
+   - Create token with scope: `loopy-agent`
+   - Add at: repo → Settings → Secrets → Actions
+
+2. **Trusted Publishing** (optional, more secure)
+   - Configure at https://pypi.org/manage/project/loopy-agent/settings/publishing/
+   - Remove `password` from workflow, keep `id-token: write`
 
 ---
 
