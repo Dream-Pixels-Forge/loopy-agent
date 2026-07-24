@@ -1,6 +1,6 @@
 # 📋 Changelog
 
-All notable changes to loopy will be documented in this file.
+All notable changes to loopy-agent will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Version bumped to 0.4.0
 - Updated plugin lazy imports
+- **Package renamed to `loopy-agent`** on PyPI (import name remains `loopy`)
 
 ---
 

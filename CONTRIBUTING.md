@@ -1,6 +1,6 @@
-# 🤝 Contributing to Loopy
+# 🤝 Contributing to loopy-agent
 
-Thank you for your interest in contributing to Loopy! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to loopy-agent! This document provides guidelines and information for contributors.
 
 ---
 
@@ -57,6 +57,9 @@ venv\Scripts\activate  # Windows
 
 # Install in development mode
 pip install -e ".[dev]"
+
+# Or install from PyPI
+pip install loopy-agent[dev]
 
 # Install pre-commit hooks (optional)
 pip install pre-commit
@@ -302,4 +305,4 @@ When filing a bug report, please include:
 
 ## 🙏 Thank You!
 
-Thank you for contributing to Loopy! Your help is appreciated.
+Thank you for contributing to loopy-agent! Your help is appreciated.

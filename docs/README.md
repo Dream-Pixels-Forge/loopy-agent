@@ -4,7 +4,7 @@
 
 A modular Python SDK for building production-ready LLM applications.
 
-[![PyPI version](https://badge.fury.io/py/loopy.svg)](https://pypi.org/project/loopy/)
+[![PyPI version](https://badge.fury.io/py/loopy-agent.svg)](https://pypi.org/project/loopy-agent/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
@@ -60,17 +60,17 @@ results = asyncio.run(loop.run())
 
 ```bash
 # Core (minimal)
-pip install loopy
+pip install loopy-agent
 
 # With optional features
-pip install loopy[gateway]    # tenacity for retry logic
-pip install loopy[cache]      # diskcache for persistence
-pip install loopy[guardrails] # regex for advanced patterns
-pip install loopy[observe]    # rich for pretty output
-pip install loopy[all]        # everything
+pip install loopy-agent[gateway]    # tenacity for retry logic
+pip install loopy-agent[cache]      # diskcache for persistence
+pip install loopy-agent[guardrails] # regex for advanced patterns
+pip install loopy-agent[observe]    # rich for pretty output
+pip install loopy-agent[all]        # everything
 
 # Development
-pip install loopy[dev]
+pip install loopy-agent[dev]
 ```
 
 ---

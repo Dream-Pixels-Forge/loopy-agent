@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "loopy-agent"
 version = "0.4.0"
-description = "8 Essential AI Concepts in one toolkit — agentic loops, gateway, guardrails, evals, caching, observability, MCP, and multi-agent orchestration."
+description = "loopy-agent: 8 Essential AI Concepts in one toolkit — agentic loops, gateway, guardrails, evals, caching, observability, MCP, and multi-agent orchestration."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -60,9 +60,10 @@ dev = [
 loopy = "loopy.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/dream-pixels-forge/loopy"
-Repository = "https://github.com/dream-pixels-forge/loopy"
-Issues = "https://github.com/dream-pixels-forge/loopy/issues"
+Homepage = "https://github.com/Dream-Pixels-Forge/loopy"
+Repository = "https://github.com/Dream-Pixels-Forge/loopy"
+Issues = "https://github.com/Dream-Pixels-Forge/loopy/issues"
+PyPI = "https://pypi.org/project/loopy-agent/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["loopy"]
