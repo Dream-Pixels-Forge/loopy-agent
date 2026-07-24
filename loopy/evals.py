@@ -8,9 +8,12 @@ Includes EvalGate for evaluator-optimizer pattern (2026 agentic workflow).
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Awaitable
+
+logger = logging.getLogger("loopy.evals")
 
 
 class Verdict(str, Enum):

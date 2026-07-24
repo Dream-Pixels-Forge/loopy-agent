@@ -6,8 +6,10 @@ Provides complete type hints for IDE autocompletion and static analysis.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Awaitable, Protocol, TypeVar, Generic, overload
-from dataclasses import dataclass, field
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, Callable, Awaitable, TypeVar
+from dataclasses import dataclass
 from enum import Enum
 
 T = TypeVar("T")
