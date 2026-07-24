@@ -1,13 +1,37 @@
-# 🔄 Loopy
+<p align="center">
+  <img src="assets/banner.png" alt="Loopy Agent - Agentic AI Framework" width="100%">
+</p>
 
-**8 Essential AI Concepts in One Toolkit**
+<h1 align="center">🔄 Loopy</h1>
 
-A modular Python SDK for building production-ready LLM applications.
+<p align="center">
+  <strong>8 Essential AI Concepts in One Toolkit</strong><br>
+  <em>Plan → Act → Observe → Reflect — an intelligent agent that thinks, loops, and achieves.</em>
+</p>
 
-```
-pip install loopy-agent
-pip install loopy-agent[all]  # with optional dependencies
-```
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-the-8-concepts">Concepts</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-installation">Install</a> •
+  <a href="#-cli-usage">CLI</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/pypi/v/loopy-agent?color=orange&label=pypi" alt="PyPI">
+  <img src="https://img.shields.io/pypi/pyversions/loopy-agent" alt="Python">
+  <img src="https://img.shields.io/pypi/l/loopy-agent" alt="License">
+</p>
+
+---
+
+<p align="center">
+  <strong>Loopy</strong> is a lightweight, modular Python SDK for building production-ready agentic AI applications. It bundles eight battle-tested concepts — agentic loops, multi-provider gateways, guardrails, evals, caching, observability, MCP integration, and multi-agent orchestration — into a single install with zero heavy dependencies.
+</p>
+
+<p align="center">
+  <code>pip install loopy-agent</code>&nbsp;&nbsp;or&nbsp;&nbsp;<code>pip install loopy-agent[all]</code>
+</p>
 
 ---
 
