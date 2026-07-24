@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "loopy"
+version = "0.1.0"
+description = "8 Essential AI Concepts in one toolkit — agentic loops, gateway, guardrails, evals, caching, observability, MCP, and multi-agent orchestration."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Dream Pixels Forge" },
+]
+keywords = [
+    "ai",
+    "llm",
+    "agent",
+    "agentic",
+    "gateway",
+    "guardrails",
+    "evals",
+    "observability",
+    "mcp",
+    "cache",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+gateway = ["tenacity>=8.0.0"]
+cache = ["diskcache>=5.0.0"]
+guardrails = ["regex>=2023.0.0"]
+observe = ["rich>=13.0.0"]
+all = [
+    "tenacity>=8.0.0",
+    "diskcache>=5.0.0",
+    "regex>=2023.0.0",
+    "rich>=13.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+loopy = "loopy.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/dream-pixels-forge/loopy"
+Repository = "https://github.com/dream-pixels-forge/loopy"
+Issues = "https://github.com/dream-pixels-forge/loopy/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["loopy"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
