@@ -21,6 +21,16 @@ v0.3.0 additions:
     - OpenTelemetry export for traces/metrics
     - First-party plugins: RAG, Tools, Memory
     - Plugin marketplace support
+
+v0.5.0 additions:
+    - Audit scoring (Loop Readiness Score 0-100)
+    - Durable state management (STATE.md, run logs)
+    - Maker/Checker verification gate
+    - Token cost tracking with daily budgets
+    - Persistent skills (SKILL.md)
+    - Config/state drift detection
+    - Production loop patterns (7 built-in)
+    - Safety gates (denylist paths, escalation)
 """
 
 from loopy.agents import (
@@ -76,9 +86,18 @@ try:
 except ImportError:
     pass  # Optional dependencies
 
+# v0.5.0 — Production readiness modules
+from loopy.audit import AuditReport, CheckItem, LoopAuditor, ReadinessLevel
+from loopy.cost import BudgetExceeded, CostReport, CostTracker
+from loopy.drift import DriftDetector, DriftIssue, DriftReport
 from loopy.observe import TraceExporter
+from loopy.patterns import LoopPattern, PatternCadence, PatternRegistry, RiskLevel
+from loopy.safety import EscalationReason, SafetyCheck, SafetyGate, SafetyResult
+from loopy.skills import Skill, SkillRegistry
+from loopy.state import LoopState, RunOutcome, RunRecord, StateManager
+from loopy.verification import VerificationGate, VerificationStatus, VerifyResult
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = [
     # Agentic Loop
@@ -163,4 +182,39 @@ __all__ = [
     "PluginMarketplace",
     # Observability exports
     "TraceExporter",
+    # Audit
+    "LoopAuditor",
+    "AuditReport",
+    "CheckItem",
+    "ReadinessLevel",
+    # State
+    "LoopState",
+    "RunRecord",
+    "RunOutcome",
+    "StateManager",
+    # Verification
+    "VerificationGate",
+    "VerifyResult",
+    "VerificationStatus",
+    # Cost
+    "CostTracker",
+    "CostReport",
+    "BudgetExceeded",
+    # Skills
+    "Skill",
+    "SkillRegistry",
+    # Drift
+    "DriftDetector",
+    "DriftReport",
+    "DriftIssue",
+    # Patterns
+    "PatternRegistry",
+    "LoopPattern",
+    "PatternCadence",
+    "RiskLevel",
+    # Safety
+    "SafetyGate",
+    "SafetyCheck",
+    "SafetyResult",
+    "EscalationReason",
 ]

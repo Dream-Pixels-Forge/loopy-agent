@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-04-22
+
+### Added
+
+- **Audit** - Loop Readiness Score (0-100) with L0-L3 levels
+  - `LoopAuditor` - Score agent loops against 13 checklist items
+  - `AuditReport` - Score, level, passed/failed checks, suggestions
+  - `ReadinessLevel` - L0 (Draft), L1 (Report), L2 (Assisted), L3 (Unattended)
+  - Inspired by loop-engineering's Loop Ready Score
+
+- **State** - Durable state management
+  - `LoopState` - Persistent loop state (task, attempts, history)
+  - `StateManager` - Read/write state to JSON files
+  - `RunRecord` - Record of each loop run (task, outcome, tokens, duration)
+  - `RunOutcome` - success, failure, escalated
+  - Auto-prune old records by age
+
+- **Verification** - Maker/Checker pattern
+  - `VerificationGate` - Separate implementer and verifier agents
+  - `VerifyResult` - Pass/fail with score and feedback
+  - Optional test function integration
+  - Inspired by loop-engineering's maker/checker split
+
+- **Cost** - Token cost tracking
+  - `CostTracker` - Daily token budgets with persistence
+  - `CostReport` - Usage, limit, remaining, percentage
+  - `BudgetExceeded` - Exception when budget is exceeded
+  - Inspired by loop-engineering's loop-cost tool
+
+- **Skills** - Persistent agent knowledge
+  - `Skill` - Parse SKILL.md files (name, description, triggers, instructions)
+  - `SkillRegistry` - Load, match, and manage skills
+  - Trigger-based matching for task routing
+  - Inspired by loop-engineering's skills system
+
+- **Drift** - Config/state drift detection
+  - `DriftDetector` - Detect mismatches between config and runtime state
+  - `DriftReport` - Issues list with severity and suggestions
+  - Checks: max_steps, attempts, required fields
+
+- **Patterns** - Production loop patterns
+  - `PatternRegistry` - 7 built-in production patterns
+  - `LoopPattern` - Name, description, cadence, risk, readiness level
+  - Patterns: daily-triage, pr-babysitter, ci-sweeper, dependency-sweeper, changelog-drafter, post-merge-cleanup, issue-triage
+  - Filter by risk level and cadence
+
+- **Safety** - Production safety gates
+  - `SafetyGate` - Denylist paths, escalation triggers, human gates
+  - `SafetyCheck` - Path, attempts, and confidence checks
+  - `SafetyResult` - Safe/unsafe with escalation recommendation
+  - Default denylist for auth, payments, secrets
+  - Inspired by loop-engineering's safety patterns
+
+- **Tests** - 90 new tests (149 total)
+
+### Changed
+
+- Version bumped to 0.5.0
+- Updated all exports in __init__.py (119 total)
+- Updated CHANGELOG with v0.5.0 features
+
+---
+
 ## [0.4.0] - 2026-07-24
 
 ### Added
@@ -165,13 +228,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Roadmap
 
-### v0.5.0 (Planned)
+### v0.6.0 (Planned)
 - Streaming improvements
 - WebSocket support
 - Advanced vector embeddings
 - Rate limiting improvements
-
-### v0.6.0 (Planned)
 - Multi-modal support
 - Image generation tools
 - Code execution sandbox
@@ -187,3 +248,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.2.0 | 49 | EvalGate, Router, Async, Middleware |
 | 0.3.0 | 55 | Plugins, OpenTelemetry, RAG, Tools, Memory |
 | 0.4.0 | 59 | Audio, Marketplace, Production Hardening |
+| 0.5.0 | 149 | Audit, State, Verification, Cost, Skills, Drift, Patterns, Safety |
