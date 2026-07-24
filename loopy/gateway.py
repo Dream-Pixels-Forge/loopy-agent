@@ -181,7 +181,9 @@ class Gateway:
             if config.provider == ModelProvider.OPENAI:
                 response = await self._call_openai(config, message, system, temperature, max_tokens)
             elif config.provider == ModelProvider.ANTHROPIC:
-                response = await self._call_anthropic(config, message, system, temperature, max_tokens)
+                response = await self._call_anthropic(
+                    config, message, system, temperature, max_tokens
+                )
             elif config.provider == ModelProvider.OLLAMA:
                 response = await self._call_ollama(config, message, system, temperature, max_tokens)
             else:

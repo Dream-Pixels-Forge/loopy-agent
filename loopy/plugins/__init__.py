@@ -12,9 +12,10 @@ from __future__ import annotations
 import importlib
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger("loopy.plugins")
 
@@ -68,9 +69,9 @@ class Plugin(ABC):
         """Initialize the plugin."""
         ...
     
-    async def teardown(self) -> None:
+    async def teardown(self) -> None:  # noqa: B027
         """Cleanup when plugin is unloaded."""
-        pass
+        ...
 
 
 class PluginRegistry:
@@ -224,7 +225,10 @@ class PluginRegistry:
         results = []
         for callback in self._extensions.get(hook_name, []):
             try:
-                result = await callback(*args, **kwargs) if callable(callback) else callback(*args, **kwargs)
+                if callable(callback):
+                    result = await callback(*args, **kwargs)
+                else:
+                    result = callback(*args, **kwargs)
                 results.append(result)
             except Exception as e:
                 logger.error(f"Extension hook {hook_name} failed: {e}")
@@ -317,15 +321,15 @@ class PluginLoader:
 # ============================================================
 
 def lazy_import_rag():
-    from loopy.plugins.rag import RAGPlugin, Document, Retriever
+    from loopy.plugins.rag import Document, RAGPlugin, Retriever
     return RAGPlugin, Document, Retriever
 
 def lazy_import_tools():
-    from loopy.plugins.tools import ToolsPlugin, Tool, ToolResult
+    from loopy.plugins.tools import Tool, ToolResult, ToolsPlugin
     return ToolsPlugin, Tool, ToolResult
 
 def lazy_import_memory():
-    from loopy.plugins.memory import MemoryPlugin, Memory, MemoryStore
+    from loopy.plugins.memory import Memory, MemoryPlugin, MemoryStore
     return MemoryPlugin, Memory, MemoryStore
 
 def lazy_import_audio():

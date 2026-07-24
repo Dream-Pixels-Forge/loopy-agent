@@ -9,8 +9,9 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from loopy.plugins import Plugin, PluginInfo, PluginRegistry
 
@@ -178,7 +179,7 @@ class Retriever:
         if len(a) != len(b):
             return 0.0
         
-        dot_product = sum(x * y for x, y in zip(a, b))
+        dot_product = sum(x * y for x, y in zip(a, b, strict=True))
         norm_a = sum(x * x for x in a) ** 0.5
         norm_b = sum(x * x for x in b) ** 0.5
         

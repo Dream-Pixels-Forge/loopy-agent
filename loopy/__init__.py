@@ -23,43 +23,56 @@ v0.3.0 additions:
     - Plugin marketplace support
 """
 
-from loopy.loop import AgentLoop, StepResult, LoopConfig, StepStatus
-from loopy.gateway import Gateway, ModelProvider, ProviderConfig, GatewayResponse, ConnectionPool
-from loopy.guardrails import GuardrailPipeline, InputFilter, OutputFilter, FilterAction
-from loopy.evals import (
-    Evaluator, EvalCase, EvalResult, EvalSuite, Verdict,
-    EvalGate, EvalGateType, JudgeConfig, EvalGateResult,
-)
-from loopy.cache import LLMCache, CacheStats
-from loopy.observe import Tracer, Span, SpanStatus, MetricsCollector
-from loopy.mcp import MCPClient, Tool, LocalMCP
 from loopy.agents import (
-    Orchestrator, SubAgent, AgentResult, AgentStatus,
-    Router, RoutingRule, TaskDecomposer, SubTask,
+    AgentResult,
+    AgentStatus,
+    Orchestrator,
+    Router,
+    RoutingRule,
+    SubAgent,
+    SubTask,
+    TaskDecomposer,
 )
+from loopy.cache import CacheStats, LLMCache
+from loopy.evals import (
+    EvalCase,
+    EvalGate,
+    EvalGateResult,
+    EvalGateType,
+    EvalResult,
+    EvalSuite,
+    Evaluator,
+    JudgeConfig,
+    Verdict,
+)
+from loopy.gateway import ConnectionPool, Gateway, GatewayResponse, ModelProvider, ProviderConfig
+from loopy.guardrails import FilterAction, GuardrailPipeline, InputFilter, OutputFilter
+from loopy.loop import AgentLoop, LoopConfig, StepResult, StepStatus
+from loopy.mcp import LocalMCP, MCPClient, Tool
 from loopy.middleware import (
-    Middleware,
-    MiddlewarePipeline,
-    MiddlewareContext,
-    FunctionMiddleware,
-    LoggingMiddleware,
-    TimingMiddleware,
-    RateLimitMiddleware,
     CacheMiddleware,
-    ValidationMiddleware,
-    RetryMiddleware,
     CircuitBreakerMiddleware,
     FallbackMiddleware,
+    FunctionMiddleware,
+    LoggingMiddleware,
+    Middleware,
+    MiddlewareContext,
+    MiddlewarePipeline,
+    RateLimitMiddleware,
+    RetryMiddleware,
+    TimingMiddleware,
+    ValidationMiddleware,
 )
-from loopy.plugins import Plugin, PluginRegistry, PluginLoader, PluginInfo
+from loopy.observe import MetricsCollector, Span, SpanStatus, Tracer
+from loopy.plugins import Plugin, PluginInfo, PluginLoader, PluginRegistry
 
 # First-party plugins (lazy import to avoid circular deps)
 try:
-    from loopy.plugins.rag import RAGPlugin, Document, Retriever
-    from loopy.plugins.tools import ToolsPlugin, Tool, ToolResult
-    from loopy.plugins.memory import MemoryPlugin, Memory, MemoryStore
     from loopy.plugins.audio import AudioPlugin, SpeechToText, TextToSpeech
     from loopy.plugins.marketplace import MarketplacePlugin, PluginMarketplace
+    from loopy.plugins.memory import Memory, MemoryPlugin, MemoryStore
+    from loopy.plugins.rag import Document, RAGPlugin, Retriever
+    from loopy.plugins.tools import Tool, ToolResult, ToolsPlugin
 except ImportError:
     pass  # Optional dependencies
 

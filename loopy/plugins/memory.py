@@ -11,7 +11,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from loopy.plugins import Plugin, PluginInfo, PluginRegistry
 

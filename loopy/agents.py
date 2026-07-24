@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 logger = logging.getLogger("loopy.agents")
 
@@ -118,7 +119,10 @@ class Router:
         # Returns "researcher"
     """
     
-    def __init__(self, classify_fn: Callable[[str, list[RoutingRule]], Awaitable[str]] | None = None):
+    def __init__(
+        self,
+        classify_fn: Callable[[str, list[RoutingRule]], Awaitable[str]] | None = None,
+    ):
         self.rules: list[RoutingRule] = []
         self.classify_fn = classify_fn
     
@@ -323,7 +327,11 @@ class Orchestrator:
         """
         return await self.decomposer.decompose(task)
     
-    async def run_decomposed(self, task: str, context: dict[str, Any] | None = None) -> list[AgentResult]:
+    async def run_decomposed(
+        self,
+        task: str,
+        context: dict[str, Any] | None = None,
+    ) -> list[AgentResult]:
         """
         Decompose and run a task, executing subtasks in dependency order.
         

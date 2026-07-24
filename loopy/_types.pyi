@@ -7,10 +7,11 @@ Provides complete type hints for IDE autocompletion and static analysis.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Any, Callable, Awaitable, TypeVar
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 

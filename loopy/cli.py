@@ -16,7 +16,6 @@ import argparse
 import asyncio
 import json
 import sys
-from typing import Any
 
 from loopy import __version__
 
@@ -71,15 +70,14 @@ def create_parser() -> argparse.ArgumentParser:
     agent_sub.add_parser("list", help="List registered agents")
     
     # --- info command ---
-    info_parser = subparsers.add_parser("info", help="Show loopy info")
+    subparsers.add_parser("info", help="Show loopy info")
     
     return parser
 
 
 def cmd_chat(args: argparse.Namespace) -> None:
     """Handle chat command."""
-    import asyncio
-    from loopy.gateway import Gateway, ProviderConfig, ModelProvider
+    from loopy.gateway import Gateway, ModelProvider, ProviderConfig
     
     async def _chat():
         gateway = Gateway()
@@ -123,8 +121,8 @@ def cmd_chat(args: argparse.Namespace) -> None:
         except Exception as e:
             print(f"Error: {e}")
             print("\nNote: Set your API key as an environment variable:")
-            print(f"  export OPENAI_API_KEY=sk-...")
-            print(f"  export ANTHROPIC_API_KEY=sk-ant-...")
+            print("  export OPENAI_API_KEY=sk-...")
+            print("  export ANTHROPIC_API_KEY=sk-ant-...")
         finally:
             await gateway.close()
     
@@ -133,7 +131,6 @@ def cmd_chat(args: argparse.Namespace) -> None:
 
 def cmd_guard(args: argparse.Namespace) -> None:
     """Handle guard command."""
-    import json
     from loopy.guardrails import GuardrailPipeline
     
     pipeline = GuardrailPipeline()
@@ -163,7 +160,7 @@ def cmd_guard(args: argparse.Namespace) -> None:
             print(f"\nOriginal:  {result.original}")
             print(f"Filtered:  {result.filtered}")
         else:
-            print(f"\nText passed all checks [OK]")
+            print("\nText passed all checks [OK]")
 
 
 def cmd_cache(args: argparse.Namespace) -> None:
@@ -190,7 +187,6 @@ def cmd_cache(args: argparse.Namespace) -> None:
 
 def cmd_trace(args: argparse.Namespace) -> None:
     """Handle trace command."""
-    import json
     from loopy.observe import Tracer
     
     tracer = Tracer()
@@ -209,10 +205,10 @@ def cmd_trace(args: argparse.Namespace) -> None:
 
 def cmd_eval(args: argparse.Namespace) -> None:
     """Handle eval command."""
-    import json
     import asyncio
     from pathlib import Path
-    from loopy.evals import Evaluator, EvalSuite, EvalCase
+
+    from loopy.evals import EvalCase, EvalSuite, Evaluator
     
     if args.eval_action == "run":
         suite_path = Path(args.suite)
@@ -298,7 +294,6 @@ def main() -> None:
     """Main CLI entry point."""
     # Force UTF-8 output on Windows
     import io
-    import sys
     if sys.platform == 'win32':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')

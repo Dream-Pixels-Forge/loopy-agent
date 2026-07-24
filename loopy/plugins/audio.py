@@ -7,8 +7,9 @@ Provides speech-to-text and text-to-speech capabilities.
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from loopy.plugins import Plugin, PluginInfo, PluginRegistry
 

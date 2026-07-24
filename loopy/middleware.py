@@ -9,9 +9,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable, Generic, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger("loopy.middleware")
 
@@ -34,7 +34,7 @@ class MiddlewareContext:
         self.cancel_reason = reason
 
 
-class Middleware(ABC):
+class Middleware:
     """
     Base middleware class.
     
@@ -199,7 +199,7 @@ class MiddlewarePipeline:
         error = None
         max_attempts = 4  # 1 initial + 3 retries
         
-        for attempt in range(max_attempts):
+        for _attempt in range(max_attempts):
             try:
                 result = await handler(ctx.data, **kwargs)
                 error = None
@@ -352,8 +352,7 @@ class ValidationMiddleware(Middleware):
         
         # Run validators
         for field_name, validator in self.validators.items():
-            if field_name in ctx.data:
-                if not validator(ctx.data[field_name]):
+            if field_name in ctx.data and not validator(ctx.data[field_name]):
                     ctx.cancel(f"Validation failed for field: {field_name}")
                     return ctx
         
@@ -380,7 +379,9 @@ class RetryMiddleware(Middleware):
         if isinstance(error, self.retryable_exceptions) and self._retry_count < self.max_retries:
             delay = min(self.base_delay * (2 ** self._retry_count), self.max_delay)
             self._retry_count += 1
-            logger.warning(f"Retry {self._retry_count}/{self.max_retries} after {delay:.1f}s: {error}")
+            logger.warning(
+                f"Retry {self._retry_count}/{self.max_retries} after {delay:.1f}s: {error}"
+            )
             await asyncio.sleep(delay)
             ctx.metadata["retry_count"] = self._retry_count
             ctx.metadata["should_retry"] = True

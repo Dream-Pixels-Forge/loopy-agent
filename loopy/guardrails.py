@@ -7,9 +7,10 @@ Input filtering (PII, jailbreak detection) and output filtering (safe responses)
 from __future__ import annotations
 
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 
 class FilterAction(str, Enum):
@@ -104,11 +105,11 @@ class InputFilter:
         }
 
         for pii_type, enabled in pii_checks.items():
-            if enabled and pii_type in self.PATTERNS:
-                if self.PATTERNS[pii_type].search(filtered):
-                    reasons.append(f"detected_{pii_type}")
-                    should_redact = True
-                    filtered = self.PATTERNS[pii_type].sub(f"[{pii_type.upper()}_REDACTED]", filtered)
+            if enabled and pii_type in self.PATTERNS and self.PATTERNS[pii_type].search(filtered):
+                reasons.append(f"detected_{pii_type}")
+                should_redact = True
+                replacement = f"[{pii_type.upper()}_REDACTED]"
+                filtered = self.PATTERNS[pii_type].sub(replacement, filtered)
 
         # Check jailbreak
         if self.config.detect_jailbreak:

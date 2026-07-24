@@ -237,7 +237,11 @@ class MarketplacePlugin(Plugin):
     Marketplace plugin for discovering and installing other plugins.
     
     Example:
-        plugin = MarketplacePlugin()\n        await registry.load(plugin)\n        \n        marketplace = plugin.marketplace\n        plugins = await marketplace.search("rag")\n    """
+        plugin = MarketplacePlugin()
+        await registry.load(plugin)
+        marketplace = plugin.marketplace
+        plugins = await marketplace.search("rag")
+    """
     
     @property
     def info(self) -> PluginInfo:

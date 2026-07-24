@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from loopy.plugins import Plugin, PluginInfo, PluginRegistry
 
@@ -236,7 +237,11 @@ class ToolsPlugin(Plugin):
             description="Perform basic arithmetic calculations",
             handler=self._calculator,
             parameters=[
-                ToolParameter(name="expression", type="string", description="Math expression (e.g., '2 + 2')"),
+                ToolParameter(
+                    name="expression",
+                    type="string",
+                    description="Math expression (e.g., '2 + 2')",
+                ),
             ],
         ))
         
