@@ -167,6 +167,11 @@ class DecisionTracker:
         return "\n".join(lines)
 
     def export(self, trace: DecisionTrace, path: str) -> None:
-        """Export trace to JSON file."""
+        """Export a decision trace to a JSON file.
+
+        Args:
+            trace: The DecisionTrace to export.
+            path: Destination file path.
+        """
         from pathlib import Path
         Path(path).write_text(trace.to_json())

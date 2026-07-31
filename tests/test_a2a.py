@@ -104,12 +104,34 @@ class TestA2AClient:
             description="Echo bot",
             version="1.0",
             capabilities=[AgentCapability.TEXT_GENERATION],
-            endpoint="http://echo",
+            endpoint="",  # No remote endpoint → falls through to placeholder
         ))
         client = A2AClient(reg)
         response = await client.call("echo", "Hello")
         assert response.success is True
-        assert "echo" in response.result.lower() or "placeholder" in str(response.metadata)
+        # Should return placeholder since there's no handler or remote endpoint
+        assert "placeholder" in str(response.metadata)
+
+    @pytest.mark.asyncio
+    async def test_call_agent_local_handler(self):
+        """Test that a registered local handler is preferred over placeholder."""
+        reg = AgentRegistry()
+        reg.register(AgentCard(
+            name="echo",
+            description="Echo bot",
+            version="1.0",
+            capabilities=[AgentCapability.TEXT_GENERATION],
+            endpoint="http://remote",
+        ))
+        client = A2AClient(reg)
+
+        async def echo_handler(request: AgentRequest) -> AgentResponse:
+            return AgentResponse(result=f"Echo: {request.task}")
+
+        client.register_handler("echo", echo_handler)
+        response = await client.call("echo", "Hello")
+        assert response.success is True
+        assert response.result == "Echo: Hello"
 
     @pytest.mark.asyncio
     async def test_call_unknown_agent(self):
@@ -127,14 +149,14 @@ class TestA2AClient:
             description="Agent 1",
             version="1.0",
             capabilities=[AgentCapability.TEXT_GENERATION],
-            endpoint="http://a1",
+            endpoint="",  # No remote endpoint → placeholder
         ))
         reg.register(AgentCard(
             name="a2",
             description="Agent 2",
             version="1.0",
             capabilities=[AgentCapability.TEXT_GENERATION],
-            endpoint="http://a2",
+            endpoint="",
         ))
         client = A2AClient(reg)
         responses = await client.broadcast(AgentCapability.TEXT_GENERATION, "Test")

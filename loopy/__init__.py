@@ -83,8 +83,8 @@ try:
     from loopy.plugins.memory import Memory, MemoryPlugin, MemoryStore
     from loopy.plugins.rag import Document, RAGPlugin, Retriever
     from loopy.plugins.tools import Tool, ToolResult, ToolsPlugin
-except ImportError:
-    pass  # Optional dependencies
+except ModuleNotFoundError:
+    pass  # Optional dependencies — missing packages are fine
 
 # v0.5.0 — Production readiness modules
 # v0.6.0 — Critical gaps: streaming, multi-modal, compliance, explainability, A2A
@@ -113,10 +113,9 @@ from loopy.patterns import LoopPattern, PatternCadence, PatternRegistry, RiskLev
 from loopy.safety import EscalationReason, SafetyCheck, SafetyGate, SafetyResult
 from loopy.skills import Skill, SkillRegistry
 from loopy.state import LoopState, RunOutcome, RunRecord, StateManager
+from loopy._version import __version__
 from loopy.streaming import StreamBuffer, StreamChunk, Streamer, StreamEvent
 from loopy.verification import VerificationGate, VerificationStatus, VerifyResult
-
-__version__ = "0.6.0"
 
 __all__ = [
     # Agentic Loop

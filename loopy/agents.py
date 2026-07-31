@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -143,20 +145,19 @@ class Router:
         """
         if self.classify_fn:
             return await self.classify_fn(task, self.rules)
-        
+
         # Default: pattern matching with regex
-        import re
         task_lower = task.lower()
-        
+
         for rule in self.rules:
             if re.search(rule.pattern, task_lower, re.IGNORECASE):
                 logger.info(f"Routed task to {rule.agent_name} (pattern: {rule.pattern})")
                 return rule.agent_name
-        
+
         # Fallback to first agent if no match
         if self.rules:
             return self.rules[0].agent_name
-        
+
         raise ValueError("No routing rules defined and no default agent")
 
 
@@ -416,8 +417,16 @@ class Orchestrator:
         task: str,
         context: dict[str, Any],
     ) -> AgentResult:
-        """Run a single agent."""
-        import time
+        """Execute a single agent and return its result.
+
+        Args:
+            agent: The subagent to run.
+            task: The task description.
+            context: Shared context dict.
+
+        Returns:
+            An AgentResult with the outcome.
+        """
         start_time = time.time()
         
         agent.status = AgentStatus.RUNNING
@@ -466,7 +475,12 @@ class Orchestrator:
         return self._history.copy()
     
     def get_summary(self) -> dict[str, Any]:
-        """Get summary of all agent executions."""
+        """Get a summary of all agent executions.
+
+        Returns:
+            Dict with total_agents, total_runs, completed/failed
+            counts, and average duration.
+        """
         return {
             "total_agents": len(self.agents),
             "total_runs": len(self._history),

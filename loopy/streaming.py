@@ -50,7 +50,14 @@ class StreamChunk:
 
 
 class StreamBuffer:
-    """Buffer for accumulating stream tokens."""
+    """Buffer for accumulating stream tokens.
+
+    Accumulates tokens and periodically flushes them into
+    larger chunks when *flush_threshold* is reached.
+
+    Args:
+        flush_threshold: Number of tokens before auto-flush.
+    """
 
     def __init__(self, flush_threshold: int = 10):
         self.tokens: list[str] = []
@@ -58,7 +65,14 @@ class StreamBuffer:
         self.total_tokens = 0
 
     def add(self, token: str) -> str | None:
-        """Add token, return flushed content if threshold met."""
+        """Append a token; returns flushed content if threshold met.
+
+        Args:
+            token: A single token string.
+
+        Returns:
+            Flushed content if threshold reached, else *None*.
+        """
         self.tokens.append(token)
         self.total_tokens += 1
 
@@ -67,13 +81,18 @@ class StreamBuffer:
         return None
 
     def flush(self) -> str:
-        """Flush all buffered tokens."""
+        """Flush all buffered tokens into a single string.
+
+        Returns:
+            The concatenated buffered content.
+        """
         content = "".join(self.tokens)
         self.tokens.clear()
         return content
 
     @property
     def pending(self) -> str:
+        """The currently buffered (not yet flushed) content."""
         return "".join(self.tokens)
 
 

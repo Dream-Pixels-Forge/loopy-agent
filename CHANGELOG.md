@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `A2AClient` — Call other agents with request/response
   - `AgentCapability` — TEXT_GENERATION, CODE_GENERATION, etc.
   
-- **Tests** — 50 new tests (199 total)
+- **Tests** — 50 new tests (198 total)
 
 ### Changed
 
@@ -292,3 +292,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.3.0 | 55 | Plugins, OpenTelemetry, RAG, Tools, Memory |
 | 0.4.0 | 59 | Audio, Marketplace, Production Hardening |
 | 0.5.0 | 149 | Audit, State, Verification, Cost, Skills, Drift, Patterns, Safety |
+| 0.6.0 | 198 | Streaming, Multi-modal, Compliance, Explainability, A2A |

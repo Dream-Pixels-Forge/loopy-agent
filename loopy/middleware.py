@@ -7,6 +7,8 @@ Add pre/post processing hooks to any loopy operation.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 import time
 from collections.abc import Awaitable, Callable
@@ -296,20 +298,25 @@ class RateLimitMiddleware(Middleware):
 
 
 class CacheMiddleware(Middleware):
-    """Cache middleware for identical requests."""
-    
+    """Cache middleware for identical requests.
+
+    Caches responses and short-circuits duplicate requests
+    within the TTL window.
+
+    Args:
+        ttl: Time-to-live in seconds for cached entries.
+    """
+
     def __init__(self, ttl: int = 60):
         self.ttl = ttl
         self._cache: dict[str, tuple[float, Any]] = {}
-    
+
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
-        import hashlib
-        import json
-        
+        """Check cache and short-circuit on hit."""
         # Create cache key
         key_data = json.dumps(ctx.data, sort_keys=True, default=str)
         cache_key = hashlib.md5(key_data.encode()).hexdigest()
-        
+
         # Check cache
         if cache_key in self._cache:
             timestamp, cached_result = self._cache[cache_key]
@@ -319,12 +326,12 @@ class CacheMiddleware(Middleware):
                 ctx.cancel("Cache hit")
             else:
                 del self._cache[cache_key]
-        
+
         ctx.metadata["cache_key"] = cache_key
         return ctx
-    
+
     async def after(self, ctx: MiddlewareContext, result: Any) -> Any:
-        # Store in cache
+        """Store result in cache after successful execution."""
         if not ctx.metadata.get("cached"):
             cache_key = ctx.metadata.get("cache_key")
             if cache_key:
@@ -360,8 +367,19 @@ class ValidationMiddleware(Middleware):
 
 
 class RetryMiddleware(Middleware):
-    """Auto-retry with exponential backoff."""
-    
+    """Auto-retry with exponential backoff.
+
+    Tracks retry count per-execution via context metadata so that
+    reusing the same middleware instance across multiple calls does
+    not leak state between runs.
+
+    Args:
+        max_retries: Maximum number of retry attempts.
+        base_delay: Base delay in seconds before the first retry.
+        max_delay: Maximum delay cap in seconds.
+        retryable_exceptions: Tuple of exception types that trigger a retry.
+    """
+
     def __init__(
         self,
         max_retries: int = 3,
@@ -373,27 +391,46 @@ class RetryMiddleware(Middleware):
         self.base_delay = base_delay
         self.max_delay = max_delay
         self.retryable_exceptions = retryable_exceptions
-        self._retry_count = 0
-    
+
+    async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
+        """Initialize per-execution retry state."""
+        ctx.metadata["_retry_count"] = 0
+        return ctx
+
     async def on_error(self, ctx: MiddlewareContext, error: Exception) -> Exception:
-        if isinstance(error, self.retryable_exceptions) and self._retry_count < self.max_retries:
-            delay = min(self.base_delay * (2 ** self._retry_count), self.max_delay)
-            self._retry_count += 1
+        """
+        Handle errors with exponential backoff retry.
+
+        Checks the per-execution retry count stored in context
+        metadata so state doesn't leak between pipeline calls.
+        """
+        retry_count = ctx.metadata.get("_retry_count", 0)
+        if isinstance(error, self.retryable_exceptions) and retry_count < self.max_retries:
+            delay = min(self.base_delay * (2 ** retry_count), self.max_delay)
+            ctx.metadata["_retry_count"] = retry_count + 1
             logger.warning(
-                f"Retry {self._retry_count}/{self.max_retries} after {delay:.1f}s: {error}"
+                f"Retry {retry_count + 1}/{self.max_retries} after {delay:.1f}s: {error}"
             )
             await asyncio.sleep(delay)
-            ctx.metadata["retry_count"] = self._retry_count
+            ctx.metadata["retry_count"] = retry_count + 1
             ctx.metadata["should_retry"] = True
             return error
         else:
-            self._retry_count = 0
             raise
 
 
 class CircuitBreakerMiddleware(Middleware):
-    """Circuit breaker to prevent cascade failures."""
-    
+    """Circuit breaker to prevent cascade failures.
+
+    Tracks failure count and opens the circuit after a threshold,
+    blocking requests for *recovery_timeout* seconds before
+    allowing a probe (half-open state).
+
+    Args:
+        failure_threshold: Consecutive failures before opening.
+        recovery_timeout: Seconds before transitioning to half-open.
+    """
+
     def __init__(
         self,
         failure_threshold: int = 5,
@@ -404,8 +441,9 @@ class CircuitBreakerMiddleware(Middleware):
         self._failure_count = 0
         self._last_failure_time: float = 0
         self._state = "closed"  # closed = normal, open = blocked, half-open = testing
-    
+
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
+        """Block request if circuit is open (unless recovery timeout elapsed)."""
         if self._state == "open":
             if time.time() - self._last_failure_time > self.recovery_timeout:
                 self._state = "half-open"
@@ -413,29 +451,38 @@ class CircuitBreakerMiddleware(Middleware):
             else:
                 ctx.cancel(f"Circuit breaker is open (failures: {self._failure_count})")
         return ctx
-    
+
     async def after(self, ctx: MiddlewareContext, result: Any) -> Any:
-        # Success - reset failure count
+        """Reset failure count on success."""
         if self._state == "half-open":
             self._state = "closed"
             logger.info("Circuit breaker: closed (recovered)")
         self._failure_count = 0
         return result
-    
+
     async def on_error(self, ctx: MiddlewareContext, error: Exception) -> Exception:
+        """Increment failure count; open circuit if threshold reached."""
         self._failure_count += 1
         self._last_failure_time = time.time()
-        
+
         if self._failure_count >= self.failure_threshold:
             self._state = "open"
             logger.warning(f"Circuit breaker: open (failures: {self._failure_count})")
-        
+
         return error
 
 
 class FallbackMiddleware(Middleware):
-    """Provider failover middleware."""
-    
+    """Provider failover middleware.
+
+    Returns a fallback result (from a callable or static data)
+    when the primary handler raises an exception.
+
+    Args:
+        fallback_fn: Async callable ``(ctx, error) -> result``.
+        fallback_data: Static dict to return as fallback result.
+    """
+
     def __init__(
         self,
         fallback_fn: Callable[[MiddlewareContext, Any], Awaitable[Any]] | None = None,
@@ -443,8 +490,9 @@ class FallbackMiddleware(Middleware):
     ):
         self.fallback_fn = fallback_fn
         self.fallback_data = fallback_data
-    
+
     async def on_error(self, ctx: MiddlewareContext, error: Exception) -> Exception:
+        """Attempt fallback when the primary handler fails."""
         if self.fallback_fn:
             try:
                 result = await self.fallback_fn(ctx, error)
@@ -457,5 +505,5 @@ class FallbackMiddleware(Middleware):
         elif self.fallback_data:
             ctx.metadata["fallback_result"] = self.fallback_data
             ctx.metadata["fallback_used"] = True
-        
+
         return error

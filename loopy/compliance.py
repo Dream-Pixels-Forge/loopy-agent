@@ -22,8 +22,6 @@ class ComplianceFramework(str, Enum):
     SOC2 = "soc2"
     GDPR = "gdpr"
     EU_AI_ACT = "eu_ai_act"
-    HIPAA = "hipaa"
-    PCI_DSS = "pci_dss"
 
 
 class DataClassification(str, Enum):
@@ -95,7 +93,11 @@ class AuditLogger:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     async def log(self, entry: AuditEntry) -> None:
-        """Append audit entry to log."""
+        """Append an audit entry to the JSONL log file.
+
+        Args:
+            entry: The AuditEntry to persist.
+        """
         with open(self.path, "a") as f:
             f.write(json.dumps(entry.to_dict()) + "\n")
 
@@ -105,7 +107,16 @@ class AuditLogger:
         start_time: str | None = None,
         end_time: str | None = None,
     ) -> list[AuditEntry]:
-        """Query audit log."""
+        """Query audit log entries with optional filters.
+
+        Args:
+            agent_id: Filter by agent identifier.
+            start_time: ISO-format start timestamp (inclusive).
+            end_time: ISO-format end timestamp (inclusive).
+
+        Returns:
+            List of matching AuditEntry objects.
+        """
         entries: list[AuditEntry] = []
 
         if not self.path.exists():
@@ -139,7 +150,16 @@ class AuditLogger:
         return entries
 
     async def summary(self, days: int = 30) -> dict[str, Any]:
-        """Generate audit summary."""
+        """Generate a summary of audit activity.
+
+        Args:
+            days: Number of days to look back (currently unused,
+                  reserved for future filtering).
+
+        Returns:
+            Dict with total_actions, total_tokens, breakdowns
+            by agent and classification.
+        """
         entries = await self.query()
 
         total_tokens = sum(e.tokens_used for e in entries)

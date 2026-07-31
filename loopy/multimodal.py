@@ -84,7 +84,11 @@ class MediaContent:
         )
 
     def to_openai(self) -> dict[str, Any]:
-        """Convert to OpenAI vision format."""
+        """Convert to OpenAI vision API format.
+
+        Returns a dict suitable for use in the ``content`` array
+        of an OpenAI chat completion request.
+        """
         if self.data.startswith(("http://", "https://")):
             return {"type": "image_url", "image_url": {"url": self.data}}
         return {
@@ -93,7 +97,11 @@ class MediaContent:
         }
 
     def to_anthropic(self) -> dict[str, Any]:
-        """Convert to Anthropic format."""
+        """Convert to Anthropic Messages API format.
+
+        Returns a dict suitable for use in the ``content`` array
+        of an Anthropic message request.
+        """
         if self.data.startswith(("http://", "https://")):
             return {"type": "image", "source": {"type": "url", "url": self.data}}
         return {

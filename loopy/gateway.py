@@ -8,8 +8,10 @@ Includes auth management, rate limiting, logging, and connection pooling.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -28,20 +30,51 @@ class ModelProvider(str, Enum):
 
 @dataclass
 class ProviderConfig:
-    """Configuration for a single LLM provider."""
-    
+    """Configuration for a single LLM provider.
+
+    Includes rate-limit tracking via :meth:`check_rate_limit` and
+    :meth:`record_request`.
+
+    Args:
+        provider: The LLM provider enum.
+        api_key: Optional API key for authentication.
+        base_url: Base URL for the provider API.
+        model: Model identifier (e.g. "gpt-4").
+        rpm: Max requests per minute.
+        tpm: Max tokens per minute.
+    """
+
     provider: ModelProvider
     api_key: str | None = None
     base_url: str = ""
     model: str = "gpt-4"
-    
+
     # Rate limiting
     rpm: int = 60  # requests per minute
     tpm: int = 100_000  # tokens per minute
-    
+
     # Internal tracking
     _request_count: int = field(default=0, repr=False)
     _window_start: float = field(default_factory=time.time, repr=False)
+
+    def check_rate_limit(self) -> None:
+        """Check whether the rate limit has been reached.
+
+        Raises:
+            RuntimeError: If the number of requests in the current
+                rolling 60-second window exceeds *rpm*.
+        """
+        now = time.time()
+        if now - self._window_start > 60:
+            self._request_count = 0
+            self._window_start = now
+
+        if self._request_count >= self.rpm:
+            raise RuntimeError(f"Rate limit exceeded for {self.provider.value}")
+
+    def record_request(self) -> None:
+        """Increment the request counter for rate tracking."""
+        self._request_count += 1
 
 
 @dataclass
@@ -148,6 +181,35 @@ class Gateway:
         self.providers[name] = config
         logger.info(f"Added provider: {name} ({config.provider.value})")
 
+    def _resolve_provider(
+        self, provider: str | None = None
+    ) -> tuple[str, ProviderConfig]:
+        """Resolve a provider name to a (name, config) pair.
+
+        Args:
+            provider: Preferred provider name, or *None* for the first
+                      available provider.
+
+        Returns:
+            A tuple of (provider_name, ProviderConfig).
+
+        Raises:
+            ValueError: If no providers are configured.
+        """
+        if provider and provider in self.providers:
+            return provider, self.providers[provider]
+        if self.providers:
+            name, config = next(iter(self.providers.items()))
+            return name, config
+        raise ValueError("No providers configured. Call add_provider() first.")
+
+    # Dispatch table for provider-specific API calls
+    _PROVIDER_HANDLERS: dict[ModelProvider, str] = {
+        ModelProvider.OPENAI: "_call_openai",
+        ModelProvider.ANTHROPIC: "_call_anthropic",
+        ModelProvider.OLLAMA: "_call_ollama",
+    }
+
     async def chat(
         self,
         message: str,
@@ -159,41 +221,45 @@ class Gateway:
     ) -> GatewayResponse:
         """
         Send a chat completion request through the gateway.
-        
-        Routes to specified provider, or first available if not specified.
+
+        Routes to the specified provider, or the first available if
+        *provider* is *None*.
+
+        Args:
+            message: The user message.
+            provider: Provider name to route to.
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+            **kwargs: Additional arguments (ignored).
+
+        Returns:
+            A GatewayResponse with the model reply.
+
+        Raises:
+            ValueError: If no providers are configured.
+            RuntimeError: If the provider's rate limit is exceeded.
         """
-        # Select provider
-        if provider and provider in self.providers:
-            config = self.providers[provider]
-        elif self.providers:
-            name, config = next(iter(self.providers.items()))
-            provider = name
-        else:
-            raise ValueError("No providers configured. Call add_provider() first.")
+        provider, config = self._resolve_provider(provider)
 
         # Check rate limits
-        self._check_rate_limit(config)
-        
+        config.check_rate_limit()
+
         # Route to provider
         start_time = time.time()
-        
+
         try:
-            if config.provider == ModelProvider.OPENAI:
-                response = await self._call_openai(config, message, system, temperature, max_tokens)
-            elif config.provider == ModelProvider.ANTHROPIC:
-                response = await self._call_anthropic(
-                    config, message, system, temperature, max_tokens
-                )
-            elif config.provider == ModelProvider.OLLAMA:
-                response = await self._call_ollama(config, message, system, temperature, max_tokens)
-            else:
+            handler_name = self._PROVIDER_HANDLERS.get(config.provider)
+            if handler_name is None:
                 raise ValueError(f"Unsupported provider: {config.provider}")
+            handler = getattr(self, handler_name)
+            response = await handler(config, message, system, temperature, max_tokens)
         except Exception as e:
             logger.error(f"Gateway error ({provider}): {e}")
             raise
 
         latency_ms = (time.time() - start_time) * 1000
-        
+
         # Log request
         log_entry = {
             "provider": provider,
@@ -203,7 +269,7 @@ class Gateway:
             "timestamp": time.time(),
         }
         self._logs.append(log_entry)
-        config._request_count += 1
+        config.record_request()
 
         response.latency_ms = latency_ms
         return response
@@ -212,7 +278,18 @@ class Gateway:
         self, config: ProviderConfig, message: str, system: str | None,
         temperature: float, max_tokens: int
     ) -> GatewayResponse:
-        """Route to OpenAI API."""
+        """Route a chat request to the OpenAI API.
+
+        Args:
+            config: Provider configuration.
+            message: The user message.
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+
+        Returns:
+            A GatewayResponse with the model reply.
+        """
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -242,7 +319,18 @@ class Gateway:
         self, config: ProviderConfig, message: str, system: str | None,
         temperature: float, max_tokens: int
     ) -> GatewayResponse:
-        """Route to Anthropic API."""
+        """Route a chat request to the Anthropic API.
+
+        Args:
+            config: Provider configuration.
+            message: The user message.
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+
+        Returns:
+            A GatewayResponse with the model reply.
+        """
         body: dict[str, Any] = {
             "model": config.model,
             "messages": [{"role": "user", "content": message}],
@@ -275,7 +363,18 @@ class Gateway:
         self, config: ProviderConfig, message: str, system: str | None,
         temperature: float, max_tokens: int
     ) -> GatewayResponse:
-        """Route to local Ollama instance."""
+        """Route a chat request to a local Ollama instance.
+
+        Args:
+            config: Provider configuration.
+            message: The user message.
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+
+        Returns:
+            A GatewayResponse with the model reply.
+        """
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -299,15 +398,7 @@ class Gateway:
             tokens_used=data.get("eval_count", 0),
         )
 
-    def _check_rate_limit(self, config: ProviderConfig) -> None:
-        """Check and enforce rate limits."""
-        now = time.time()
-        if now - config._window_start > 60:
-            config._request_count = 0
-            config._window_start = now
-        
-        if config._request_count >= config.rpm:
-            raise RuntimeError(f"Rate limit exceeded for {config.provider.value}")
+
 
     async def chat_batch(
         self,
@@ -320,21 +411,20 @@ class Gateway:
     ) -> list[GatewayResponse]:
         """
         Send multiple chat requests concurrently.
-        
+
         Args:
-            messages: List of messages to send
-            provider: Provider name (or first available)
-            system: Optional system prompt for all requests
-            temperature: Temperature for all requests
-            max_tokens: Max tokens for all requests
-            max_concurrent: Max concurrent requests
-        
+            messages: List of messages to send.
+            provider: Provider name (or first available).
+            system: Optional system prompt for all requests.
+            temperature: Temperature for all requests.
+            max_tokens: Max tokens for all requests.
+            max_concurrent: Max concurrent requests.
+
         Returns:
-            List of GatewayResponse objects
+            List of GatewayResponse objects.
         """
-        import asyncio
         semaphore = asyncio.Semaphore(max_concurrent)
-        
+
         async def _single_chat(msg: str) -> GatewayResponse:
             async with semaphore:
                 return await self.chat(
@@ -344,7 +434,7 @@ class Gateway:
                     temperature=temperature,
                     max_tokens=max_tokens,
                 )
-        
+
         tasks = [_single_chat(msg) for msg in messages]
         return await asyncio.gather(*tasks)
 
@@ -355,19 +445,25 @@ class Gateway:
         system: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 1000,
-    ) -> Any:
+    ) -> AsyncGenerator[str, None]:
         """
-        Send a streaming chat request (returns async generator).
-        
-        Yields chunks of the response as they arrive.
+        Send a streaming chat request.
+
+        Yields content chunks as they arrive from the provider.
+        Falls back to a single non-streaming call for providers
+        other than OpenAI.
+
+        Args:
+            message: The user message.
+            provider: Provider name (or first available).
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+
+        Yields:
+            Content strings as they are received.
         """
-        if provider and provider in self.providers:
-            config = self.providers[provider]
-        elif self.providers:
-            name, config = next(iter(self.providers.items()))
-            provider = name
-        else:
-            raise ValueError("No providers configured")
+        provider, config = self._resolve_provider(provider)
 
         messages = []
         if system:
@@ -390,7 +486,6 @@ class Gateway:
                 response.raise_for_status()
                 async for line in response.aiter_lines():
                     if line.startswith("data: ") and line != "data: [DONE]":
-                        import json
                         data = json.loads(line[6:])
                         delta = data.get("choices", [{}])[0].get("delta", {})
                         if "content" in delta:

@@ -14,6 +14,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+import httpx
+
+from loopy._version import __version__
+
 logger = logging.getLogger("loopy.observe")
 
 
@@ -173,13 +177,17 @@ class Tracer:
         """Export all spans as JSON."""
         return json.dumps([s.to_dict() for s in self._spans], indent=2)
 
-    def export_otlp(self) -> list[dict[str, Any]]:
+    def export_otlp(self) -> dict[str, Any]:
         """
         Export spans in OTLP-compatible format.
-        
-        Ready to send to Jaeger, Zipkin, or other observability backends.
+
+        Delegates to :meth:`export_opentelemetry` for consistent
+        output across all export methods.
+
+        Returns:
+            A dict with resource attributes and span data.
         """
-        return [s.to_dict() for s in self._spans]
+        return self.export_opentelemetry()
 
     def clear(self) -> None:
         """Clear all spans."""
@@ -195,7 +203,7 @@ class Tracer:
             "resource": {
                 "attributes": {
                     "service.name": self.service,
-                    "service.version": "0.3.0",
+                    "service.version": __version__,
                 }
             },
             "spans": [
@@ -244,36 +252,37 @@ class TraceExporter:
         self.tracer = tracer
     
     def export_file(self, path: str) -> None:
-        """Export traces to a JSON file."""
-        import json
+        """Export traces to a JSON file.
+
+        Args:
+            path: Destination file path.
+        """
         data = self.tracer.export_opentelemetry()
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
         logger.info(f"Exported {len(self.tracer.get_spans())} spans to {path}")
-    
+
     def export_stdout(self) -> str:
-        """Export traces to stdout."""
-        import json
+        """Export traces to stdout and return the JSON string."""
         data = self.tracer.export_opentelemetry()
         output = json.dumps(data, indent=2)
         print(output)
         return output
-    
+
     async def export_http(self, endpoint: str, timeout: float = 10.0) -> bool:
         """
         Export traces to an HTTP endpoint (e.g., Jaeger, Zipkin).
-        
+
         Args:
-            endpoint: The OTLP/HTTP endpoint URL
-            timeout: Request timeout in seconds
-        
+            endpoint: The OTLP/HTTP endpoint URL.
+            timeout: Request timeout in seconds.
+
         Returns:
-            True if successful
+            True if successful.
         """
         try:
-            import httpx
             data = self.tracer.export_opentelemetry()
-            
+
             async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.post(
                     endpoint,
@@ -318,14 +327,17 @@ class MetricPoint:
 class MetricsCollector:
     """
     Simple metrics collector for LLM observability.
-    
+
+    Supports counters, histograms, and gauges with tag-based
+    grouping for summary aggregation.
+
     Example:
         metrics = MetricsCollector()
-        
+
         metrics.increment("llm.requests", tags={"model": "gpt-4"})
         metrics.histogram("llm.tokens", 150, tags={"model": "gpt-4"})
         metrics.gauge("cache.size", 42)
-        
+
         summary = metrics.summary()
     """
 
@@ -333,15 +345,33 @@ class MetricsCollector:
         self._metrics: list[MetricPoint] = []
 
     def increment(self, name: str, value: float = 1, **tags: str) -> None:
-        """Increment a counter."""
+        """Record a counter increment.
+
+        Args:
+            name: Metric name.
+            value: Amount to increment by (default 1).
+            **tags: Key-value tag pairs for grouping.
+        """
         self._metrics.append(MetricPoint(name=name, value=value, tags=tags))
 
     def histogram(self, name: str, value: float, **tags: str) -> None:
-        """Record a histogram value."""
+        """Record a histogram observation.
+
+        Args:
+            name: Metric name.
+            value: Observed value.
+            **tags: Key-value tag pairs for grouping.
+        """
         self._metrics.append(MetricPoint(name=name, value=value, tags=tags))
 
     def gauge(self, name: str, value: float, **tags: str) -> None:
-        """Set a gauge value."""
+        """Set a gauge to a value.
+
+        Args:
+            name: Metric name.
+            value: Current gauge value.
+            **tags: Key-value tag pairs for grouping.
+        """
         self._metrics.append(MetricPoint(name=name, value=value, tags=tags))
 
     def summary(self) -> dict[str, Any]:

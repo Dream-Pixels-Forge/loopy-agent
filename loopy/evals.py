@@ -105,10 +105,8 @@ class EvalReport:
 
 class EvalGateType(str, Enum):
     """Types of evaluation gates."""
-    COMMAND = "command"      # Shell command exit code
-    ARTIFACT = "artifact"    # File existence check
-    MANUAL = "manual"        # Human approval
-    JUDGE = "judge"          # LLM-as-judge (NEW - 2026 evaluator-optimizer)
+    JUDGE = "judge"          # LLM-as-judge (2026 evaluator-optimizer pattern)
+    MANUAL = "manual"        # Human approval stub
 
 
 @dataclass
@@ -196,32 +194,14 @@ class EvalGate:
         """
         if self.gate_type == EvalGateType.JUDGE:
             return await self._judge_evaluate(input_text, output, criteria)
-        elif self.gate_type == EvalGateType.COMMAND:
-            # For command gates, output should be exit code
-            return EvalGateResult(
-                gate_type=self.gate_type,
-                passed=output.strip() == "0",
-                score=1.0 if output.strip() == "0" else 0.0,
-                feedback=f"Exit code: {output}",
-            )
-        elif self.gate_type == EvalGateType.ARTIFACT:
-            # For artifact gates, output should be file path
-            import os
-            exists = os.path.exists(output.strip())
-            return EvalGateResult(
-                gate_type=self.gate_type,
-                passed=exists,
-                score=1.0 if exists else 0.0,
-                feedback=f"File {'exists' if exists else 'not found'}: {output}",
-            )
-        else:
-            # Manual gates always pass (human reviews externally)
-            return EvalGateResult(
-                gate_type=self.gate_type,
-                passed=True,
-                score=1.0,
-                feedback="Manual gate - pending human review",
-            )
+
+        # Manual gates always pass (human reviews externally)
+        return EvalGateResult(
+            gate_type=self.gate_type,
+            passed=True,
+            score=1.0,
+            feedback="Manual gate - pending human review",
+        )
     
     async def _judge_evaluate(
         self,

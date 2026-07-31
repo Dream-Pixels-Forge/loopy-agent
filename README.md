@@ -5,13 +5,13 @@
 <h1 align="center">🔄 Loopy</h1>
 
 <p align="center">
-  <strong>8 Essential AI Concepts in One Toolkit</strong><br>
+  <strong>19 Essential AI Concepts in One Toolkit</strong><br>
   <em>Plan → Act → Observe → Reflect — an intelligent agent that thinks, loops, and achieves.</em>
 </p>
 
 <p align="center">
   <a href="#-quick-start">Quick Start</a> •
-  <a href="#-the-8-concepts">Concepts</a> •
+  <a href="#-the-19-concepts">Concepts</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-installation">Install</a> •
   <a href="#-cli-usage">CLI</a>
@@ -27,7 +27,7 @@
 ---
 
 <p align="center">
-  <strong>Loopy</strong> is a lightweight, modular Python SDK for building production-ready agentic AI applications. It bundles eight battle-tested concepts — agentic loops, multi-provider gateways, guardrails, evals, caching, observability, MCP integration, and multi-agent orchestration — into a single install with zero heavy dependencies.
+  <strong>Loopy</strong> is a lightweight, modular Python SDK for building production-ready agentic AI applications. It bundles nineteen battle-tested concepts — agentic loops, multi-provider gateways, guardrails, evals, caching, observability, MCP integration, multi-agent orchestration, middleware, plugins, state management, safety gates, cost tracking, drift detection, skills, verification, audit scoring, streaming, multi-modal, compliance, and explainability — into a single install with zero heavy dependencies.
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 ---
 
-## 🎯 The 8 Concepts
+## 🎯 The 19 Concepts
 
 | Module | Concept | Description |
 |--------|---------|-------------|
@@ -48,6 +48,19 @@
 | `observe` | **Observability** | Traces, logs, metrics |
 | `mcp` | **MCP** | Model Context Protocol client |
 | `agents` | **Multi-Agent** | Orchestrator + subagents |
+| `middleware` | **Middleware** | Composable request/response hooks |
+| `plugins` | **Plugin System** | Extend with custom plugins |
+| `state` | **State Management** | Durable loop state persistence |
+| `safety` | **Safety Gates** | Denylist paths, escalation triggers |
+| `cost` | **Cost Tracking** | Token budgets and cost reporting |
+| `drift` | **Drift Detection** | Config/state drift monitoring |
+| `skills` | **Skills** | Persistent agent knowledge (SKILL.md) |
+| `verification` | **Verification** | Maker/Checker pattern |
+| `audit` | **Audit Scoring** | Loop readiness score (L0-L3) |
+| `streaming` | **Streaming** | Real-time token-by-token output |
+| `multimodal` | **Multi-modal** | Image, audio, video support |
+| `compliance` | **Compliance** | SOC2, GDPR, EU AI Act checks |
+| `explainability` | **Explainability** | Decision audit trail |
 
 ---
 
@@ -245,16 +258,15 @@ import asyncio
 from loopy import MCPClient
 
 async def main():
-    client = MCPClient("http://localhost:3000")
-    
-    # List available tools
-    tools = await client.list_tools()
-    for tool in tools:
-        print(f"{tool.name}: {tool.description}")
-    
-    # Call a tool
-    result = await client.call_tool("get_weather", {"city": "Portland"})
-    print(result.content)
+    async with MCPClient("http://localhost:3000") as client:
+        # List available tools
+        tools = await client.list_tools()
+        for tool in tools:
+            print(f"{tool.name}: {tool.description}")
+        
+        # Call a tool
+        result = await client.call_tool("get_weather", {"city": "Portland"})
+        print(result.content)
 
 asyncio.run(main())
 ```

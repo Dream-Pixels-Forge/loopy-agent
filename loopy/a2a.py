@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+import httpx
+
 logger = logging.getLogger("loopy.a2a")
 
 
@@ -41,6 +43,7 @@ class AgentCard:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dict."""
         return {
             "name": self.name,
             "description": self.description,
@@ -54,6 +57,7 @@ class AgentCard:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> AgentCard:
+        """Deserialize from a dict created by :meth:`to_dict`."""
         return cls(
             name=data["name"],
             description=data["description"],
@@ -77,6 +81,7 @@ class AgentRequest:
     timeout_seconds: int = 30
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dict."""
         return {
             "task": self.task,
             "context": self.context,
@@ -159,9 +164,15 @@ class A2AClient:
     """
     Client for agent-to-agent communication.
 
+    Supports both local (registered handler) and remote (HTTP)
+    dispatch. When a remote *endpoint* is set on the agent's
+    :class:`AgentCard`, the client sends an HTTP POST with the
+    request payload. Otherwise it falls back to a local handler
+    registered via :meth:`register_handler`.
+
     Example:
         client = A2AClient(registry)
-        response = await client.call("code-assistant", "Write a hello world in Python")
+        response = await client.call("code-assistant", "Write hello world")
         print(response.result)
     """
 
@@ -174,7 +185,13 @@ class A2AClient:
         agent_name: str,
         handler: Callable[[AgentRequest], Awaitable[AgentResponse]],
     ) -> None:
-        """Register a handler for incoming requests."""
+        """Register a local handler for incoming requests.
+
+        Args:
+            agent_name: Name of the agent this handler serves.
+            handler: Async callable receiving an AgentRequest
+                     and returning an AgentResponse.
+        """
         self._handlers[agent_name] = handler
 
     async def call(
@@ -184,7 +201,23 @@ class A2AClient:
         context: dict[str, Any] | None = None,
         sender: str = "",
     ) -> AgentResponse:
-        """Call another agent."""
+        """
+        Call another agent by name.
+
+        Dispatch order:
+        1. Local registered handler (if any).
+        2. HTTP POST to ``AgentCard.endpoint`` (if set).
+        3. Placeholder response (if neither handler nor endpoint).
+
+        Args:
+            agent_name: Registered agent name.
+            task: Task description for the remote agent.
+            context: Optional shared context dict.
+            sender: Sender identity string.
+
+        Returns:
+            An AgentResponse with the result.
+        """
         card = self.registry.get(agent_name)
         if not card:
             return AgentResponse(
@@ -199,6 +232,7 @@ class A2AClient:
             sender=sender,
         )
 
+        # 1. Local handler
         handler = self._handlers.get(agent_name)
         if handler:
             try:
@@ -210,7 +244,32 @@ class A2AClient:
                     error=str(e),
                 )
 
-        # Default: return placeholder
+        # 2. HTTP dispatch via AgentCard.endpoint
+        if card.endpoint and card.endpoint != "local":
+            try:
+                async with httpx.AsyncClient(timeout=request.timeout_seconds) as client:
+                    resp = await client.post(
+                        card.endpoint,
+                        json=request.to_dict(),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    return AgentResponse(
+                        result=data.get("result", ""),
+                        success=data.get("success", True),
+                        error=data.get("error", ""),
+                        metadata=data.get("metadata", {}),
+                        tokens_used=data.get("tokens_used", 0),
+                    )
+            except Exception as e:
+                return AgentResponse(
+                    result="",
+                    success=False,
+                    error=f"HTTP call to {card.endpoint} failed: {e}",
+                )
+
+        # 3. Placeholder
         return AgentResponse(
             result=f"[Agent {agent_name} would process: {task}]",
             success=True,

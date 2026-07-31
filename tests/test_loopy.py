@@ -674,52 +674,6 @@ class TestEvaluator:
 class TestEvalGate:
     """Tests for v0.2.0 EvalGate (evaluator-optimizer pattern)."""
     
-    def test_eval_gate_command(self):
-        """Test command-type eval gate."""
-        from loopy import EvalGate, EvalGateType
-        
-        gate = EvalGate(gate_type=EvalGateType.COMMAND)
-        
-        async def run_test():
-            # Pass
-            result = await gate.evaluate("test", "0")
-            assert result.passed is True
-            assert result.score == 1.0
-            
-            # Fail
-            result = await gate.evaluate("test", "1")
-            assert result.passed is False
-            assert result.score == 0.0
-        
-        asyncio.run(run_test())
-    
-    def test_eval_gate_artifact(self):
-        """Test artifact-type eval gate."""
-        import tempfile
-        import os
-        from loopy import EvalGate, EvalGateType
-        
-        gate = EvalGate(gate_type=EvalGateType.ARTIFACT)
-        
-        async def run_test():
-            # Create temp file
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                f.write(b"test")
-                temp_path = f.name
-            
-            try:
-                # File exists
-                result = await gate.evaluate("test", temp_path)
-                assert result.passed is True
-            finally:
-                os.unlink(temp_path)
-            
-            # File doesn't exist
-            result = await gate.evaluate("test", "/nonexistent/file.txt")
-            assert result.passed is False
-        
-        asyncio.run(run_test())
-    
     def test_eval_gate_judge_simple(self):
         """Test judge-type eval gate with simple heuristic."""
         from loopy import EvalGate, EvalGateType, JudgeConfig

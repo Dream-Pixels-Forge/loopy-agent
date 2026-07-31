@@ -189,22 +189,30 @@ class LLMCache:
         return self._stats
 
     def _evict(self) -> None:
-        """Evict least recently used entry."""
+        """Evict the least recently used cache entry.
+
+        Uses *last_accessed* timestamps to find the LRU entry.
+        Called automatically when the cache is at capacity.
+        """
         if not self._cache:
             return
-        
+
         # Find LRU entry
         lru_key = min(self._cache, key=lambda k: self._cache[k].last_accessed)
         del self._cache[lru_key]
         logger.debug(f"Evicted LRU entry: {lru_key[:8]}...")
 
     def _save(self) -> None:
-        """Persist cache to disk."""
+        """Persist the in-memory cache to disk as JSON.
+
+        Creates parent directories if they don't exist.
+        Silently skips if *persist_path* was not configured.
+        """
         if not self.persist_path:
             return
-        
+
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         data = {}
         for key, entry in self._cache.items():
             data[key] = {
@@ -213,14 +221,18 @@ class LLMCache:
                 "tokens_saved": entry.tokens_saved,
                 "created_at": entry.created_at,
             }
-        
+
         self.persist_path.write_text(json.dumps(data, indent=2))
 
     def _load(self) -> None:
-        """Load cache from disk."""
+        """Restore the in-memory cache from the persisted JSON file.
+
+        Silently skips if no persisted file exists.
+        On parse failure, starts with an empty cache and logs a warning.
+        """
         if not self.persist_path or not self.persist_path.exists():
             return
-        
+
         try:
             data = json.loads(self.persist_path.read_text())
             for key, entry_data in data.items():

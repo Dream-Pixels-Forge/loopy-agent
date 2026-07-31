@@ -7,13 +7,11 @@ Provides complete type hints for IDE autocompletion and static analysis.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, TypeVar
-
-T = TypeVar("T")
+from typing import Any
 
 # ============================================================
 # Loop Types
@@ -110,7 +108,7 @@ class Gateway:
         system: str | None = ...,
         temperature: float = ...,
         max_tokens: int = ...,
-    ) -> Any: ...  # AsyncGenerator[str, None]
+    ) -> AsyncGenerator[str, None]: ...
     def get_logs(self) -> list[dict[str, Any]]: ...
     async def close(self) -> None: ...
 
@@ -303,7 +301,7 @@ class Tracer:
     def get_spans(self) -> list[Span]: ...
     def get_trace(self, trace_id: str) -> list[Span]: ...
     def export_json(self) -> str: ...
-    def export_otlp(self) -> list[dict[str, Any]]: ...
+    def export_otlp(self) -> dict[str, Any]: ...
     def clear(self) -> None: ...
 
 class SpanContext:
@@ -397,10 +395,12 @@ class SubAgent:
     result: AgentResult | None
 
 class Orchestrator:
-    def __init__(self, max_concurrent: int = ...) -> None: ...
+    def __init__(self, max_concurrent: int = ..., router: Router | None = ...) -> None: ...
     def add_agent(self, agent: SubAgent) -> None: ...
     def get_agent(self, name: str) -> SubAgent | None: ...
     def list_agents(self) -> list[SubAgent]: ...
+    async def route(self, task: str) -> str: ...
+    async def decompose(self, task: str) -> list[SubTask]: ...
     async def run(
         self,
         task: str,
@@ -408,6 +408,11 @@ class Orchestrator:
         context: dict[str, Any] | None = ...,
     ) -> AgentResult: ...
     async def run_all(
+        self,
+        task: str,
+        context: dict[str, Any] | None = ...,
+    ) -> list[AgentResult]: ...
+    async def run_decomposed(
         self,
         task: str,
         context: dict[str, Any] | None = ...,
