@@ -108,7 +108,7 @@ class Gateway:
         system: str | None = ...,
         temperature: float = ...,
         max_tokens: int = ...,
-    ) -> AsyncGenerator[str, None]: ...
+    ) -> AsyncGenerator[str]: ...
     def get_logs(self) -> list[dict[str, Any]]: ...
     async def close(self) -> None: ...
 
@@ -393,6 +393,31 @@ class SubAgent:
     handler: Callable[[str, dict[str, Any]], Awaitable[str]] | None
     status: AgentStatus
     result: AgentResult | None
+
+class SubTask:
+    id: str
+    description: str
+    dependencies: list[str]
+    required_agent: str | None
+    status: str
+    result: str | None
+
+@dataclass
+class RoutingRule:
+    pattern: str
+    agent_name: str
+    priority: int
+    description: str
+
+class Router:
+    rules: list[RoutingRule]
+    classify_fn: Callable[[str, list[RoutingRule]], Awaitable[str]] | None
+    def __init__(
+        self,
+        classify_fn: Callable[[str, list[RoutingRule]], Awaitable[str]] | None = ...,
+    ) -> None: ...
+    def add_rule(self, rule: RoutingRule) -> None: ...
+    async def classify(self, task: str) -> str: ...
 
 class Orchestrator:
     def __init__(self, max_concurrent: int = ..., router: Router | None = ...) -> None: ...

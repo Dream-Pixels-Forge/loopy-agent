@@ -88,6 +88,7 @@ except ModuleNotFoundError:
 
 # v0.5.0 — Production readiness modules
 # v0.6.0 — Critical gaps: streaming, multi-modal, compliance, explainability, A2A
+from loopy._version import __version__
 from loopy.a2a import (
     A2AClient,
     AgentCapability,
@@ -113,11 +114,12 @@ from loopy.patterns import LoopPattern, PatternCadence, PatternRegistry, RiskLev
 from loopy.safety import EscalationReason, SafetyCheck, SafetyGate, SafetyResult
 from loopy.skills import Skill, SkillRegistry
 from loopy.state import LoopState, RunOutcome, RunRecord, StateManager
-from loopy._version import __version__
 from loopy.streaming import StreamBuffer, StreamChunk, Streamer, StreamEvent
 from loopy.verification import VerificationGate, VerificationStatus, VerifyResult
 
 __all__ = [
+    # Version
+    "__version__",
     # Agentic Loop
     "AgentLoop",
     "StepResult",

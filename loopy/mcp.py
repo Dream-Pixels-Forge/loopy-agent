@@ -155,7 +155,9 @@ class MCPClient:
     async def __aenter__(self) -> MCPClient:
         return self
 
-    async def __aexit__(self, exc_type: type | None, exc_val: Exception | None, exc_tb: Any) -> None:
+    async def __aexit__(
+        self, exc_type: type | None, exc_val: Exception | None, exc_tb: Any
+    ) -> None:
         await self.close()
 
 
