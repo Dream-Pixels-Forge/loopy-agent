@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "loopy-agent"
-version = "0.7.0"
+version = "0.7.1"
 description = "loopy-agent: 8 Essential AI Concepts in one toolkit — agentic loops, gateway, guardrails, evals, caching, observability, MCP, and multi-agent orchestration."
 readme = "README.md"
 license = "MIT"

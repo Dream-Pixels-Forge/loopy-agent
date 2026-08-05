@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.1] - 2026-08-05
+
+### Security
+
+- **Removed universal `execute_tool` meta-tool** — the Tools plugin no longer exposes a model-callable "run any tool" capability (prevents excessive agency after prompt injection)
+- **Marketplace installer hardened** — `install_plugin` is no longer registered as an agent tool; `install()` accepts only bare PEP 508 package names (URLs, `git+` refs, local paths, and `--` option injection are rejected — `pip install` executes build code)
+- **Capability gates on tool execution** — `ToolRegistry` and `PluginRegistry` enforce deny-by-default (disabled tools never run), per-parameter allow-lists, and a human-in-the-loop approval gate for consequential tools, with a denial audit trail
+- **Memory hardened** — memory writes and the new clear kill-switch require approval; `MemoryStore.clear()` added for poisoning resets
+- **SSRF guard** — new `validate_outbound_url` / `is_private_host` applied to MCP client, A2A endpoints, and multimodal URLs (rejects loopback/private/link-local when `allow_private=False`)
+- **Calculator without `eval`** — replaced the char-allowlist `eval` with an AST-whitelisted evaluator (numeric literals + arithmetic only; arbitrary code cannot run)
+
+### Added
+
+- **Prompt assembly helpers** — `build_prompt` (privileged/unprivileged split with `[DATA]` spotlighting), `make_canary` / `check_canary` (leak detection), `strip_md_media` (anti-exfiltration output sanitization)
+- **Security regression suite** — 48 tests covering the above (tool gates, SSRF, safe eval, marketplace validation, memory approval, prompting helpers)
+
+---
+
 ## [0.7.0] - 2026-08-05
 
 ### Added
