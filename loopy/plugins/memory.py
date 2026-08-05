@@ -104,6 +104,17 @@ class MemoryStore:
             self._save()
             return True
         return False
+
+    def clear(self) -> int:
+        """Kill-switch: delete every stored memory (returns count removed).
+
+        Use when memory poisoning is suspected — a full reset beats
+        piecemeal deletion.
+        """
+        count = len(self.memories)
+        self.memories.clear()
+        self._save()
+        return count
     
     def recall(
         self,
@@ -248,10 +259,23 @@ class MemoryPlugin(Plugin):
         """Initialize the Memory plugin."""
         self.memory_store = MemoryStore()
         
-        # Register tools
-        registry.register_tool("memory_store", self._store_memory)
-        registry.register_tool("memory_recall", self._recall_memories)
-        registry.register_tool("memory_list", self._list_memories)
+        # Memory is a privileged store: reads are read-only, but writes are
+        # side-effecting and require human approval (injection could
+        # otherwise persist poisoned instructions into future sessions).
+        registry.register_tool(
+            "memory_store",
+            self._store_memory,
+            requires_approval=True,
+            scope="side_effecting",
+        )
+        registry.register_tool(
+            "memory_clear",
+            self._clear_memories,
+            requires_approval=True,
+            scope="side_effecting",
+        )
+        registry.register_tool("memory_recall", self._recall_memories, scope="read_only")
+        registry.register_tool("memory_list", self._list_memories, scope="read_only")
         
         logger.info("Memory plugin initialized")
     
@@ -307,3 +331,8 @@ class MemoryPlugin(Plugin):
             }
             for m in memories
         ]
+
+    async def _clear_memories(self) -> dict[str, Any]:
+        """Kill-switch: wipe all stored memories (approval-gated tool)."""
+        count = self.memory_store.clear()
+        return {"status": "cleared", "removed": count}

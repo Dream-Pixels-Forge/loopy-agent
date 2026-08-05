@@ -13,6 +13,8 @@ from typing import Any
 
 import httpx
 
+from loopy.netutil import validate_outbound_url
+
 logger = logging.getLogger("loopy.mcp")
 
 
@@ -61,12 +63,27 @@ class MCPClient:
         result = await client.call_tool("get_weather", {"city": "Portland"})
     """
 
-    def __init__(self, server_url: str, api_key: str | None = None):
+    def __init__(
+        self,
+        server_url: str,
+        api_key: str | None = None,
+        *,
+        allow_private: bool = True,
+    ):
         """
         Args:
-            server_url: URL of the MCP server
-            api_key: Optional API key for authentication
+            server_url: URL of the MCP server.
+            api_key: Optional API key for authentication.
+            allow_private: Permit loopback/private/link-local hosts. Keep
+                True when *server_url* is operator-controlled (local MCP
+                servers are the norm). Set False when the URL can be
+                influenced by model output or other untrusted content — the
+                SSRF guard then rejects internal destinations.
+
+        Raises:
+            ValueError: If the URL scheme is not http(s) or it has no host.
         """
+        validate_outbound_url(server_url, allow_private=allow_private)
         self.server_url = server_url.rstrip("/")
         self._client = httpx.AsyncClient(timeout=30.0)
         self._headers: dict[str, str] = {"Content-Type": "application/json"}

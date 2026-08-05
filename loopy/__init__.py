@@ -73,8 +73,17 @@ from loopy.middleware import (
     TimingMiddleware,
     ValidationMiddleware,
 )
+from loopy.netutil import is_private_host, validate_outbound_url
 from loopy.observe import MetricsCollector, Span, SpanStatus, Tracer
 from loopy.plugins import Plugin, PluginInfo, PluginLoader, PluginRegistry
+from loopy.prompting import (
+    CANARY_PREFIX,
+    build_prompt,
+    check_canary,
+    make_canary,
+    mark_untrusted,
+    strip_md_media,
+)
 
 # First-party plugins (lazy import to avoid circular deps)
 try:
@@ -158,6 +167,15 @@ __all__ = [
     "MCPClient",
     "Tool",
     "LocalMCP",
+    # Security helpers (v0.7.1)
+    "is_private_host",
+    "validate_outbound_url",
+    "CANARY_PREFIX",
+    "make_canary",
+    "check_canary",
+    "mark_untrusted",
+    "build_prompt",
+    "strip_md_media",
     # Multi-Agent (including v0.2.0 orchestrator-workers)
     "Orchestrator",
     "SubAgent",

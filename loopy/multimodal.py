@@ -13,6 +13,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from loopy.netutil import validate_outbound_url
+
 logger = logging.getLogger("loopy.multimodal")
 
 
@@ -75,8 +77,24 @@ class MediaContent:
         )
 
     @classmethod
-    def from_url(cls, url: str, media_type: MediaType = MediaType.IMAGE) -> MediaContent:
-        """Create media from URL (no download)."""
+    def from_url(
+        cls,
+        url: str,
+        media_type: MediaType = MediaType.IMAGE,
+        *,
+        allow_private: bool = True,
+    ) -> MediaContent:
+        """Create media from URL (no download).
+
+        The URL is passed through to the provider, which fetches it
+        server-side — so keep *allow_private* True only for operator-supplied
+        URLs. Set False to reject internal/loopback destinations when the URL
+        can come from model output or untrusted content.
+
+        Raises:
+            ValueError: If the URL scheme is not http(s) or it has no host.
+        """
+        validate_outbound_url(url, allow_private=allow_private)
         return cls(
             type=media_type,
             data=url,

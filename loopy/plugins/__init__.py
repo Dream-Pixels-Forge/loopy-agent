@@ -10,9 +10,10 @@ Base classes and first-party plugins:
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -93,9 +94,11 @@ class PluginRegistry:
     def __init__(self):
         self._plugins: dict[str, Plugin] = {}
         self._tools: dict[str, Callable] = {}
+        self._tool_specs: dict[str, dict[str, Any]] = {}
         self._middleware: dict[str, Any] = {}
         self._providers: dict[str, Any] = {}
         self._extensions: dict[str, list[Callable]] = {}
+        self._denials: list[dict[str, Any]] = []
 
     async def load(self, plugin: Plugin) -> None:
         """Load a plugin instance."""
@@ -182,18 +185,123 @@ class PluginRegistry:
         
         return loaded
 
-    def register_tool(self, name: str, handler: Callable) -> None:
-        """Register a tool handler."""
+    def register_tool(
+        self,
+        name: str,
+        handler: Callable,
+        *,
+        agent_visible: bool = True,
+        requires_approval: bool = False,
+        scope: str = "side_effecting",
+        allowed_values: dict[str, set[str]] | None = None,
+    ) -> None:
+        """Register a tool handler.
+
+        Args:
+            name: The tool name.
+            handler: The callable to invoke.
+            agent_visible: If False, the tool is hidden from :meth:`list_tools`
+                and is intended for operator callers only (the model cannot
+                discover it). Defaults True.
+            requires_approval: If True, :meth:`execute_tool` demands a human
+                approver before running (deny-by-default otherwise).
+            scope: ``"read_only"`` or ``"side_effecting"``.
+            allowed_values: Per-parameter allow-lists (enum constraints)
+                enforced by :meth:`execute_tool`.
+        """
         self._tools[name] = handler
-        logger.debug(f"Registered tool: {name}")
+        self._tool_specs[name] = {
+            "agent_visible": agent_visible,
+            "requires_approval": requires_approval,
+            "scope": scope,
+            "allowed_values": allowed_values or {},
+        }
+        logger.debug(f"Registered tool: {name} (visible={agent_visible}, scope={scope})")
 
     def get_tool(self, name: str) -> Callable | None:
-        """Get a registered tool."""
+        """Get a registered tool handler."""
         return self._tools.get(name)
 
+    def get_tool_spec(self, name: str) -> dict[str, Any] | None:
+        """Get a registered tool's capability spec (security metadata)."""
+        return self._tool_specs.get(name)
+
     def list_tools(self) -> list[str]:
-        """List all registered tools."""
+        """List agent-visible tool names (hidden/operator tools excluded)."""
+        return [
+            name for name, spec in self._tool_specs.items() if spec["agent_visible"]
+        ]
+
+    def list_all_tools(self) -> list[str]:
+        """List every registered tool name, visible or not."""
         return list(self._tools.keys())
+
+    def denials(self) -> list[dict[str, Any]]:
+        """Audit trail of denied/blocked tool executions."""
+        return list(self._denials)
+
+    async def execute_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        approver: Callable[[str, dict[str, Any]], Awaitable[bool]] | None = None,
+    ) -> Any:
+        """Execute a registered tool with capability-gate enforcement.
+
+        Enforces tool existence, per-parameter allow-lists, and the
+        human-in-the-loop approval gate (a ``requires_approval`` tool is
+        denied unless an *approver* approves). Denials are recorded.
+
+        Args:
+            name: The tool to execute.
+            arguments: Keyword arguments for the handler.
+            approver: Optional async callback ``(name, arguments) -> bool``.
+
+        Returns:
+            The handler's return value.
+
+        Raises:
+            PermissionError: If the call requires approval and none is given.
+            ValueError: If an argument falls outside its allow-list.
+        """
+        handler = self._tools.get(name)
+        if handler is None:
+            self._denials.append({"tool": name, "reason": "not_found"})
+            raise ValueError(f"Tool not found: {name}")
+
+        spec = self._tool_specs.get(name, {})
+        arguments = arguments or {}
+
+        if spec.get("requires_approval"):
+            if approver is None:
+                self._denials.append(
+                    {
+                        "tool": name,
+                        "reason": "approval_required_no_approver",
+                        "arguments": arguments,
+                    }
+                )
+                raise PermissionError(
+                    f"Tool '{name}' requires approval and no approver is configured"
+                )
+            approved = await approver(name, arguments)
+            if not approved:
+                self._denials.append(
+                    {"tool": name, "reason": "approval_denied", "arguments": arguments}
+                )
+                raise PermissionError(f"Tool '{name}' was not approved")
+
+        allowed = spec.get("allowed_values") or {}
+        for param, values in allowed.items():
+            value = arguments.get(param)
+            if value is not None and value not in values:
+                self._denials.append(
+                    {"tool": name, "reason": f"parameter '{param}' out of range"}
+                )
+                raise ValueError(f"Parameter '{param}' outside allowed values")
+
+        return await handler(**arguments)
 
     def register_middleware(self, name: str, middleware: Any) -> None:
         """Register middleware."""

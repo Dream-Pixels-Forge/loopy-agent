@@ -15,6 +15,8 @@ from typing import Any
 
 import httpx
 
+from loopy.netutil import validate_outbound_url
+
 logger = logging.getLogger("loopy.a2a")
 
 
@@ -176,8 +178,22 @@ class A2AClient:
         print(response.result)
     """
 
-    def __init__(self, registry: AgentRegistry):
+    def __init__(
+        self,
+        registry: AgentRegistry,
+        *,
+        allow_private: bool = True,
+    ):
+        """Args:
+            registry: The agent registry to route through.
+            allow_private: Permit loopback/private/link-local agent
+                endpoints. Keep True for operator-registered endpoints (local
+                A2A meshes are normal). Set False when endpoints can be
+                influenced by untrusted content — the SSRF guard then
+                rejects internal destinations.
+        """
         self.registry = registry
+        self._allow_private = allow_private
         self._handlers: dict[str, Callable[[AgentRequest], Awaitable[AgentResponse]]] = {}
 
     def register_handler(
@@ -247,6 +263,10 @@ class A2AClient:
         # 2. HTTP dispatch via AgentCard.endpoint
         if card.endpoint and card.endpoint != "local":
             try:
+                validate_outbound_url(
+                    card.endpoint,
+                    allow_private=self._allow_private,
+                )
                 async with httpx.AsyncClient(timeout=request.timeout_seconds) as client:
                     resp = await client.post(
                         card.endpoint,

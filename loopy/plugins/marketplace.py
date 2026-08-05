@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -105,15 +106,26 @@ class PluginMarketplace:
     
     async def install(self, package_name: str, upgrade: bool = False) -> bool:
         """
-        Install a plugin from PyPI.
-        
+        Install a plugin from PyPI (operator action).
+
+        Only bare, PEP 508-style package names are accepted. URLs, ``git+``
+        refs, local paths, and ``--`` option injection are rejected — ``pip
+        install`` executes arbitrary build code, so the name must be
+        strictly validated first.
+
         Args:
             package_name: Package name (e.g., "loopy-rag")
             upgrade: Whether to upgrade if already installed
-        
+
         Returns:
             True if successful
         """
+        if not self._validate_package_name(package_name):
+            logger.error(
+                f"Refusing to install invalid package name: {package_name!r}"
+            )
+            return False
+
         try:
             cmd = [sys.executable, "-m", "pip", "install", package_name]
             if upgrade:
@@ -136,6 +148,24 @@ class PluginMarketplace:
         except Exception as e:
             logger.error(f"Installation error: {e}")
             return False
+
+    @staticmethod
+    def _validate_package_name(package_name: str) -> bool:
+        """Reject anything that is not a bare, PEP 508-compatible package name.
+
+        Blocks URLs, ``git+``/``hg+`` refs, local paths, and ``--`` option
+        injection into ``pip install``.
+        """
+        if not package_name or len(package_name) > 214:
+            return False
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", package_name):
+            return False
+        # Extra belt-and-suspenders: no scheme, path separators, dot-dot,
+        # leading dashes, or option-looking prefixes.
+        return not any(
+            marker in package_name
+            for marker in ("://", "git+", "hg+", "svn+", "\\", "/", "..")
+        ) and not package_name.startswith("-")
     
     async def uninstall(self, package_name: str) -> bool:
         """
@@ -258,10 +288,13 @@ class MarketplacePlugin(Plugin):
         """Initialize the Marketplace plugin."""
         self.marketplace = PluginMarketplace(registry)
         
-        # Register tools
-        registry.register_tool("search_plugins", self._search_plugins)
-        registry.register_tool("install_plugin", self._install_plugin)
-        registry.register_tool("list_plugins", self._list_plugins)
+        # Register read-only, discovery tools only (agent-visible).
+        # NOTE: 'install_plugin' is deliberately NOT registered as an agent
+        # tool — installing packages executes arbitrary code (setup.py/build
+        # hooks) and is an operator action, never a model capability.
+        # Operators can call marketplace.install() directly.
+        registry.register_tool("search_plugins", self._search_plugins, scope="read_only")
+        registry.register_tool("list_plugins", self._list_plugins, scope="read_only")
         
         logger.info("Marketplace plugin initialized")
     
