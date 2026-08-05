@@ -6,9 +6,7 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-  id-token: write
+# Note: permissions are job-scoped (least privilege) — see each job below.
 
 jobs:
   test:
@@ -25,6 +23,9 @@ jobs:
   release:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Create the GitHub release
+      id-token: write  # Trusted publishing (OIDC) to PyPI — job-scoped only
     steps:
       - uses: actions/checkout@v6
 
@@ -45,8 +46,9 @@ jobs:
           files: dist/*
           generate_release_notes: true
 
-      # Trusted publishing (OIDC) — no API token needed (empty `with` is not allowed,
-      # so omit it entirely).
-      # Configure at: https://pypi.org/manage/project/loopy-agent/settings/publishing/
+      # Trusted publishing (OIDC) — no API token needed; attestations are generated
+      # automatically for every file. Requires a trusted publisher registered on PyPI:
+      #   https://pypi.org/manage/project/loopy-agent/settings/publishing/
+      #   Owner: Dream-Pixels-Forge | Repository: loopy-agent | Workflow name: release
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@v1.14.2
