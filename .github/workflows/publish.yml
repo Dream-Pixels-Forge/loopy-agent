@@ -44,9 +44,8 @@ jobs:
           name: dist
           path: dist/
 
+      # Uses trusted publishing (OIDC) — no API token needed (empty `with` is not allowed,
+      # so omit it entirely).
+      # Configure at: https://pypi.org/manage/project/loopy-agent/settings/publishing/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          # Uses trusted publishing (OIDC) — no API token needed
-          # Configure at: https://pypi.org/manage/project/loopy-agent/settings/publishing/
-          # (No `password` input: OIDC is used only when no password is provided)
