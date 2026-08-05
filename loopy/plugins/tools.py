@@ -11,11 +11,18 @@ import json
 import logging
 import operator
 import time
+from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from loopy.plugins import Plugin, PluginInfo, PluginRegistry
+from loopy.plugins import (
+    DENIAL_LOG_MAX,
+    Plugin,
+    PluginInfo,
+    PluginRegistry,
+    redact_arguments,
+)
 
 logger = logging.getLogger("loopy.plugins.tools")
 
@@ -140,7 +147,7 @@ class ToolRegistry:
         """
         self.tools: dict[str, Tool] = {}
         self.approver = approver
-        self._denials: list[dict[str, Any]] = []
+        self._denials: deque = deque(maxlen=DENIAL_LOG_MAX)
 
     def register(self, tool: Tool) -> None:
         """Register a tool."""
@@ -160,7 +167,11 @@ class ToolRegistry:
         return [tool.to_schema() for tool in self.tools.values()]
 
     def denials(self) -> list[dict[str, Any]]:
-        """Audit trail of every denied/blocked tool call."""
+        """Audit trail of every denied/blocked tool call.
+
+        Bounded to ``DENIAL_LOG_MAX`` entries (oldest dropped first);
+        secret-looking argument values are redacted.
+        """
         return list(self._denials)
 
     async def execute(
@@ -220,7 +231,11 @@ class ToolRegistry:
             approved = await self.approver(tool, arguments)
             if not approved:
                 self._denials.append(
-                    {"tool": name, "reason": "approval_denied", "arguments": arguments}
+                    {
+                        "tool": name,
+                        "reason": "approval_denied",
+                        "arguments": redact_arguments(arguments),
+                    }
                 )
                 return ToolResult(
                     success=False,

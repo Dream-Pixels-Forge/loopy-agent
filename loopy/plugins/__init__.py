@@ -12,13 +12,44 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import logging
+import re
 from abc import ABC, abstractmethod
+from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("loopy.plugins")
+
+# Maximum size of the denial audit trail (oldest entries dropped first).
+DENIAL_LOG_MAX = 1000
+
+# Parameter names whose values are treated as secrets in the audit trail.
+_SENSITIVE_PARAM = re.compile(
+    r"(api[_-]?key|token|secret|pass(word|wd)?|auth(orization|_header)?|bearer|"
+    r"credential|private[_-]?key|session[_-]?id|cookie)",
+    re.IGNORECASE,
+)
+
+
+def redact_arguments(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of *arguments* with secret-looking values redacted.
+
+    Keys matching a secret pattern (``api_key``, ``token``, ``password``,
+    ``authorization``, ...) have their values replaced with ``"***"`` so the
+    denial audit trail never persists credentials. Nested dicts are redacted
+    recursively; list values are kept as-is.
+    """
+    redacted: dict[str, Any] = {}
+    for key, value in arguments.items():
+        if _SENSITIVE_PARAM.search(key):
+            redacted[key] = "***"
+        elif isinstance(value, dict):
+            redacted[key] = redact_arguments(value)
+        else:
+            redacted[key] = value
+    return redacted
 
 
 @dataclass
@@ -98,7 +129,7 @@ class PluginRegistry:
         self._middleware: dict[str, Any] = {}
         self._providers: dict[str, Any] = {}
         self._extensions: dict[str, list[Callable]] = {}
-        self._denials: list[dict[str, Any]] = []
+        self._denials: deque = deque(maxlen=DENIAL_LOG_MAX)
 
     async def load(self, plugin: Plugin) -> None:
         """Load a plugin instance."""
@@ -237,7 +268,11 @@ class PluginRegistry:
         return list(self._tools.keys())
 
     def denials(self) -> list[dict[str, Any]]:
-        """Audit trail of denied/blocked tool executions."""
+        """Audit trail of denied/blocked tool executions.
+
+        Bounded to ``DENIAL_LOG_MAX`` entries (oldest dropped first);
+        secret-looking argument values are redacted.
+        """
         return list(self._denials)
 
     async def execute_tool(
@@ -279,7 +314,7 @@ class PluginRegistry:
                     {
                         "tool": name,
                         "reason": "approval_required_no_approver",
-                        "arguments": arguments,
+                        "arguments": redact_arguments(arguments),
                     }
                 )
                 raise PermissionError(
@@ -288,7 +323,11 @@ class PluginRegistry:
             approved = await approver(name, arguments)
             if not approved:
                 self._denials.append(
-                    {"tool": name, "reason": "approval_denied", "arguments": arguments}
+                    {
+                        "tool": name,
+                        "reason": "approval_denied",
+                        "arguments": redact_arguments(arguments),
+                    }
                 )
                 raise PermissionError(f"Tool '{name}' was not approved")
 

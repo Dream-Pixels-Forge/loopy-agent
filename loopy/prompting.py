@@ -36,8 +36,8 @@ CANARY_PREFIX = "PLEAK"
 
 # Markdown image: ![alt](url)  -> removed entirely (anti-exfil)
 _IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
-# Markdown link: [text](http(s)://...) -> keep text, drop destination
-_LINK_RE = re.compile(r"\[([^\]]*)\]\((https?://[^)]*)\)")
+# Markdown link: [text](destination) -> keep text, drop destination (anti-exfil)
+_LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
 
 
 def make_canary(prefix: str = CANARY_PREFIX) -> str:
@@ -99,8 +99,10 @@ def strip_md_media(text: str) -> str:
     """Neutralize exfiltration channels in model output.
 
     Removes markdown images entirely and strips link destinations (keeping
-    the link text). Bare URLs and ``<autolinks>`` are not rewritten — apply
-    an egress allow-list / classifier for those.
+    the link text) — every destination, including ``javascript:`` /
+    ``data:`` URLs that could execute or smuggle payloads when rendered.
+    Bare URLs and ``<autolinks>`` are not rewritten — apply an egress
+    allow-list / classifier for those.
     """
     text = _IMAGE_RE.sub("[image removed]", text)
     text = _LINK_RE.sub(r"\1", text)

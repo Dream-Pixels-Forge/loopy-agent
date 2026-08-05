@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Security
+
+- **`strip_md_media` strips all link destinations** — previously only `http(s)://` targets were dropped; `javascript:` / `data:` / `mailto:` destinations now also stripped (anti-XSS / anti-exfiltration when output is rendered)
+- **Denial audit trail hardened** — `ToolRegistry` / `PluginRegistry` denial logs now redact secret-looking argument values (`api_key`, `token`, `password`, `authorization`, ...) and are bounded to the newest 1000 entries (`DENIAL_LOG_MAX`, `redact_arguments`)
+- **Marketplace `uninstall` validated** — applies the same strict PEP 508 name check as `install`, closing option injection into `pip uninstall`
+
+---
+
 ## [0.7.1] - 2026-08-05
 
 ### Security

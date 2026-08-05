@@ -169,14 +169,24 @@ class PluginMarketplace:
     
     async def uninstall(self, package_name: str) -> bool:
         """
-        Uninstall a plugin.
-        
+        Uninstall a plugin (operator action).
+
+        The same strict name validation as :meth:`install` applies — only
+        bare PEP 508 package names are accepted, so option injection
+        (``--help``, ``--prefix=...``) cannot reach ``pip``.
+
         Args:
-            package_name: Package name
-        
+            package_name: Package name (e.g., "loopy-rag")
+
         Returns:
             True if successful
         """
+        if not self._validate_package_name(package_name):
+            logger.error(
+                f"Refusing to uninstall invalid package name: {package_name!r}"
+            )
+            return False
+
         try:
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "uninstall", "-y", package_name],

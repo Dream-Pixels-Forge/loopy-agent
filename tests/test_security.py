@@ -20,6 +20,7 @@ import pytest
 
 import loopy.netutil
 from loopy.netutil import is_private_host, validate_outbound_url
+from loopy.plugins import DENIAL_LOG_MAX, redact_arguments
 from loopy.prompting import (
     build_prompt,
     check_canary,
@@ -79,6 +80,18 @@ class TestMarketplaceSecurity:
         from loopy.plugins.marketplace import PluginMarketplace
 
         assert PluginMarketplace._validate_package_name(name) is True
+
+    def test_uninstall_rejects_invalid_names(self):
+        """uninstall must apply the same strict validation as install —
+        otherwise option injection can reach ``pip uninstall``."""
+        from loopy.plugins.marketplace import PluginMarketplace
+
+        marketplace = PluginMarketplace()
+
+        for name in ("--help", "--prefix=/tmp", "git+https://evil.example/repo", ""):
+            # Rejection happens before any subprocess is spawned, so this
+            # must return False immediately (no pip invocation).
+            assert _run(marketplace.uninstall(name)) is False
 
 
 # ============================================================
@@ -217,6 +230,67 @@ class TestExcessiveAgency:
             assert result == "wrote:x"
 
         _run(run_test())
+
+
+class TestDenialAuditTrail:
+    """C2b — denial audit: secrets redacted, log bounded."""
+
+    def test_tool_registry_redacts_secrets_and_bounds_log(self):
+        from loopy.plugins.tools import Tool, ToolRegistry
+
+        async def handler():
+            return "ran"
+
+        registry = ToolRegistry(approver=lambda tool, args: _deny())
+        registry.register(
+            Tool(name="send", description="s", handler=handler, requires_approval=True)
+        )
+
+        async def run_test():
+            result = await registry.execute(
+                "send", {"to": "a@b.c", "api_key": "sk-secret", "nested": {"token": "t-1"}}
+            )
+            assert result.success is False
+            denial = registry.denials()[0]
+            assert denial["arguments"]["api_key"] == "***"
+            assert denial["arguments"]["to"] == "a@b.c"
+            assert denial["arguments"]["nested"]["token"] == "***"
+
+            # Bounded: push far past the cap; the trail never exceeds it.
+            for _ in range(DENIAL_LOG_MAX + 10):
+                await registry.execute("missing_tool", {})
+            assert len(registry.denials()) <= DENIAL_LOG_MAX
+            assert registry.denials()[-1]["reason"] == "not_found"
+
+        _run(run_test())
+
+    def test_plugin_registry_redacts_secrets(self):
+        from loopy.plugins import PluginRegistry
+
+        registry = PluginRegistry()
+
+        async def write_handler(content: str):
+            return content
+
+        registry.register_tool("write", write_handler, requires_approval=True)
+
+        async def run_test():
+            with pytest.raises(PermissionError):
+                await registry.execute_tool(
+                    "write",
+                    {"content": "x", "authorization": "Bearer sk-123"},
+                )
+            denial = registry.denials()[0]
+            assert denial["reason"] == "approval_required_no_approver"
+            assert denial["arguments"]["authorization"] == "***"
+            assert denial["arguments"]["content"] == "x"
+
+        _run(run_test())
+
+    def test_redact_arguments_keeps_benign_values(self):
+        args = {"city": "Portland", "region": "us-east-1", "retries": 3}
+        assert redact_arguments(args) == args
+        assert redact_arguments(args) is not args  # defensive copy
 
 
 # ============================================================
@@ -414,6 +488,30 @@ class TestPromptingHelpers:
         # Link text preserved, destination stripped.
         assert "link" in cleaned
         assert "https://ok.example" not in cleaned
+
+    def test_strip_md_media_non_http_destinations(self):
+        """javascript:/data:/mailto: destinations must be stripped too."""
+        text = (
+            "[click](javascript:alert('x')) "
+            "![img](data:image/png;base64,AAAA) "
+            "[dl](data:text/html,<script>) "
+            "[mail](mailto:user@example.com)"
+        )
+        cleaned = strip_md_media(text)
+        assert "javascript:" not in cleaned
+        assert "data:image" not in cleaned
+        assert "data:text/html" not in cleaned
+        assert "mailto:" not in cleaned
+        assert "[image removed]" in cleaned
+        # Link text survives.
+        for word in ("click", "dl", "mail"):
+            assert word in cleaned
+
+    def test_strip_md_media_leaves_bare_urls(self):
+        """Bare URLs and autolinks are out of scope — egress layer's job."""
+        text = "See https://evil.example and <https://evil.example/x>"
+        cleaned = strip_md_media(text)
+        assert cleaned == text
 
 
 # ============================================================
