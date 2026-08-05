@@ -34,10 +34,12 @@ __all__ = [
 
 CANARY_PREFIX = "PLEAK"
 
-# Markdown image: ![alt](url)  -> removed entirely (anti-exfil)
-_IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+# Markdown image: ![alt](url)  -> removed entirely (anti-exfil).
+# Note: destinations may contain balanced parens (e.g. alert(1) or
+# en.wikipedia.org/Foo_(bar)) — allow one level of nesting.
+_IMAGE_RE = re.compile(r"!\[[^\]]*\]\((?:[^()]|\([^)]*\))*\)")
 # Markdown link: [text](destination) -> keep text, drop destination (anti-exfil)
-_LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
+_LINK_RE = re.compile(r"\[([^\]]*)\]\(((?:[^()]|\([^)]*\))*)\)")
 
 
 def make_canary(prefix: str = CANARY_PREFIX) -> str:
@@ -101,8 +103,10 @@ def strip_md_media(text: str) -> str:
     Removes markdown images entirely and strips link destinations (keeping
     the link text) — every destination, including ``javascript:`` /
     ``data:`` URLs that could execute or smuggle payloads when rendered.
-    Bare URLs and ``<autolinks>`` are not rewritten — apply an egress
-    allow-list / classifier for those.
+    Destinations containing balanced parentheses (``alert(1)``, Wikipedia
+    URLs like ``Foo_(bar)``) are handled fully. Bare URLs and
+    ``<autolinks>`` are not rewritten — apply an egress allow-list /
+    classifier for those.
     """
     text = _IMAGE_RE.sub("[image removed]", text)
     text = _LINK_RE.sub(r"\1", text)

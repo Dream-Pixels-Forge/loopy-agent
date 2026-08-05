@@ -513,6 +513,17 @@ class TestPromptingHelpers:
         cleaned = strip_md_media(text)
         assert cleaned == text
 
+    def test_strip_md_media_nested_parens(self):
+        """Destinations with balanced parens are consumed whole — no residue."""
+        cases = [
+            ("[x](javascript:alert(1))", "x"),
+            ("[x](https://en.wikipedia.org/wiki/Foo_(bar))", "x"),
+            ("[x](a(b)c)", "x"),
+            ("![img](data:image/png;base64,AA(AA))", "[image removed]"),
+        ]
+        for text, want in cases:
+            assert strip_md_media(text) == want, text
+
 
 # ============================================================
 # helpers
