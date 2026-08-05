@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - 2026-08-05
+
+### Added
+
+- **MCPClient as async context manager** — `async with MCPClient(...) as client:` for automatic connection teardown
+
+### Fixed
+
+- **CI lint** — resolved all `ruff` violations (import sorting, unused exports, type-stub gaps, line length)
+- **CI tests** — added `pytest-asyncio` to dev dependencies so the async test suites run in CI
+- **Type stubs** — added missing `Router`, `RoutingRule`, and `SubTask` definitions to `_types.pyi`
+
+### Changed
+
+- **Release pipeline** — single-trigger workflow (`v*` tag → tests → build → GitHub Release → PyPI) using trusted publishing (OIDC) with job-scoped permissions and pinned action versions
+- **Version source** — canonical version lives in `loopy/_version.py`; `scripts/release.sh` updated accordingly
+
+---
+
 ## [0.6.0] - 2026-04-22
 
 ### Added
@@ -293,3 +312,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.4.0 | 59 | Audio, Marketplace, Production Hardening |
 | 0.5.0 | 149 | Audit, State, Verification, Cost, Skills, Drift, Patterns, Safety |
 | 0.6.0 | 198 | Streaming, Multi-modal, Compliance, Explainability, A2A |
+| 0.7.0 | 198 | Async MCPClient context manager, trusted-publishing release pipeline |

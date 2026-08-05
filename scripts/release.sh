@@ -12,9 +12,9 @@ echo "🔄 Releasing loopy-agent v${VERSION}..."
 sed -i "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
 echo "✅ pyproject.toml → v${VERSION}"
 
-# 2. Bump version in __init__.py
-sed -i "s/^__version__ = .*/__version__ = \"${VERSION}\"/" loopy/__init__.py
-echo "✅ __init__.py → v${VERSION}"
+# 2. Bump version in _version.py (canonical source; __init__.py re-exports it)
+sed -i "s/^__version__ = .*/__version__ = \"${VERSION}\"/" loopy/_version.py
+echo "✅ _version.py → v${VERSION}"
 
 # 3. Run tests
 echo "🧪 Running tests..."
