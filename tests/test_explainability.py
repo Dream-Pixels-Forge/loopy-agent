@@ -1,9 +1,9 @@
 """Tests for loopy.explainability — Decision audit trail."""
 
-import pytest
-import tempfile
 import os
-from loopy.explainability import DecisionType, DecisionStep, DecisionTrace, DecisionTracker
+import tempfile
+
+from loopy.explainability import DecisionStep, DecisionTrace, DecisionTracker, DecisionType
 
 
 class TestDecisionType:

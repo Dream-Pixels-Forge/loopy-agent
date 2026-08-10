@@ -1,11 +1,11 @@
 """Tests for loopy.audit — Loop Readiness Scoring."""
 
 import asyncio
-import pytest
+
 from loopy.audit import (
-    LoopAuditor,
     AuditReport,
     CheckItem,
+    LoopAuditor,
     ReadinessLevel,
 )
 

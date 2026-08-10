@@ -1,14 +1,13 @@
 """Tests for loopy.state — Durable Loop State Management."""
 
-import asyncio
-import tempfile
 import os
-import pytest
+import tempfile
+
 from loopy.state import (
     LoopState,
+    RunOutcome,
     RunRecord,
     StateManager,
-    RunOutcome,
 )
 
 

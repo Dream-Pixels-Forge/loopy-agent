@@ -3,31 +3,27 @@ Tests for loopy package.
 """
 
 import asyncio
-import pytest
+import contextlib
+
 from loopy import (
     AgentLoop,
-    LoopConfig,
-    StepStatus,
-    Gateway,
-    ModelProvider,
+    AgentStatus,
+    EvalCase,
+    EvalSuite,
+    Evaluator,
+    FilterAction,
     GuardrailPipeline,
     InputFilter,
-    FilterAction,
-    Evaluator,
-    EvalSuite,
-    EvalCase,
-    Verdict,
     LLMCache,
-    Tracer,
-    SpanStatus,
-    MetricsCollector,
-    MCPClient,
     LocalMCP,
+    LoopConfig,
+    MetricsCollector,
     Orchestrator,
+    SpanStatus,
+    StepStatus,
     SubAgent,
-    AgentStatus,
+    Tracer,
 )
-
 
 # ============================================================
 # Agentic Loop Tests
@@ -354,7 +350,7 @@ class TestOrchestrator:
 class TestMiddleware:
     def test_middleware_pipeline(self):
         """Test basic middleware pipeline."""
-        from loopy.middleware import MiddlewarePipeline, MiddlewareContext
+        from loopy.middleware import MiddlewarePipeline
         
         pipeline = MiddlewarePipeline()
         
@@ -373,7 +369,7 @@ class TestMiddleware:
 
     def test_middleware_cancel(self):
         """Test middleware cancellation."""
-        from loopy.middleware import MiddlewarePipeline, Middleware, MiddlewareContext
+        from loopy.middleware import Middleware, MiddlewareContext, MiddlewarePipeline
         
         class CancelMiddleware(Middleware):
             async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
@@ -445,7 +441,7 @@ class TestMiddleware:
 
     def test_function_middleware(self):
         """Test function-based middleware."""
-        from loopy.middleware import MiddlewarePipeline, FunctionMiddleware, MiddlewareContext
+        from loopy.middleware import FunctionMiddleware, MiddlewareContext, MiddlewarePipeline
         
         async def before_fn(ctx: MiddlewareContext) -> MiddlewareContext:
             ctx.data["modified"] = True
@@ -475,7 +471,7 @@ class TestMiddleware:
 class TestPlugin:
     def test_plugin_registry(self):
         """Test plugin registry."""
-        from loopy.plugins import PluginRegistry, Plugin, PluginInfo
+        from loopy.plugins import Plugin, PluginInfo, PluginRegistry
         
         class TestPluginImpl(Plugin):
             @property
@@ -811,7 +807,7 @@ class TestOrchestratorRouting:
     
     def test_orchestrator_with_router(self):
         """Test orchestrator with router integration."""
-        from loopy import Orchestrator, SubAgent, Router, RoutingRule
+        from loopy import Orchestrator, Router, RoutingRule, SubAgent
         
         async def researcher(task, ctx):
             return f"Researched: {task}"
@@ -842,7 +838,7 @@ class TestNewMiddleware:
     
     def test_retry_middleware(self):
         """Test retry middleware."""
-        from loopy import RetryMiddleware, MiddlewarePipeline, MiddlewareContext
+        from loopy import MiddlewarePipeline, RetryMiddleware
         
         pipeline = MiddlewarePipeline()
         pipeline.add(RetryMiddleware(max_retries=2, base_delay=0.01))
@@ -883,10 +879,8 @@ class TestNewMiddleware:
         async def run_test():
             # First two failures open the circuit
             for _ in range(2):
-                try:
+                with contextlib.suppress(Exception):
                     await pipeline.execute(operation="test", handler=failing_handler, data={})
-                except Exception:
-                    pass
             
             # Third call should be blocked by circuit breaker
             result = await pipeline.execute(
@@ -908,7 +902,7 @@ class TestNewMiddleware:
             
             # Get connections
             conn1 = await pool.get_connection("openai")
-            conn2 = await pool.get_connection("anthropic")
+            await pool.get_connection("anthropic")
             
             stats = pool.stats()
             assert stats["active_connections"] == 2
@@ -932,7 +926,7 @@ class TestRAGPlugin:
     
     def test_rag_retriever(self):
         """Test RAG retriever with keyword search."""
-        from loopy.plugins.rag import Retriever, Document
+        from loopy.plugins.rag import Document, Retriever
         
         retriever = Retriever()
         retriever.add(Document.from_text("Python is a programming language"))
@@ -961,7 +955,7 @@ class TestToolsPlugin:
     
     def test_tool_registry(self):
         """Test tool registry."""
-        from loopy.plugins.tools import ToolRegistry, Tool, ToolParameter, ToolResult
+        from loopy.plugins.tools import Tool, ToolParameter, ToolRegistry
         
         registry = ToolRegistry()
         
@@ -1013,7 +1007,7 @@ class TestMemoryPlugin:
     
     def test_memory_store(self):
         """Test memory store."""
-        from loopy.plugins.memory import MemoryStore, Memory
+        from loopy.plugins.memory import Memory, MemoryStore
         
         store = MemoryStore()
         
@@ -1047,9 +1041,10 @@ class TestMemoryPlugin:
     
     def test_memory_persistence(self):
         """Test memory persistence to file."""
-        import tempfile
         import os
-        from loopy.plugins.memory import MemoryStore, Memory
+        import tempfile
+
+        from loopy.plugins.memory import Memory, MemoryStore
         
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             temp_path = f.name
@@ -1072,9 +1067,10 @@ class TestAudioPlugin:
     
     def test_speech_to_text(self):
         """Test speech-to-text transcription."""
-        import tempfile
         import os
-        from loopy.plugins.audio import SpeechToText, AudioConfig
+        import tempfile
+
+        from loopy.plugins.audio import AudioConfig, SpeechToText
         
         stt = SpeechToText(config=AudioConfig())
         
@@ -1095,9 +1091,10 @@ class TestAudioPlugin:
     
     def test_text_to_speech(self):
         """Test text-to-speech synthesis."""
-        import tempfile
         import os
-        from loopy.plugins.audio import TextToSpeech, AudioConfig
+        import tempfile
+
+        from loopy.plugins.audio import AudioConfig, TextToSpeech
         
         tts = TextToSpeech(config=AudioConfig())
         

@@ -1,11 +1,11 @@
 """Tests for loopy.verification — Maker/Checker Pattern."""
 
 import asyncio
-import pytest
+
 from loopy.verification import (
     VerificationGate,
-    VerifyResult,
     VerificationStatus,
+    VerifyResult,
 )
 
 

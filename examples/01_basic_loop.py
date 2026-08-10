@@ -5,7 +5,8 @@ Demonstrates the Plan → Act → Observe → Reflect cycle.
 """
 
 import asyncio
-from loopy import AgentLoop, LoopConfig, StepStatus
+
+from loopy import AgentLoop, LoopConfig
 
 
 async def planner(history: list) -> str:

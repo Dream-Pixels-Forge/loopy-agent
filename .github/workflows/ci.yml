@@ -35,3 +35,8 @@ jobs:
 
       - name: Check exports
         run: python -c "import loopy; print(f'loopy {loopy.__version__} — {len(loopy.__all__)} exports')"
+
+      - name: Type check
+        run: |
+          python -c "from pathlib import Path; assert (Path('loopy') / 'py.typed').exists(), 'Missing py.typed marker'"
+          python -c "import loopy; print('py.typed present')"

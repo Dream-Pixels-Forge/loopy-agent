@@ -5,7 +5,8 @@ Demonstrates using EvalGate for LLM-as-judge evaluation.
 """
 
 import asyncio
-from loopy import EvalGate, EvalGateType, JudgeConfig, EvalGateResult
+
+from loopy import EvalGate, EvalGateType, JudgeConfig
 
 
 # Example: Custom judge function (would call LLM in production)
@@ -63,8 +64,8 @@ async def main():
     print()
     
     # Example: Artifact gate (file existence)
-    import tempfile
     import os
+    import tempfile
     
     artifact_gate = EvalGate(gate_type=EvalGateType.ARTIFACT)
     

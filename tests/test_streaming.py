@@ -1,8 +1,9 @@
 """Tests for loopy.streaming — Real-time token streaming."""
 
+
 import pytest
-import asyncio
-from loopy.streaming import StreamEvent, StreamChunk, StreamBuffer, Streamer
+
+from loopy.streaming import StreamBuffer, StreamChunk, Streamer, StreamEvent
 
 
 class TestStreamEvent:

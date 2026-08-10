@@ -5,12 +5,16 @@ Demonstrates composable middleware with retry, circuit breaker, and fallback.
 """
 
 import asyncio
-from loopy import (
-    MiddlewarePipeline, MiddlewareContext,
-    RetryMiddleware, CircuitBreakerMiddleware, FallbackMiddleware,
-    LoggingMiddleware, TimingMiddleware,
-)
 
+from loopy import (
+    CircuitBreakerMiddleware,
+    FallbackMiddleware,
+    LoggingMiddleware,
+    MiddlewareContext,
+    MiddlewarePipeline,
+    RetryMiddleware,
+    TimingMiddleware,
+)
 
 # Simulate a flaky service
 call_count = 0

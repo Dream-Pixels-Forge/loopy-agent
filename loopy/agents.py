@@ -184,15 +184,19 @@ class TaskDecomposer:
     async def decompose(self, task: str) -> list[SubTask]:
         """
         Break a task into subtasks with dependencies.
-        
+
+        Uses built-in pattern matching for common task types (API, research,
+        generic). Override ``classify_fn`` in ``__init__`` to plug in an LLM
+        or custom classifier for richer decomposition.
+
         Args:
             task: The high-level task to decompose
-        
+
         Returns:
             List of SubTask objects with dependencies
         """
         # Simple pattern-based decomposition
-        # In production, this would use an LLM
+        # Override classify_fn for LLM-powered decomposition
         subtasks = []
         task_lower = task.lower()
         

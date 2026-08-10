@@ -5,7 +5,8 @@ Demonstrates multi-provider routing with fallback and connection pooling.
 """
 
 import asyncio
-from loopy import Gateway, ProviderConfig, ModelProvider
+
+from loopy import Gateway, ModelProvider, ProviderConfig
 
 
 async def main():

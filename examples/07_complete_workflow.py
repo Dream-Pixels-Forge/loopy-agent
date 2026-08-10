@@ -5,16 +5,25 @@ Combines all loopy features into a complete AI agent workflow.
 """
 
 import asyncio
-from loopy import (
-    AgentLoop, LoopConfig, StepStatus,
-    Gateway, ProviderConfig, ModelProvider,
-    EvalGate, EvalGateType, JudgeConfig,
-    Orchestrator, SubAgent, Router, RoutingRule,
-    MiddlewarePipeline, RetryMiddleware, CircuitBreakerMiddleware,
-    Tracer, TraceExporter,
-    LLMCache,
-)
 
+from loopy import (
+    AgentLoop,
+    CircuitBreakerMiddleware,
+    EvalGate,
+    EvalGateType,
+    Gateway,
+    JudgeConfig,
+    LLMCache,
+    LoopConfig,
+    MiddlewarePipeline,
+    Orchestrator,
+    RetryMiddleware,
+    Router,
+    RoutingRule,
+    SubAgent,
+    TraceExporter,
+    Tracer,
+)
 
 # ============================================================
 # Simulated LLM responses (replace with real API calls)
@@ -99,7 +108,7 @@ async def main():
     cache = LLMCache(ttl=3600, max_size=100)
     
     # Gateway (simulated)
-    gateway = Gateway()
+    Gateway()
     
     # ============================================
     # 2. Create Middleware Pipeline
@@ -253,7 +262,7 @@ async def main():
     
     # Print cache stats
     stats = cache.stats()
-    print(f"\nCache Stats:")
+    print("\nCache Stats:")
     print(f"  Hit rate: {stats.hit_rate:.1%}")
     print(f"  Estimated savings: ${stats.estimated_savings:.2f}")
 

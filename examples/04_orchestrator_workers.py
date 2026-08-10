@@ -5,9 +5,13 @@ Demonstrates task routing and decomposition with specialist agents.
 """
 
 import asyncio
+
 from loopy import (
-    Orchestrator, SubAgent, Router, RoutingRule,
-    TaskDecomposer, SubTask, AgentResult,
+    Orchestrator,
+    Router,
+    RoutingRule,
+    SubAgent,
+    TaskDecomposer,
 )
 
 

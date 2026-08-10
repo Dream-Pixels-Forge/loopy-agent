@@ -1,36 +1,27 @@
 """
-Loopy — 8 Essential AI Concepts in one toolkit.
+Loopy — 19 Essential AI Concepts in one toolkit.
 
 Modules:
-    loop       - Agentic loop engine (Plan → Act → Observe → Reflect)
-    gateway    - Multi-provider LLM routing with auth & rate limiting
-    guardrails - PII detection, jailbreak filtering, output safety
-    evals      - Judge-based model evaluation framework
-    cache      - Semantic token caching for cost optimization
-    observe    - Traces, logs, and metrics for LLM observability
-    mcp        - Model Context Protocol client
-    agents     - Multi-agent orchestration with subagents
-
-v0.2.0 additions:
-    - Evaluator-optimizer pattern (EvalGate, JudgeConfig)
-    - Orchestrator-workers pattern (Router, TaskDecomposer)
-    - Async context managers and connection pooling
-    - New middleware: Retry, CircuitBreaker, Fallback
-
-v0.3.0 additions:
-    - OpenTelemetry export for traces/metrics
-    - First-party plugins: RAG, Tools, Memory
-    - Plugin marketplace support
-
-v0.5.0 additions:
-    - Audit scoring (Loop Readiness Score 0-100)
-    - Durable state management (STATE.md, run logs)
-    - Maker/Checker verification gate
-    - Token cost tracking with daily budgets
-    - Persistent skills (SKILL.md)
-    - Config/state drift detection
-    - Production loop patterns (7 built-in)
-    - Safety gates (denylist paths, escalation)
+    loop            - Agentic loop engine (Plan → Act → Observe → Reflect)
+    gateway         - Multi-provider LLM routing with auth & rate limiting
+    guardrails      - PII detection, jailbreak filtering, output safety
+    evals           - Judge-based model evaluation framework
+    cache           - Semantic token caching for cost optimization
+    observe         - Traces, logs, and metrics for LLM observability
+    mcp             - Model Context Protocol client
+    agents          - Multi-agent orchestration with subagents
+    middleware      - Composable request/response hooks
+    plugins         - Plugin system with RAG, Tools, Memory
+    state           - Durable loop state persistence
+    safety          - Production safety gates (denylist, escalation)
+    cost            - Token cost tracking with daily budgets
+    drift           - Config/state drift detection
+    skills          - Persistent agent knowledge (SKILL.md)
+    verification    - Maker/Checker pattern
+    audit           - Loop readiness scoring (L0-L3)
+    streaming       - Real-time token-by-token output
+    compliance      - SOC2, GDPR, EU AI Act checks
+    explainability  - Decision audit trail
 """
 
 from loopy.agents import (
@@ -58,7 +49,8 @@ from loopy.evals import (
 from loopy.gateway import ConnectionPool, Gateway, GatewayResponse, ModelProvider, ProviderConfig
 from loopy.guardrails import FilterAction, GuardrailPipeline, InputFilter, OutputFilter
 from loopy.loop import AgentLoop, LoopConfig, StepResult, StepStatus
-from loopy.mcp import LocalMCP, MCPClient, Tool
+from loopy.mcp import LocalMCP, MCPClient, MCPToolResult
+from loopy.mcp import Tool as MCPTool
 from loopy.middleware import (
     CacheMiddleware,
     CircuitBreakerMiddleware,
@@ -165,7 +157,8 @@ __all__ = [
     "MetricsCollector",
     # MCP
     "MCPClient",
-    "Tool",
+    "MCPToolResult",
+    "MCPTool",
     "LocalMCP",
     # Security helpers (v0.7.1)
     "is_private_host",

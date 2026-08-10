@@ -1,10 +1,15 @@
 """Tests for loopy.a2a — Agent-to-Agent protocol."""
 
+
 import pytest
-import asyncio
+
 from loopy.a2a import (
-    AgentCapability, AgentCard, AgentRequest, AgentResponse,
-    AgentRegistry, A2AClient,
+    A2AClient,
+    AgentCapability,
+    AgentCard,
+    AgentRegistry,
+    AgentRequest,
+    AgentResponse,
 )
 
 

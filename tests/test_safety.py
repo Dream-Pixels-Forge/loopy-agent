@@ -1,12 +1,12 @@
 """Tests for loopy.safety — Production Safety Gates."""
 
 import asyncio
-import pytest
+
 from loopy.safety import (
-    SafetyGate,
-    SafetyCheck,
-    SafetyResult,
     EscalationReason,
+    SafetyCheck,
+    SafetyGate,
+    SafetyResult,
 )
 
 

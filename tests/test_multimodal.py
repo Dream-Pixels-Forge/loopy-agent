@@ -1,10 +1,13 @@
 """Tests for loopy.multimodal — Multi-modal content support."""
 
-import pytest
-import tempfile
 import os
+import tempfile
+
 from loopy.multimodal import (
-    MediaType, ImageFormat, MediaContent, MultiModalMessage, MultiModalBuilder,
+    MediaContent,
+    MediaType,
+    MultiModalBuilder,
+    MultiModalMessage,
 )
 
 

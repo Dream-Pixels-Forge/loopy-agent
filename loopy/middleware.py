@@ -313,9 +313,9 @@ class CacheMiddleware(Middleware):
 
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         """Check cache and short-circuit on hit."""
-        # Create cache key
+        # Create cache key (SHA-256 instead of MD5 to avoid scanner flags)
         key_data = json.dumps(ctx.data, sort_keys=True, default=str)
-        cache_key = hashlib.md5(key_data.encode()).hexdigest()
+        cache_key = hashlib.sha256(key_data.encode()).hexdigest()
 
         # Check cache
         if cache_key in self._cache:

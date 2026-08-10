@@ -1,12 +1,16 @@
 """Tests for loopy.compliance — Regulatory compliance built-in."""
 
-import pytest
-import asyncio
-import tempfile
 import os
+import tempfile
+
+import pytest
+
 from loopy.compliance import (
-    ComplianceFramework, DataClassification, AuditEntry,
-    AuditLogger, ComplianceChecker,
+    AuditEntry,
+    AuditLogger,
+    ComplianceChecker,
+    ComplianceFramework,
+    DataClassification,
 )
 
 

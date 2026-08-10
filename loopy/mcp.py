@@ -37,8 +37,8 @@ class ToolCall:
 
 
 @dataclass
-class ToolResult:
-    """Result of a tool call."""
+class MCPToolResult:
+    """Result of a tool call via MCP server."""
     
     content: str | list[dict[str, Any]]
     is_error: bool = False
@@ -124,16 +124,16 @@ class MCPClient:
         self,
         name: str,
         arguments: dict[str, Any] | None = None,
-    ) -> ToolResult:
+    ) -> MCPToolResult:
         """
         Call a tool on the MCP server.
-        
+
         Args:
             name: Tool name
             arguments: Tool arguments
-        
+
         Returns:
-            ToolResult with the response
+            MCPToolResult with the response
         """
         payload = {
             "name": name,
@@ -148,7 +148,7 @@ class MCPClient:
         response.raise_for_status()
         data = response.json()
 
-        return ToolResult(
+        return MCPToolResult(
             content=data.get("content", ""),
             is_error=data.get("is_error", False),
             metadata=data.get("metadata", {}),
@@ -223,19 +223,19 @@ class LocalMCP:
         self,
         name: str,
         arguments: dict[str, Any] | None = None,
-    ) -> ToolResult:
+    ) -> MCPToolResult:
         """Call a registered tool."""
         if name not in self._handlers:
-            return ToolResult(
+            return MCPToolResult(
                 content=f"Tool not found: {name}",
                 is_error=True,
             )
 
         try:
             result = await self._handlers[name](**(arguments or {}))
-            return ToolResult(content=str(result))
+            return MCPToolResult(content=str(result))
         except Exception as e:
-            return ToolResult(
+            return MCPToolResult(
                 content=str(e),
                 is_error=True,
             )

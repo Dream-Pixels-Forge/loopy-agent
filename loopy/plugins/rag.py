@@ -31,7 +31,7 @@ class Document:
     @classmethod
     def from_text(cls, text: str, metadata: dict[str, Any] | None = None) -> Document:
         """Create a document from text with auto-generated ID."""
-        doc_id = hashlib.md5(text.encode()).hexdigest()[:12]
+        doc_id = hashlib.sha256(text.encode()).hexdigest()[:12]
         return cls(
             id=doc_id,
             content=text,

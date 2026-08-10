@@ -5,10 +5,11 @@ Demonstrates using first-party plugins (RAG, Tools, Memory).
 """
 
 import asyncio
-from loopy import PluginRegistry, Plugin
-from loopy.plugins.rag import RAGPlugin, Retriever, Document
-from loopy.plugins.tools import ToolsPlugin, Tool, ToolParameter
-from loopy.plugins.memory import MemoryPlugin, MemoryStore, Memory
+
+from loopy import Plugin, PluginRegistry
+from loopy.plugins.memory import Memory, MemoryStore
+from loopy.plugins.rag import Document, Retriever
+from loopy.plugins.tools import Tool, ToolParameter, ToolsPlugin
 
 
 async def main():
@@ -88,8 +89,8 @@ async def main():
     # ============================================
     print("=== Example 3: Memory Plugin ===")
     
-    import tempfile
     import os
+    import tempfile
     
     # Create temporary memory store
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
@@ -146,7 +147,7 @@ async def main():
         
         # Get summary
         summary = store.get_summary()
-        print(f"\nMemory store summary:")
+        print("\nMemory store summary:")
         print(f"  Total memories: {summary['total_memories']}")
         print(f"  Categories: {summary['categories']}")
         print(f"  Avg importance: {summary['avg_importance']:.2f}")

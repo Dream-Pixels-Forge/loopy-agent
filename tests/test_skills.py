@@ -1,9 +1,8 @@
 """Tests for loopy.skills — Persistent Agent Knowledge."""
 
-import asyncio
-import tempfile
 import os
-import pytest
+import tempfile
+
 from loopy.skills import (
     Skill,
     SkillRegistry,

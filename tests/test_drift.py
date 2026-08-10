@@ -1,13 +1,11 @@
 """Tests for loopy.drift — Config/State Drift Detection."""
 
 import asyncio
-import tempfile
-import os
-import pytest
+
 from loopy.drift import (
     DriftDetector,
-    DriftReport,
     DriftIssue,
+    DriftReport,
 )
 
 

@@ -1,11 +1,9 @@
 """Tests for loopy.patterns — Production Loop Patterns."""
 
-import asyncio
-import pytest
 from loopy.patterns import (
     LoopPattern,
-    PatternRegistry,
     PatternCadence,
+    PatternRegistry,
     RiskLevel,
 )
 
