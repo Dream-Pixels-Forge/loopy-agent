@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.4] - 2026-08-10
+
+### Fixed
+
+- **`ToolResult` name collision** — renamed `loopy.mcp.ToolResult` to `MCPToolResult` to resolve conflict with `loopy.plugins.tools.ToolResult`
+- **Duplicate `Tool` export** — MCP version now exported as `MCPTool` via `__init__.py`
+- **"8 Essential AI Concepts" → "19"** — corrected count in `pyproject.toml`, `__init__.py`, and `cli.py`
+- **`hashlib.md5` → `hashlib.sha256`** — switched hash algorithm in `middleware.py` and `plugins/rag.py` for security scanner compliance
+
+### Added
+
+- **Complete `_types.pyi` rewrite** — 15+ missing type definitions including `MCPToolResult`, `Span`, `SpanStatus`, `CheckItem`, `ReadinessLevel`, and more
+- **`py.typed` verification step** in CI workflow
+- **12 new test files** — 440 tests (from 276) covering all 19 modules
+- **90% code coverage** (from 78%) — major gains in gateway (43→96%), plugins (44→88%), middleware (66→92%)
+
+### Changed
+
+- Lint cleanup across all test and example files (ruff import ordering, unused imports, line length)
+
+---
+
 ## [0.7.3] - 2026-08-05
 
 ### Fixed
