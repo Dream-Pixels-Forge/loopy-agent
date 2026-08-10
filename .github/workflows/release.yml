@@ -1,31 +1,17 @@
-# Create GitHub release + publish to PyPI on version tag
+# Release — Build and publish to PyPI on version tags
 name: Release
 
 on:
   push:
-    tags:
-      - "v*"
-
-# Note: permissions are job-scoped (least privilege) — see each job below.
+    tags: ["v*"]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: ruff check loopy/
-      - run: pytest --tb=short -q
-
-  release:
-    needs: test
+  publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Create the GitHub release
-      id-token: write  # Trusted publishing (OIDC) to PyPI — job-scoped only
+      id-token: write  # trusted publishing
+    environment: pypi
+
     steps:
       - uses: actions/checkout@v6
 
@@ -34,21 +20,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install build tools
+      - name: Install build
         run: python -m pip install --upgrade pip build
 
       - name: Build package
         run: python -m build
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: dist/*
-          generate_release_notes: true
-
-      # Trusted publishing (OIDC) — no API token needed; attestations are generated
-      # automatically for every file. Requires a trusted publisher registered on PyPI:
-      #   https://pypi.org/manage/project/loopy-agent/settings/publishing/
-      #   Owner: Dream-Pixels-Forge | Repository: loopy-agent | Workflow name: release
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@release/v1
