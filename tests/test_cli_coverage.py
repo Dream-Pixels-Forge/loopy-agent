@@ -25,11 +25,9 @@ class TestCmdChat:
         mock_response.content = "4"
 
         with patch("loopy.gateway.Gateway") as MockGW:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.chat = AsyncMock(return_value=mock_response)
             instance.close = AsyncMock()
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock(return_value=False)
             MockGW.return_value = instance
 
             cmd_chat(args)
@@ -54,11 +52,9 @@ class TestCmdChat:
         mock_response.content = "Hello!"
 
         with patch("loopy.gateway.Gateway") as MockGW:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.chat = AsyncMock(return_value=mock_response)
             instance.close = AsyncMock()
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock(return_value=False)
             MockGW.return_value = instance
 
             cmd_chat(args)
@@ -83,11 +79,9 @@ class TestCmdChat:
         mock_response.content = "Local!"
 
         with patch("loopy.gateway.Gateway") as MockGW:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.chat = AsyncMock(return_value=mock_response)
             instance.close = AsyncMock()
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock(return_value=False)
             MockGW.return_value = instance
 
             cmd_chat(args)
@@ -105,11 +99,9 @@ class TestCmdChat:
         args.max_tokens = 100
 
         with patch("loopy.gateway.Gateway") as MockGW:
-            instance = AsyncMock()
+            instance = MagicMock()
             instance.chat = AsyncMock(side_effect=ConnectionError("refused"))
             instance.close = AsyncMock()
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock(return_value=False)
             MockGW.return_value = instance
 
             cmd_chat(args)

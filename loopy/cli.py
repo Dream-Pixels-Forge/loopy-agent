@@ -24,7 +24,7 @@ def create_parser() -> argparse.ArgumentParser:
     """Create the main argument parser."""
     parser = argparse.ArgumentParser(
         prog="loopy",
-        description="🔄 Loopy — 19 Essential AI Concepts in one toolkit",
+        description="🔄 Loopy — 21 Essential AI Concepts in one toolkit",
     )
     parser.add_argument("--version", action="version", version=f"loopy {__version__}")
     
@@ -270,7 +270,7 @@ def cmd_info(args: argparse.Namespace) -> None:
     """Show loopy info."""
     print(f"""
 {'='*60}
- Loopy - 19 Essential AI Concepts in One Toolkit
+ Loopy - 21 Essential AI Concepts in One Toolkit
 {'='*60}
 
 Modules:

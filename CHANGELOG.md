@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.5] - 2026-08-16
+
+### Fixed
+
+- **"19 Essential AI Concepts" → "21"** — corrected concept count across `README.md`, `pyproject.toml` description, `loopy/__init__.py` module docstring, and `loopy/cli.py` (argparse description + CLI banner). The actual module count is 21.
+- **README architecture diagram out of date** — refreshed from 11 modules to the full v0.7.x tree of 27 source files (includes `_version.py`, `a2a.py`, `compliance.py`, `multimodal.py`, `netutil.py`, `patterns.py`, `prompting.py`, `streaming.py`, `explainability.py`, and `plugins/`).
+- **`RuntimeWarning: coroutine never awaited` in CLI tests** — `tests/test_cli_coverage.py` swapped `instance = AsyncMock()` for `instance = MagicMock()` on non-async attributes; only the actually-awaited methods (`chat`, `close`) remain `AsyncMock`. Removed redundant `__aenter__` / `__aexit__` mocks (the CLI calls `gateway.close()` directly, not via `async with`).
+
+### Added
+
+- **`tests/test_marketplace_coverage.py`** — 44 new tests covering `PluginPackage`, package-name validation (6 valid + 14 invalid PEP 508 forms including URLs, `git+`/`hg+`/`svn+` refs, leading dashes, path separators, dot-dot, empty/long names, shell metacharacters), `install` / `uninstall` success-failure paths plus subprocess exception and `--upgrade` flag handling, cache I/O (load missing file, save→reload round-trip, corrupt JSON, update existing/new entries), and the `MarketplacePlugin` surface (`info`, `setup` only registers `read_only` tools, search/list/install helpers).
+
+### Changed
+
+- `loopy/plugins/marketplace.py` coverage: **57% → 100%**
+- Total test count: **440 → 484**
+- Total coverage: **90% → 92%**
+
+---
+
 ## [0.7.4] - 2026-08-10
 
 ### Fixed

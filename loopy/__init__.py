@@ -1,5 +1,5 @@
 """
-Loopy — 19 Essential AI Concepts in one toolkit.
+Loopy — 21 Essential AI Concepts in one toolkit.
 
 Modules:
     loop            - Agentic loop engine (Plan → Act → Observe → Reflect)
