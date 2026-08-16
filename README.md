@@ -5,13 +5,13 @@
 <h1 align="center">🔄 Loopy</h1>
 
 <p align="center">
-  <strong>19 Essential AI Concepts in One Toolkit</strong><br>
+  <strong>21 Essential AI Concepts in One Toolkit</strong><br>
   <em>Plan → Act → Observe → Reflect — an intelligent agent that thinks, loops, and achieves.</em>
 </p>
 
 <p align="center">
   <a href="#-quick-start">Quick Start</a> •
-  <a href="#-the-19-concepts">Concepts</a> •
+  <a href="#-the-21-concepts">Concepts</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-installation">Install</a> •
   <a href="#-cli-usage">CLI</a>
@@ -27,7 +27,7 @@
 ---
 
 <p align="center">
-  <strong>Loopy</strong> is a lightweight, modular Python SDK for building production-ready agentic AI applications. It bundles nineteen battle-tested concepts — agentic loops, multi-provider gateways, guardrails, evals, caching, observability, MCP integration, multi-agent orchestration, middleware, plugins, state management, safety gates, cost tracking, drift detection, skills, verification, audit scoring, streaming, multi-modal, compliance, and explainability — into a single install with zero heavy dependencies.
+  <strong>Loopy</strong> is a lightweight, modular Python SDK for building production-ready agentic AI applications. It bundles twenty-one battle-tested concepts — agentic loops, multi-provider gateways, guardrails, evals, caching, observability, MCP integration, multi-agent orchestration, middleware, plugins, state management, safety gates, cost tracking, drift detection, skills, verification, audit scoring, streaming, multi-modal, compliance, and explainability — into a single install with zero heavy dependencies.
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 ---
 
-## 🎯 The 19 Concepts
+## 🎯 The 21 Concepts
 
 | Module | Concept | Description |
 |--------|---------|-------------|
@@ -758,19 +758,42 @@ pip install loopy-agent[dev]
 
 ```
 loopy/
-├── __init__.py      # Public API exports
-├── loop.py          # Agentic loop engine
-├── gateway.py       # Multi-provider routing + batch/streaming
-├── guardrails.py    # PII & jailbreak filters
-├── evals.py         # Judge-based evaluation
-├── cache.py         # Semantic token caching
-├── observe.py       # Tracing & metrics
-├── mcp.py           # MCP protocol client
-├── agents.py        # Multi-agent orchestration
-├── middleware.py     # Composable middleware pipeline
-├── plugins.py       # Plugin system
-├── cli.py           # Command-line interface
-└── _types.pyi       # Type stubs for IDE support
+├── __init__.py        # Public API exports (21 modules)
+├── _version.py        # Canonical version (single source of truth)
+├── _types.pyi         # Type stubs for IDE support
+├── py.typed           # PEP 561 marker
+├── loop.py            # Agentic loop engine (Plan → Act → Observe → Reflect)
+├── gateway.py         # Multi-provider routing + batch/streaming + connection pool
+├── guardrails.py      # PII & jailbreak filters
+├── evals.py           # Judge-based evaluation + EvalGate (evaluator-optimizer)
+├── cache.py           # Semantic token caching
+├── observe.py         # Tracing, metrics, TraceExporter (OTLP-compatible)
+├── mcp.py             # MCP protocol client (async context manager)
+├── agents.py          # Multi-agent orchestration + Router + TaskDecomposer
+├── middleware.py       # Composable middleware pipeline + retry/circuit/fallback
+├── cli.py             # Command-line interface
+├── cost.py            # Token cost tracking + daily budgets
+├── state.py           # Durable loop state persistence
+├── skills.py          # Persistent agent knowledge (SKILL.md)
+├── verification.py    # Maker/Checker pattern
+├── safety.py          # Denylist paths, escalation triggers
+├── drift.py           # Config/state drift detection
+├── audit.py           # Loop readiness scoring (L0–L3)
+├── streaming.py       # Real-time token-by-token output + SSE
+├── multimodal.py      # Image, audio, video messages
+├── compliance.py      # SOC2, GDPR, EU AI Act checks + audit logger
+├── explainability.py  # Decision audit trail
+├── patterns.py        # Named agentic workflow patterns
+├── a2a.py             # Agent-to-Agent protocol client + registry
+├── netutil.py         # SSRF guard (is_private_host, validate_outbound_url)
+├── prompting.py       # Prompt assembly helpers + canary tokens + strip_md_media
+└── plugins/
+    ├── __init__.py    # Lazy-import plugin surface
+    ├── rag.py         # RAGPlugin — retrieval + vector/keyword search
+    ├── tools.py       # ToolsPlugin — tool registry with capability gates
+    ├── memory.py      # MemoryPlugin — long-term memory + approval-gated writes
+    ├── audio.py       # AudioPlugin — TTS/STT
+    └── marketplace.py # Plugin marketplace (PyPI install/uninstall, validated)
 ```
 
 ---
