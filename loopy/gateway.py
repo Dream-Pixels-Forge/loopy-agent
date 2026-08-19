@@ -95,6 +95,7 @@ class ConnectionPool:
     HTTP connection pool for reusing connections to providers.
     
     Reduces latency by reusing TCP connections and SSL handshakes.
+    Evicts the least-recently-used connection when at capacity.
     
     Example:
         pool = ConnectionPool(max_size=10)
@@ -105,26 +106,31 @@ class ConnectionPool:
     def __init__(self, max_size: int = 10):
         self.max_size = max_size
         self._connections: dict[str, httpx.AsyncClient] = {}
+        self._last_used: dict[str, float] = {}
         self._lock = asyncio.Lock()
     
     async def get_connection(self, provider: str) -> httpx.AsyncClient:
         """Get or create a connection for a provider."""
         async with self._lock:
-            if provider not in self._connections:
-                if len(self._connections) >= self.max_size:
-                    # Evict oldest connection
-                    oldest = next(iter(self._connections))
-                    await self._connections[oldest].aclose()
-                    del self._connections[oldest]
-                
-                self._connections[provider] = httpx.AsyncClient(
-                    timeout=60.0,
-                    limits=httpx.Limits(
-                        max_connections=5,
-                        max_keepalive_connections=2,
-                    ),
-                )
-            
+            if provider in self._connections:
+                self._last_used[provider] = time.time()
+                return self._connections[provider]
+
+            if len(self._connections) >= self.max_size:
+                # Evict least recently used connection
+                lru_key = min(self._last_used, key=self._last_used.get)
+                await self._connections[lru_key].aclose()
+                del self._connections[lru_key]
+                del self._last_used[lru_key]
+
+            self._connections[provider] = httpx.AsyncClient(
+                timeout=60.0,
+                limits=httpx.Limits(
+                    max_connections=5,
+                    max_keepalive_connections=2,
+                ),
+            )
+            self._last_used[provider] = time.time()
             return self._connections[provider]
     
     async def close(self) -> None:
@@ -132,6 +138,7 @@ class ConnectionPool:
         for client in self._connections.values():
             await client.aclose()
         self._connections.clear()
+        self._last_used.clear()
     
     def stats(self) -> dict[str, Any]:
         """Get pool statistics."""
@@ -162,9 +169,8 @@ class Gateway:
     
     async def __aenter__(self):
         """Async context manager entry."""
-        self._pool = ConnectionPool()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self.close()
@@ -172,14 +178,13 @@ class Gateway:
 
     def __init__(self):
         self.providers: dict[str, ProviderConfig] = {}
-        self._client = httpx.AsyncClient(timeout=60.0)
-        self._pool: ConnectionPool | None = None
+        self._pool: ConnectionPool = ConnectionPool()
         self._logs: list[dict[str, Any]] = []
 
     def add_provider(self, name: str, config: ProviderConfig) -> None:
         """Register a provider."""
         self.providers[name] = config
-        logger.info(f"Added provider: {name} ({config.provider.value})")
+        logger.info("Added provider: %s (%s)", name, config.provider.value)
 
     def _resolve_provider(
         self, provider: str | None = None
@@ -255,7 +260,7 @@ class Gateway:
             handler = getattr(self, handler_name)
             response = await handler(config, message, system, temperature, max_tokens)
         except Exception as e:
-            logger.error(f"Gateway error ({provider}): {e}")
+            logger.error("Gateway error (%s): %s", provider, e)
             raise
 
         latency_ms = (time.time() - start_time) * 1000
@@ -295,7 +300,8 @@ class Gateway:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": message})
 
-        response = await self._client.post(
+        client = await self._pool.get_connection("openai")
+        response = await client.post(
             f"{config.base_url or 'https://api.openai.com/v1'}/chat/completions",
             headers={"Authorization": f"Bearer {config.api_key}"},
             json={
@@ -340,7 +346,8 @@ class Gateway:
         if system:
             body["system"] = system
 
-        response = await self._client.post(
+        client = await self._pool.get_connection("anthropic")
+        response = await client.post(
             f"{config.base_url or 'https://api.anthropic.com/v1'}/messages",
             headers={
                 "x-api-key": config.api_key or "",
@@ -380,7 +387,8 @@ class Gateway:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": message})
 
-        response = await self._client.post(
+        client = await self._pool.get_connection("ollama")
+        response = await client.post(
             f"{config.base_url or 'http://localhost:11434'}/api/chat",
             json={
                 "model": config.model,
@@ -471,7 +479,8 @@ class Gateway:
         messages.append({"role": "user", "content": message})
 
         if config.provider == ModelProvider.OPENAI:
-            async with self._client.stream(
+            client = await self._pool.get_connection("openai")
+            async with client.stream(
                 "POST",
                 f"{config.base_url or 'https://api.openai.com/v1'}/chat/completions",
                 headers={"Authorization": f"Bearer {config.api_key}"},
@@ -500,7 +509,5 @@ class Gateway:
         return self._logs.copy()
 
     async def close(self) -> None:
-        """Close the HTTP client and connection pool."""
-        await self._client.aclose()
-        if self._pool:
-            await self._pool.close()
+        """Close the connection pool."""
+        await self._pool.close()

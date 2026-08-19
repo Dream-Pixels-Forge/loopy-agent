@@ -168,7 +168,7 @@ class Streamer:
             )
 
         except Exception as e:
-            logger.error(f"Stream error: {e}")
+            logger.error("Stream error: %s", e)
             yield StreamChunk(
                 event=StreamEvent.ERROR,
                 data=str(e),

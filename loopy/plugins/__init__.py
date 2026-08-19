@@ -136,7 +136,7 @@ class PluginRegistry:
         info = plugin.info
         
         if info.name in self._plugins:
-            logger.warning(f"Plugin {info.name} already loaded, skipping")
+            logger.warning("Plugin %s already loaded, skipping", info.name)
             return
         
         # Check dependencies
@@ -150,7 +150,7 @@ class PluginRegistry:
         await plugin.setup(self)
         self._plugins[info.name] = plugin
         
-        logger.info(f"Loaded plugin: {info.name} v{info.version}")
+        logger.info("Loaded plugin: %s v%s", info.name, info.version)
 
     async def load_package(self, module_path: str) -> None:
         """
@@ -174,7 +174,7 @@ class PluginRegistry:
             await self.load(plugin_instance)
             
         except ImportError as e:
-            logger.error(f"Failed to import {module_path}: {e}")
+            logger.error("Failed to import %s: %s", module_path, e)
             raise
 
     async def load_directory(self, directory: str | Path) -> int:
@@ -190,7 +190,7 @@ class PluginRegistry:
         loaded = 0
         
         if not directory.exists():
-            logger.warning(f"Plugin directory not found: {directory}")
+            logger.warning("Plugin directory not found: %s", directory)
             return 0
         
         for py_file in directory.glob("*.py"):
@@ -212,7 +212,7 @@ class PluginRegistry:
                         await self.load(plugin_instance)
                         loaded += 1
             except Exception as e:
-                logger.error(f"Failed to load plugin from {py_file}: {e}")
+                logger.error("Failed to load plugin from %s: %s", py_file, e)
         
         return loaded
 
@@ -247,7 +247,7 @@ class PluginRegistry:
             "scope": scope,
             "allowed_values": allowed_values or {},
         }
-        logger.debug(f"Registered tool: {name} (visible={agent_visible}, scope={scope})")
+        logger.debug("Registered tool: %s (visible=%s, scope=%s)", name, agent_visible, scope)
 
     def get_tool(self, name: str) -> Callable | None:
         """Get a registered tool handler."""
@@ -345,7 +345,7 @@ class PluginRegistry:
     def register_middleware(self, name: str, middleware: Any) -> None:
         """Register middleware."""
         self._middleware[name] = middleware
-        logger.debug(f"Registered middleware: {name}")
+        logger.debug("Registered middleware: %s", name)
 
     def get_middleware(self, name: str) -> Any:
         """Get registered middleware."""
@@ -354,7 +354,7 @@ class PluginRegistry:
     def register_provider(self, name: str, provider: Any) -> None:
         """Register an LLM provider."""
         self._providers[name] = provider
-        logger.debug(f"Registered provider: {name}")
+        logger.debug("Registered provider: %s", name)
 
     def get_provider(self, name: str) -> Any:
         """Get a registered provider."""
@@ -365,7 +365,7 @@ class PluginRegistry:
         if hook_name not in self._extensions:
             self._extensions[hook_name] = []
         self._extensions[hook_name].append(callback)
-        logger.debug(f"Registered extension for hook: {hook_name}")
+        logger.debug("Registered extension for hook: %s", hook_name)
 
     async def trigger_extension(self, hook_name: str, *args: Any, **kwargs: Any) -> list[Any]:
         """Trigger all callbacks for a hook."""
@@ -378,7 +378,7 @@ class PluginRegistry:
                     result = callback(*args, **kwargs)
                 results.append(result)
             except Exception as e:
-                logger.error(f"Extension hook {hook_name} failed: {e}")
+                logger.error("Extension hook %s failed: %s", hook_name, e)
         return results
 
     def get_plugin(self, name: str) -> Plugin | None:
@@ -398,7 +398,7 @@ class PluginRegistry:
         await plugin.teardown()
         del self._plugins[name]
         
-        logger.info(f"Unloaded plugin: {name}")
+        logger.info("Unloaded plugin: %s", name)
         return True
 
     async def unload_all(self) -> None:
@@ -454,7 +454,7 @@ class PluginLoader:
                         await self.registry.load(plugin_cls())
                         loaded += 1
             except ImportError as e:
-                logger.warning(f"Could not import {package}: {e}")
+                logger.warning("Could not import %s: %s", package, e)
 
         # Load from directory
         if directory:

@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -39,7 +40,6 @@ class Span:
         span.set_status(SpanStatus.OK)
         span.end()
     """
-    
     name: str
     trace_id: str
     span_id: str
@@ -113,12 +113,10 @@ class Tracer:
         self.service = service
         self._spans: list[Span] = []
         self._current_trace_id: str | None = None
-        self._span_counter = 0
 
     def _generate_id(self) -> str:
-        """Generate a unique ID."""
-        self._span_counter += 1
-        return f"{self.service}-{self._span_counter:08d}"
+        """Generate a unique ID using UUID4."""
+        return uuid.uuid4().hex[:16]
 
     def start_span(
         self,
@@ -149,7 +147,7 @@ class Tracer:
         )
         
         self._spans.append(span)
-        logger.debug(f"Started span: {name} ({span_id})")
+        logger.debug("Started span: %s (%s)", name, span_id)
         
         return span
 
@@ -260,7 +258,7 @@ class TraceExporter:
         data = self.tracer.export_opentelemetry()
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
-        logger.info(f"Exported {len(self.tracer.get_spans())} spans to {path}")
+        logger.info("Exported %d spans to %s", len(self.tracer.get_spans()), path)
 
     def export_stdout(self) -> str:
         """Export traces to stdout and return the JSON string."""
@@ -290,10 +288,10 @@ class TraceExporter:
                     headers={"Content-Type": "application/json"},
                 )
                 response.raise_for_status()
-                logger.info(f"Exported traces to {endpoint}")
+                logger.info("Exported traces to %s", endpoint)
                 return True
         except Exception as e:
-            logger.error(f"Failed to export traces: {e}")
+            logger.error("Failed to export traces: %s", e)
             return False
 
 

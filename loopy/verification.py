@@ -82,7 +82,7 @@ class VerificationGate:
 
         try:
             # 1. Implement
-            logger.debug(f"Implementing: {task[:50]}...")
+            logger.debug("Implementing: %s...", task[:50])
             output = await self.implementer(task)
 
             # 2. Run tests (if provided)
@@ -117,7 +117,7 @@ class VerificationGate:
             return result
 
         except Exception as e:
-            logger.error(f"Verification error: {e}")
+            logger.error("Verification error: %s", e)
             return VerifyResult(
                 status=VerificationStatus.ERROR,
                 feedback=f"Error: {e}",

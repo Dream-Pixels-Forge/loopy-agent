@@ -95,6 +95,7 @@ class RoutingRule:
         self.agent_name = agent_name
         self.priority = priority
         self.description = description
+        self._compiled: re.Pattern[str] = re.compile(pattern, re.IGNORECASE)
 
 
 class Router:
@@ -150,8 +151,8 @@ class Router:
         task_lower = task.lower()
 
         for rule in self.rules:
-            if re.search(rule.pattern, task_lower, re.IGNORECASE):
-                logger.info(f"Routed task to {rule.agent_name} (pattern: {rule.pattern})")
+            if rule._compiled.search(task_lower):
+                logger.info("Routed task to %s (pattern: %s)", rule.agent_name, rule.pattern)
                 return rule.agent_name
 
         # Fallback to first agent if no match
@@ -298,7 +299,7 @@ class Orchestrator:
     def add_agent(self, agent: SubAgent) -> None:
         """Register a subagent."""
         self.agents[agent.name] = agent
-        logger.info(f"Added agent: {agent.name}")
+        logger.info("Added agent: %s", agent.name)
     
     def get_agent(self, name: str) -> SubAgent | None:
         """Get an agent by name."""
@@ -454,7 +455,7 @@ class Orchestrator:
             agent.result = result
             self._history.append(result)
             
-            logger.info(f"Agent {agent.name} completed in {duration_ms:.0f}ms")
+            logger.info("Agent %s completed in %.0fms", agent.name, duration_ms)
             return result
             
         except Exception as e:
@@ -471,7 +472,7 @@ class Orchestrator:
             agent.result = result
             self._history.append(result)
             
-            logger.error(f"Agent {agent.name} failed: {e}")
+            logger.error("Agent %s failed: %s", agent.name, e)
             return result
     
     def get_history(self) -> list[AgentResult]:

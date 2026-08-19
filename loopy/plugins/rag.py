@@ -72,7 +72,7 @@ class Retriever:
     def add(self, document: Document) -> None:
         """Add a document to the store."""
         self.documents[document.id] = document
-        logger.debug(f"Added document: {document.id}")
+        logger.debug("Added document: %s", document.id)
     
     def add_many(self, documents: list[Document]) -> None:
         """Add multiple documents."""

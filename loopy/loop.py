@@ -111,17 +111,17 @@ class AgentLoop:
             self.history.append(result)
             
             if result.status == StepStatus.FAILED and self.config.stop_on_error:
-                logger.error(f"Loop stopped at step {step_num}: {result.error}")
+                logger.error("Loop stopped at step %d: %s", step_num, result.error)
                 break
             
             # Check custom stop condition
             if self.config.should_stop:
                 try:
                     if await self.config.should_stop(self.history):
-                        logger.info(f"Stop condition met at step {step_num}")
+                        logger.info("Stop condition met at step %d", step_num)
                         break
                 except Exception as e:
-                    logger.warning(f"Stop condition check failed: {e}")
+                    logger.warning("Stop condition check failed: %s", e)
 
             # Default stop: all callbacks are None (no-op loop)
             if not any([self.config.planner, self.config.actor, 
@@ -139,32 +139,32 @@ class AgentLoop:
             # PLAN
             if self.config.planner:
                 result.plan = await self.config.planner(self.history)
-                logger.debug(f"Step {step_num} plan: {result.plan[:100]}...")
+                logger.debug("Step %d plan: %s...", step_num, result.plan[:100])
             
             # ACT
             result.status = StepStatus.ACTING
             if self.config.actor:
                 result.action = await self.config.actor(result.plan)
-                logger.debug(f"Step {step_num} action: {result.action[:100]}...")
+                logger.debug("Step %d action: %s...", step_num, result.action[:100])
             
             # OBSERVE
             result.status = StepStatus.OBSERVING
             if self.config.observer:
                 result.observation = await self.config.observer(result.action)
-                logger.debug(f"Step {step_num} observation: {result.observation[:100]}...")
+                logger.debug("Step %d observation: %s...", step_num, result.observation[:100])
             
             # REFLECT
             result.status = StepStatus.REFLECTING
             if self.config.reflector:
                 result.reflection = await self.config.reflector(self.history)
-                logger.debug(f"Step {step_num} reflection: {result.reflection[:100]}...")
+                logger.debug("Step %d reflection: %s...", step_num, result.reflection[:100])
             
             result.status = StepStatus.COMPLETE
             
         except Exception as e:
             result.status = StepStatus.FAILED
             result.error = str(e)
-            logger.error(f"Step {step_num} failed: {e}")
+            logger.error("Step %d failed: %s", step_num, e)
             
             if self.config.stop_on_error:
                 raise

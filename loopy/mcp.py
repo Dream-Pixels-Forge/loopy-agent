@@ -117,7 +117,7 @@ class MCPClient:
             for t in data.get("tools", [])
         ]
 
-        logger.info(f"Listed {len(self._tools)} tools from {self.server_url}")
+        logger.info("Listed %d tools from %s", len(self._tools), self.server_url)
         return self._tools
 
     async def call_tool(
@@ -128,13 +128,25 @@ class MCPClient:
         """
         Call a tool on the MCP server.
 
+        Validates that the tool name exists in the cached tool list
+        before sending the request.
+
         Args:
             name: Tool name
             arguments: Tool arguments
 
         Returns:
             MCPToolResult with the response
+
+        Raises:
+            ValueError: If tool name is not in the cached tool list.
         """
+        if self._tools and not any(t.name == name for t in self._tools):
+            return MCPToolResult(
+                content=f"Tool not found: {name}",
+                is_error=True,
+            )
+
         payload = {
             "name": name,
             "arguments": arguments or {},

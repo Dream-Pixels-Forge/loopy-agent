@@ -86,7 +86,7 @@ class MemoryStore:
         
         self.memories[memory.id] = memory
         self._save()
-        logger.debug(f"Added memory: {memory.id}")
+        logger.debug("Added memory: %s", memory.id)
     
     def get(self, memory_id: str) -> Memory | None:
         """Get a memory by ID."""
@@ -216,9 +216,9 @@ class MemoryStore:
                 memory = Memory.from_dict(item)
                 self.memories[memory.id] = memory
             
-            logger.info(f"Loaded {len(self.memories)} memories from {self.storage_path}")
+            logger.info("Loaded %d memories from %s", len(self.memories), self.storage_path)
         except Exception as e:
-            logger.error(f"Failed to load memories: {e}")
+            logger.error("Failed to load memories: %s", e)
 
 
 class MemoryPlugin(Plugin):

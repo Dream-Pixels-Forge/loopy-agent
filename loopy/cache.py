@@ -131,7 +131,7 @@ class LLMCache:
         self._stats.hits += 1
         self._stats.total_saved_tokens += entry.tokens_saved
         
-        logger.debug(f"Cache hit: {key[:8]}... (accessed {entry.access_count}x)")
+        logger.debug("Cache hit: %s... (accessed %dx)", key[:8], entry.access_count)
         return entry.response
 
     def set(
@@ -164,7 +164,7 @@ class LLMCache:
             tokens_saved=tokens,
         )
         
-        logger.debug(f"Cached response: {key[:8]}... ({tokens} tokens)")
+        logger.debug("Cached response: %s... (%d tokens)", key[:8], tokens)
         
         # Persist if configured
         if self.persist_path:
@@ -200,7 +200,7 @@ class LLMCache:
         # Find LRU entry
         lru_key = min(self._cache, key=lambda k: self._cache[k].last_accessed)
         del self._cache[lru_key]
-        logger.debug(f"Evicted LRU entry: {lru_key[:8]}...")
+        logger.debug("Evicted LRU entry: %s...", lru_key[:8])
 
     def _save(self) -> None:
         """Persist the in-memory cache to disk as JSON.
@@ -243,6 +243,6 @@ class LLMCache:
                     tokens_saved=entry_data.get("tokens_saved", 0),
                     created_at=entry_data.get("created_at", time.time()),
                 )
-            logger.info(f"Loaded {len(self._cache)} entries from cache")
+            logger.info("Loaded %d entries from cache", len(self._cache))
         except Exception as e:
-            logger.warning(f"Failed to load cache: {e}")
+            logger.warning("Failed to load cache: %s", e)

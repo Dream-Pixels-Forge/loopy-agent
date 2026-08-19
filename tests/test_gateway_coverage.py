@@ -179,7 +179,9 @@ class TestGatewayChat:
         gw.add_provider("openai", _openai_config())
 
         mock_resp = _mock_openai_response("Hi there!", 15)
-        with patch.object(gw._client, "post", new_callable=AsyncMock, return_value=mock_resp):
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        with patch.object(gw._pool, "get_connection", return_value=mock_client):
             result = await gw.chat("Hello", provider="openai")
 
         assert result.content == "Hi there!"
@@ -193,7 +195,9 @@ class TestGatewayChat:
         gw.add_provider("anthropic", _anthropic_config())
 
         mock_resp = _mock_anthropic_response("Anthropic says hi", 8, 6)
-        with patch.object(gw._client, "post", new_callable=AsyncMock, return_value=mock_resp):
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        with patch.object(gw._pool, "get_connection", return_value=mock_client):
             result = await gw.chat("Hello", provider="anthropic")
 
         assert result.content == "Anthropic says hi"
@@ -205,7 +209,9 @@ class TestGatewayChat:
         gw.add_provider("ollama", _ollama_config())
 
         mock_resp = _mock_ollama_response("Local model", 12)
-        with patch.object(gw._client, "post", new_callable=AsyncMock, return_value=mock_resp):
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        with patch.object(gw._pool, "get_connection", return_value=mock_client):
             result = await gw.chat("Hello", provider="ollama")
 
         assert result.content == "Local model"
@@ -217,12 +223,12 @@ class TestGatewayChat:
         gw.add_provider("openai", _openai_config())
 
         mock_resp = _mock_openai_response("OK")
-        with patch.object(gw._client, "post",
-                          new_callable=AsyncMock,
-                          return_value=mock_resp) as mock_post:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        with patch.object(gw._pool, "get_connection", return_value=mock_client) as mock_pool:
             await gw.chat("Hello", provider="openai", system="Be helpful")
 
-        call_args = mock_post.call_args
+        call_args = mock_client.post.call_args
         messages = call_args[1]["json"]["messages"]
         assert messages[0]["role"] == "system"
         assert messages[1]["role"] == "user"
@@ -238,7 +244,9 @@ class TestGatewayChat:
         gw = Gateway()
         gw.add_provider("openai", _openai_config())
         mock_resp = _mock_openai_response("ok")
-        with patch.object(gw._client, "post", new_callable=AsyncMock, return_value=mock_resp):
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        with patch.object(gw._pool, "get_connection", return_value=mock_client):
             result = await gw.chat("Hi", provider="openai")
         assert result.latency_ms >= 0
         log = gw.get_logs()[0]
@@ -253,7 +261,9 @@ class TestGatewayBatch:
         gw = Gateway()
         gw.add_provider("openai", _openai_config())
         mock_resp = _mock_openai_response("ok")
-        with patch.object(gw._client, "post", new_callable=AsyncMock, return_value=mock_resp):
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        with patch.object(gw._pool, "get_connection", return_value=mock_client):
             results = await gw.chat_batch(["a", "b", "c"], provider="openai")
         assert len(results) == 3
 
@@ -266,7 +276,9 @@ class TestGatewayStreaming:
         gw = Gateway()
         gw.add_provider("anthropic", _anthropic_config())
         mock_resp = _mock_anthropic_response("Fallback content")
-        with patch.object(gw._client, "post", new_callable=AsyncMock, return_value=mock_resp):
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        with patch.object(gw._pool, "get_connection", return_value=mock_client):
             chunks = []
             async for chunk in gw.chat_streaming("Hello", provider="anthropic"):
                 chunks.append(chunk)
@@ -296,7 +308,10 @@ class TestGatewayStreaming:
         mock_ctx.__aenter__ = AsyncMock(return_value=mock_response)
         mock_ctx.__aexit__ = AsyncMock(return_value=False)
 
-        with patch.object(gw._client, "stream", return_value=mock_ctx):
+        mock_client = AsyncMock()
+        mock_client.stream = MagicMock(return_value=mock_ctx)
+
+        with patch.object(gw._pool, "get_connection", return_value=mock_client):
             chunks = []
             async for chunk in gw.chat_streaming("Hello", provider="openai"):
                 chunks.append(chunk)

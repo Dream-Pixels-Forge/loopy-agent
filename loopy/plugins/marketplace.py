@@ -122,7 +122,7 @@ class PluginMarketplace:
         """
         if not self._validate_package_name(package_name):
             logger.error(
-                f"Refusing to install invalid package name: {package_name!r}"
+                "Refusing to install invalid package name: %r", package_name
             )
             return False
 
@@ -139,14 +139,14 @@ class PluginMarketplace:
             )
             
             if result.returncode == 0:
-                logger.info(f"Installed {package_name}")
+                logger.info("Installed %s", package_name)
                 self._update_cache(package_name, installed=True)
                 return True
             else:
-                logger.error(f"Failed to install {package_name}: {result.stderr}")
+                logger.error("Failed to install %s: %s", package_name, result.stderr)
                 return False
         except Exception as e:
-            logger.error(f"Installation error: {e}")
+            logger.error("Installation error: %s", e)
             return False
 
     @staticmethod
@@ -183,7 +183,7 @@ class PluginMarketplace:
         """
         if not self._validate_package_name(package_name):
             logger.error(
-                f"Refusing to uninstall invalid package name: {package_name!r}"
+                "Refusing to uninstall invalid package name: %r", package_name
             )
             return False
 
@@ -196,14 +196,14 @@ class PluginMarketplace:
             )
             
             if result.returncode == 0:
-                logger.info(f"Uninstalled {package_name}")
+                logger.info("Uninstalled %s", package_name)
                 self._update_cache(package_name, installed=False)
                 return True
             else:
-                logger.error(f"Failed to uninstall {package_name}: {result.stderr}")
+                logger.error("Failed to uninstall %s: %s", package_name, result.stderr)
                 return False
         except Exception as e:
-            logger.error(f"Uninstallation error: {e}")
+            logger.error("Uninstallation error: %s", e)
             return False
     
     def list_installed(self) -> list[PluginPackage]:

@@ -129,7 +129,7 @@ class AgentRegistry:
     def register(self, card: AgentCard) -> None:
         """Register an agent."""
         self._agents[card.name] = card
-        logger.info(f"Registered agent: {card.name}")
+        logger.info("Registered agent: %s", card.name)
 
     def unregister(self, name: str) -> None:
         """Unregister an agent."""

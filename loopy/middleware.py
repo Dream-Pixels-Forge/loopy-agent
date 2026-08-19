@@ -147,7 +147,7 @@ class MiddlewarePipeline:
     def add(self, middleware: Middleware) -> None:
         """Add middleware to the pipeline."""
         self._middleware.append(middleware)
-        logger.debug(f"Added middleware: {middleware.name}")
+        logger.debug("Added middleware: %s", middleware.name)
 
     def remove(self, name: str) -> bool:
         """Remove middleware by name."""
@@ -190,10 +190,10 @@ class MiddlewarePipeline:
             try:
                 ctx = await m.before(ctx)
                 if ctx.cancelled:
-                    logger.info(f"Operation cancelled by {m.name}: {ctx.cancel_reason}")
+                    logger.info("Operation cancelled by %s: %s", m.name, ctx.cancel_reason)
                     return None
             except Exception as e:
-                logger.error(f"Middleware {m.name} before hook failed: {e}")
+                logger.error("Middleware %s before hook failed: %s", m.name, e)
                 raise
 
         # Execute handler with retry support
@@ -215,7 +215,7 @@ class MiddlewarePipeline:
                     try:
                         error = await m.on_error(ctx, error)
                     except Exception as me:
-                        logger.error(f"Middleware {m.name} error hook failed: {me}")
+                        logger.error("Middleware %s error hook failed: %s", m.name, me)
                 
                 # Check if we should retry
                 if ctx.metadata.get("should_retry"):
@@ -234,7 +234,7 @@ class MiddlewarePipeline:
             try:
                 result = await m.after(ctx, result)
             except Exception as e:
-                logger.error(f"Middleware {m.name} after hook failed: {e}")
+                logger.error("Middleware %s after hook failed: %s", m.name, e)
                 raise
 
         return result
@@ -248,15 +248,15 @@ class LoggingMiddleware(Middleware):
     """Logs all operations."""
     
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
-        logger.info(f"[{ctx.operation}] Starting with {len(ctx.data)} data fields")
+        logger.info("[%s] Starting with %d data fields", ctx.operation, len(ctx.data))
         return ctx
     
     async def after(self, ctx: MiddlewareContext, result: Any) -> Any:
-        logger.info(f"[{ctx.operation}] Completed")
+        logger.info("[%s] Completed", ctx.operation)
         return result
     
     async def on_error(self, ctx: MiddlewareContext, error: Exception) -> Exception:
-        logger.error(f"[{ctx.operation}] Failed: {error}")
+        logger.error("[%s] Failed: %s", ctx.operation, error)
         return error
 
 
@@ -272,7 +272,7 @@ class TimingMiddleware(Middleware):
         if start:
             elapsed_ms = (time.time() - start) * 1000
             ctx.metadata["elapsed_ms"] = elapsed_ms
-            logger.debug(f"[{ctx.operation}] Took {elapsed_ms:.1f}ms")
+            logger.debug("[%s] Took %.1fms", ctx.operation, elapsed_ms)
         return result
 
 
@@ -409,7 +409,11 @@ class RetryMiddleware(Middleware):
             delay = min(self.base_delay * (2 ** retry_count), self.max_delay)
             ctx.metadata["_retry_count"] = retry_count + 1
             logger.warning(
-                f"Retry {retry_count + 1}/{self.max_retries} after {delay:.1f}s: {error}"
+                "Retry %d/%d after %.1fs: %s",
+                retry_count + 1,
+                self.max_retries,
+                delay,
+                error,
             )
             await asyncio.sleep(delay)
             ctx.metadata["retry_count"] = retry_count + 1
@@ -424,7 +428,8 @@ class CircuitBreakerMiddleware(Middleware):
 
     Tracks failure count and opens the circuit after a threshold,
     blocking requests for *recovery_timeout* seconds before
-    allowing a probe (half-open state).
+    allowing a probe (half-open state).  State mutations are
+    protected by an asyncio lock for safe concurrent use.
 
     Args:
         failure_threshold: Consecutive failures before opening.
@@ -441,33 +446,37 @@ class CircuitBreakerMiddleware(Middleware):
         self._failure_count = 0
         self._last_failure_time: float = 0
         self._state = "closed"  # closed = normal, open = blocked, half-open = testing
+        self._lock = asyncio.Lock()
 
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         """Block request if circuit is open (unless recovery timeout elapsed)."""
-        if self._state == "open":
-            if time.time() - self._last_failure_time > self.recovery_timeout:
-                self._state = "half-open"
-                logger.info("Circuit breaker: half-open state")
-            else:
-                ctx.cancel(f"Circuit breaker is open (failures: {self._failure_count})")
+        async with self._lock:
+            if self._state == "open":
+                if time.time() - self._last_failure_time > self.recovery_timeout:
+                    self._state = "half-open"
+                    logger.info("Circuit breaker: half-open state")
+                else:
+                    ctx.cancel(f"Circuit breaker is open (failures: {self._failure_count})")
         return ctx
 
     async def after(self, ctx: MiddlewareContext, result: Any) -> Any:
         """Reset failure count on success."""
-        if self._state == "half-open":
-            self._state = "closed"
-            logger.info("Circuit breaker: closed (recovered)")
-        self._failure_count = 0
+        async with self._lock:
+            if self._state == "half-open":
+                self._state = "closed"
+                logger.info("Circuit breaker: closed (recovered)")
+            self._failure_count = 0
         return result
 
     async def on_error(self, ctx: MiddlewareContext, error: Exception) -> Exception:
         """Increment failure count; open circuit if threshold reached."""
-        self._failure_count += 1
-        self._last_failure_time = time.time()
+        async with self._lock:
+            self._failure_count += 1
+            self._last_failure_time = time.time()
 
-        if self._failure_count >= self.failure_threshold:
-            self._state = "open"
-            logger.warning(f"Circuit breaker: open (failures: {self._failure_count})")
+            if self._failure_count >= self.failure_threshold:
+                self._state = "open"
+                logger.warning("Circuit breaker: open (failures: %d)", self._failure_count)
 
         return error
 
@@ -498,9 +507,9 @@ class FallbackMiddleware(Middleware):
                 result = await self.fallback_fn(ctx, error)
                 ctx.metadata["fallback_result"] = result
                 ctx.metadata["fallback_used"] = True
-                logger.info(f"Fallback used for {ctx.operation}")
+                logger.info("Fallback used for %s", ctx.operation)
             except Exception as fallback_error:
-                logger.error(f"Fallback also failed: {fallback_error}")
+                logger.error("Fallback also failed: %s", fallback_error)
                 return error
         elif self.fallback_data:
             ctx.metadata["fallback_result"] = self.fallback_data

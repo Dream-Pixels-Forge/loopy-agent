@@ -238,7 +238,7 @@ class EvalGate:
                 metadata={"criteria": criteria_list},
             )
         except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning(f"Judge evaluation failed, using fallback: {e}")
+            logger.warning("Judge evaluation failed, using fallback: %s", e)
             return self._simple_judge_evaluate(input_text, output, criteria)
     
     def _simple_judge_evaluate(

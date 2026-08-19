@@ -18,6 +18,14 @@ from typing import Any
 logger = logging.getLogger("loopy.state")
 
 
+def _parse_timestamp(ts: str) -> datetime:
+    """Parse an ISO timestamp string, falling back to epoch on failure."""
+    try:
+        return datetime.fromisoformat(ts)
+    except (ValueError, TypeError):
+        return datetime.min
+
+
 class RunOutcome(str, Enum):
     """Outcome of a loop run."""
     SUCCESS = "success"
@@ -120,7 +128,7 @@ class StateManager:
             data = json.loads(self.path.read_text())
             return LoopState.from_dict(data)
         except Exception as e:
-            logger.warning(f"Failed to load state: {e}")
+            logger.warning("Failed to load state: %s", e)
             return LoopState()
 
     def save(self, state: LoopState) -> None:
@@ -137,17 +145,16 @@ class StateManager:
         """
         state = self.load()
         cutoff = datetime.now() - timedelta(days=max_age_days)
-        cutoff_str = cutoff.isoformat()
 
         original_count = len(state.history)
         state.history = [
             r for r in state.history
-            if r.timestamp >= cutoff_str
+            if _parse_timestamp(r.timestamp) >= cutoff
         ]
         pruned = original_count - len(state.history)
 
         if pruned > 0:
             self.save(state)
-            logger.info(f"Pruned {pruned} old records")
+            logger.info("Pruned %d old records", pruned)
 
         return pruned

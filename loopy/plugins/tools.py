@@ -152,7 +152,7 @@ class ToolRegistry:
     def register(self, tool: Tool) -> None:
         """Register a tool."""
         self.tools[tool.name] = tool
-        logger.info(f"Registered tool: {tool.name}")
+        logger.info("Registered tool: %s", tool.name)
     
     def get(self, name: str) -> Tool | None:
         """Get a tool by name."""

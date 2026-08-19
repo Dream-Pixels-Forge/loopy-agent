@@ -91,7 +91,7 @@ class CostTracker:
             self._save()
 
         if self.should_stop:
-            logger.warning(f"Budget exceeded: {self.used_today}/{self.daily_limit}")
+            logger.warning("Budget exceeded: %s/%s", self.used_today, self.daily_limit)
 
     def report(self) -> CostReport:
         """Generate cost report."""
@@ -123,5 +123,5 @@ class CostTracker:
         try:
             self._usage = json.loads(self.persist_path.read_text())
         except Exception as e:
-            logger.warning(f"Failed to load cost data: {e}")
+            logger.warning("Failed to load cost data: %s", e)
             self._usage = {}

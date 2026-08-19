@@ -78,14 +78,27 @@ from loopy.prompting import (
 )
 
 # First-party plugins (lazy import to avoid circular deps)
+_optional_imports_ok = True
 try:
     from loopy.plugins.audio import AudioPlugin, SpeechToText, TextToSpeech
+except ImportError:
+    _optional_imports_ok = False
+try:
     from loopy.plugins.marketplace import MarketplacePlugin, PluginMarketplace
+except ImportError:
+    _optional_imports_ok = False
+try:
     from loopy.plugins.memory import Memory, MemoryPlugin, MemoryStore
+except ImportError:
+    _optional_imports_ok = False
+try:
     from loopy.plugins.rag import Document, RAGPlugin, Retriever
+except ImportError:
+    _optional_imports_ok = False
+try:
     from loopy.plugins.tools import Tool, ToolResult, ToolsPlugin
-except ModuleNotFoundError:
-    pass  # Optional dependencies — missing packages are fine
+except ImportError:
+    _optional_imports_ok = False
 
 # v0.5.0 — Production readiness modules
 # v0.6.0 — Critical gaps: streaming, multi-modal, compliance, explainability, A2A

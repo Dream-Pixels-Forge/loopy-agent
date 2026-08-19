@@ -8,6 +8,7 @@ Inspired by loop-engineering's skills system.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -34,13 +35,23 @@ class Skill:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def matches(self, task: str) -> bool:
-        """Check if task matches any trigger."""
+        """Check if task matches any trigger.
+
+        Multi-word triggers require ALL words to appear in the task.
+        Single-word triggers require a whole-word match (word boundary)
+        to avoid false positives from substrings.
+        """
         task_lower = task.lower()
         for trigger in self.triggers:
-            # Check if trigger words appear in task
             trigger_words = trigger.lower().split()
-            if any(word in task_lower for word in trigger_words):
-                return True
+            if len(trigger_words) > 1:
+                # Multi-word: all words must appear
+                if all(w in task_lower for w in trigger_words):
+                    return True
+            else:
+                # Single-word: require whole-word match
+                if re.search(r'\b' + re.escape(trigger_words[0]) + r'\b', task_lower):
+                    return True
         return False
 
     @classmethod
@@ -158,7 +169,7 @@ class SkillRegistry:
         loaded = 0
 
         if not dir_path.exists():
-            logger.warning(f"Skill directory not found: {directory}")
+            logger.warning("Skill directory not found: %s", directory)
             return 0
 
         for md_file in dir_path.glob("*.md"):
@@ -166,6 +177,6 @@ class SkillRegistry:
                 self.load_file(str(md_file))
                 loaded += 1
             except Exception as e:
-                logger.error(f"Failed to load skill from {md_file}: {e}")
+                logger.error("Failed to load skill from %s: %s", md_file, e)
 
         return loaded
