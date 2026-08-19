@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.7] - 2026-08-19
+
+### Fixed
+
+- **`ComplianceChecker` fake async** — `check_soc2`, `check_gdpr`, `check_eu_ai_act`, and `AuditLogger.log`/`query`/`summary` were declared `async def` but contained zero `await` calls. Removed `async` keyword so callers get correct sync behavior without the overhead of coroutines.
+- **`DecisionTracker` unbounded memory** — `DecisionTracker.traces` grew without bound; long-running sessions would OOM. Added `max_traces` parameter (default 100) with FIFO eviction of oldest traces.
+- **`DriftDetector` dead code** — callback-presence check loop (`pass`) replaced with actual drift issue tracking: missing callbacks now emit warning-severity `DriftIssue` entries with remediation suggestions.
+- **`MemoryStore` blocking I/O in event loop** — `add()`, `delete()`, `clear()` called `_save()` synchronously, blocking the event loop during disk writes. Refactored to `asyncio.to_thread` with dirty-flag gating so writes only happen on structural mutations.
+- **`A2AClient.broadcast` amplification** — unbounded broadcast could cause infinite loops when agents re-broadcast back. Added `max_depth` (default 3) and per-call cycle detection via a `visited` set.
+- **`TraceExporter.export_http` no retry** — HTTP export failures silently dropped traces. Added configurable `max_retries` (default 3) with exponential backoff (1s, 2s, 4s).
+
+---
+
 ## [0.7.5] - 2026-08-16
 
 ### Fixed
@@ -393,3 +406,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.5.0 | 149 | Audit, State, Verification, Cost, Skills, Drift, Patterns, Safety |
 | 0.6.0 | 198 | Streaming, Multi-modal, Compliance, Explainability, A2A |
 | 0.7.0 | 198 | Async MCPClient context manager, trusted-publishing release pipeline |
+| 0.7.5 | 484 | Concept count fix, README refresh, marketplace tests |
+| 0.7.7 | 484 | Compliance async fix, DecisionTracker bounds, drift detection, memory async I/O, broadcast amplification, trace retry |

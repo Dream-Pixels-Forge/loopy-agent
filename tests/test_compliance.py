@@ -49,8 +49,7 @@ class TestAuditLogger:
             logger = AuditLogger(path)
             assert logger.path.exists() or True  # Dir created
 
-    @pytest.mark.asyncio
-    async def test_log_and_query(self):
+    def test_log_and_query(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "audit.jsonl")
             logger = AuditLogger(path)
@@ -63,16 +62,15 @@ class TestAuditLogger:
                 output_summary="output",
                 classification=DataClassification.PUBLIC,
             )
-            await logger.log(entry)
+            logger.log(entry)
 
-            entries = await logger.query()
+            entries = logger.query()
             assert len(entries) == 1
             assert entries[0].action == "test"
 
 
 class TestComplianceChecker:
-    @pytest.mark.asyncio
-    async def test_soc2_pass(self):
+    def test_soc2_pass(self):
         checker = ComplianceChecker()
         config = {
             "authentication": {"type": "oauth"},
@@ -80,26 +78,23 @@ class TestComplianceChecker:
             "encryption": {"at_rest": True},
             "rate_limit": {"per_minute": 100},
         }
-        report = await checker.check_soc2(config)
+        report = checker.check_soc2(config)
         assert report.passed is True
 
-    @pytest.mark.asyncio
-    async def test_soc2_fail(self):
+    def test_soc2_fail(self):
         checker = ComplianceChecker()
-        report = await checker.check_soc2({})
+        report = checker.check_soc2({})
         assert report.passed is False
         assert len(report.violations) > 0
 
-    @pytest.mark.asyncio
-    async def test_gdpr_check(self):
+    def test_gdpr_check(self):
         checker = ComplianceChecker()
-        report = await checker.check_gdpr({})
+        report = checker.check_gdpr({})
         assert report.passed is False
         assert len(report.recommendations) > 0
 
-    @pytest.mark.asyncio
-    async def test_eu_ai_act_check(self):
+    def test_eu_ai_act_check(self):
         checker = ComplianceChecker()
-        report = await checker.check_eu_ai_act({"human_oversight": True})
+        report = checker.check_eu_ai_act({"human_oversight": True})
         # Should have some failures
         assert len(report.checks) > 0

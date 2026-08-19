@@ -267,32 +267,54 @@ class TraceExporter:
         print(output)
         return output
 
-    async def export_http(self, endpoint: str, timeout: float = 10.0) -> bool:
+    async def export_http(
+        self,
+        endpoint: str,
+        timeout: float = 10.0,
+        max_retries: int = 3,
+    ) -> bool:
         """
         Export traces to an HTTP endpoint (e.g., Jaeger, Zipkin).
 
         Args:
             endpoint: The OTLP/HTTP endpoint URL.
             timeout: Request timeout in seconds.
+            max_retries: Maximum number of retry attempts with
+                exponential backoff (1s, 2s, 4s).
 
         Returns:
-            True if successful.
+            True if successful after all retries.
         """
-        try:
-            data = self.tracer.export_opentelemetry()
+        data = self.tracer.export_opentelemetry()
+        last_error: Exception | None = None
 
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.post(
-                    endpoint,
-                    json=data,
-                    headers={"Content-Type": "application/json"},
-                )
-                response.raise_for_status()
-                logger.info("Exported traces to %s", endpoint)
-                return True
-        except Exception as e:
-            logger.error("Failed to export traces: %s", e)
-            return False
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(
+                        endpoint,
+                        json=data,
+                        headers={"Content-Type": "application/json"},
+                    )
+                    response.raise_for_status()
+                    logger.info("Exported traces to %s", endpoint)
+                    return True
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    delay = 2 ** attempt  # 1s, 2s, 4s
+                    logger.warning(
+                        "Trace export attempt %d/%d failed, retrying in %ds: %s",
+                        attempt + 1, max_retries, delay, e,
+                    )
+                    import asyncio
+                    await asyncio.sleep(delay)
+
+        logger.error(
+            "Failed to export traces after %d attempts: %s",
+            max_retries, last_error,
+        )
+        return False
 
 
 class SpanContext:

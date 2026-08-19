@@ -163,7 +163,7 @@ class TestTraceExporter:
             mock_client.__aexit__ = AsyncMock(return_value=False)
             mock_cls.return_value = mock_client
 
-            result = await exporter.export_http("http://bad:1234/api/traces")
+            result = await exporter.export_http("http://bad:1234/api/traces", max_retries=1)
             assert result is False
 
 

@@ -141,6 +141,9 @@ class MCPClient:
         Raises:
             ValueError: If tool name is not in the cached tool list.
         """
+        # Validate tool name against cached list.
+        # Skip validation if tools haven't been loaded yet (call
+        # list_tools() first to enable client-side validation).
         if self._tools and not any(t.name == name for t in self._tools):
             return MCPToolResult(
                 content=f"Tool not found: {name}",

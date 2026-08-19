@@ -6,6 +6,7 @@ Provides persistent memory storage for agents across sessions.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -59,7 +60,7 @@ class MemoryStore:
         store = MemoryStore()
         
         # Store memories
-        store.add(Memory(
+        await store.add(Memory(
             id="pref_1",
             content="User prefers dark mode",
             category="preferences",
@@ -74,18 +75,20 @@ class MemoryStore:
         self.memories: dict[str, Memory] = {}
         self.storage_path = Path(storage_path) if storage_path else None
         self._counter = 0
+        self._dirty = False
         
         if self.storage_path and self.storage_path.exists():
             self._load()
     
-    def add(self, memory: Memory) -> None:
+    async def add(self, memory: Memory) -> None:
         """Add a memory."""
         if not memory.id:
             self._counter += 1
             memory.id = f"mem_{self._counter:08d}"
         
         self.memories[memory.id] = memory
-        self._save()
+        self._dirty = True
+        await self._save()
         logger.debug("Added memory: %s", memory.id)
     
     def get(self, memory_id: str) -> Memory | None:
@@ -94,18 +97,18 @@ class MemoryStore:
         if memory:
             memory.last_accessed = time.time()
             memory.access_count += 1
-            self._save()
         return memory
     
-    def delete(self, memory_id: str) -> bool:
+    async def delete(self, memory_id: str) -> bool:
         """Delete a memory."""
         if memory_id in self.memories:
             del self.memories[memory_id]
-            self._save()
+            self._dirty = True
+            await self._save()
             return True
         return False
 
-    def clear(self) -> int:
+    async def clear(self) -> int:
         """Kill-switch: delete every stored memory (returns count removed).
 
         Use when memory poisoning is suspected — a full reset beats
@@ -113,7 +116,8 @@ class MemoryStore:
         """
         count = len(self.memories)
         self.memories.clear()
-        self._save()
+        self._dirty = True
+        await self._save()
         return count
     
     def recall(
@@ -154,13 +158,12 @@ class MemoryStore:
         # Sort by score * importance
         results.sort(key=lambda x: -(x[1] * x[0].importance))
         
-        # Update access stats
+        # Update access stats (transient, not persisted)
         memories = [m for m, _ in results[:top_k]]
         for m in memories:
             m.last_accessed = time.time()
             m.access_count += 1
         
-        self._save()
         return memories
     
     def _score_memory(self, memory: Memory, query: str) -> float:
@@ -192,16 +195,20 @@ class MemoryStore:
             ),
         }
     
-    def _save(self) -> None:
-        """Save memories to disk."""
-        if not self.storage_path:
+    async def _save(self) -> None:
+        """Save memories to disk only when state has changed."""
+        if not self.storage_path or not self._dirty:
             return
         
+        self._dirty = False
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
         data = [m.to_dict() for m in self.memories.values()]
         
-        with open(self.storage_path, "w") as f:
-            json.dump(data, f, indent=2)
+        def _write() -> None:
+            with open(self.storage_path, "w") as f:
+                json.dump(data, f, indent=2)
+        
+        await asyncio.to_thread(_write)
     
     def _load(self) -> None:
         """Load memories from disk."""
@@ -234,7 +241,7 @@ class MemoryPlugin(Plugin):
         memory_store = plugin.memory_store
         
         # Store a memory
-        memory_store.add(Memory(
+        await memory_store.add(Memory(
             id="user_pref_1",
             content="User prefers concise responses",
             category="preferences",
@@ -294,7 +301,7 @@ class MemoryPlugin(Plugin):
             importance=importance,
             metadata=metadata or {},
         )
-        self.memory_store.add(memory)
+        await self.memory_store.add(memory)
         return {"id": memory.id, "status": "stored"}
     
     async def _recall_memories(
@@ -334,5 +341,5 @@ class MemoryPlugin(Plugin):
 
     async def _clear_memories(self) -> dict[str, Any]:
         """Kill-switch: wipe all stored memories (approval-gated tool)."""
-        count = self.memory_store.clear()
+        count = await self.memory_store.clear()
         return {"status": "cleared", "removed": count}

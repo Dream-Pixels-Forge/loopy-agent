@@ -85,14 +85,14 @@ class AuditLogger:
 
     Example:
         logger = AuditLogger("./audit.log")
-        await logger.log("summarize", agent_id="agent-1", ...)
+        logger.log("summarize", agent_id="agent-1", ...)
     """
 
     def __init__(self, path: str = "./audit.jsonl"):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def log(self, entry: AuditEntry) -> None:
+    def log(self, entry: AuditEntry) -> None:
         """Append an audit entry to the JSONL log file.
 
         Args:
@@ -101,7 +101,7 @@ class AuditLogger:
         with open(self.path, "a") as f:
             f.write(json.dumps(entry.to_dict()) + "\n")
 
-    async def query(
+    def query(
         self,
         agent_id: str | None = None,
         start_time: str | None = None,
@@ -149,7 +149,7 @@ class AuditLogger:
 
         return entries
 
-    async def summary(self, days: int = 30) -> dict[str, Any]:
+    def summary(self, days: int = 30) -> dict[str, Any]:
         """Generate a summary of audit activity.
 
         Args:
@@ -160,7 +160,7 @@ class AuditLogger:
             Dict with total_actions, total_tokens, breakdowns
             by agent and classification.
         """
-        entries = await self.query()
+        entries = self.query()
 
         total_tokens = sum(e.tokens_used for e in entries)
         by_agent: dict[str, int] = {}
@@ -185,7 +185,7 @@ class ComplianceChecker:
 
     Example:
         checker = ComplianceChecker()
-        report = await checker.check_soc2(config)
+        report = checker.check_soc2(config)
         if not report.passed:
             print(f"Violations: {report.violations}")
     """
@@ -193,7 +193,7 @@ class ComplianceChecker:
     def __init__(self, audit_logger: AuditLogger | None = None):
         self.audit_logger = audit_logger
 
-    async def check_soc2(self, config: dict[str, Any]) -> ComplianceReport:
+    def check_soc2(self, config: dict[str, Any]) -> ComplianceReport:
         """Check SOC2 compliance."""
         checks = []
         violations = []
@@ -233,7 +233,7 @@ class ComplianceChecker:
             recommendations=recommendations,
         )
 
-    async def check_gdpr(self, config: dict[str, Any]) -> ComplianceReport:
+    def check_gdpr(self, config: dict[str, Any]) -> ComplianceReport:
         """Check GDPR compliance."""
         checks = []
         violations = []
@@ -273,7 +273,7 @@ class ComplianceChecker:
             recommendations=recommendations,
         )
 
-    async def check_eu_ai_act(self, config: dict[str, Any]) -> ComplianceReport:
+    def check_eu_ai_act(self, config: dict[str, Any]) -> ComplianceReport:
         """Check EU AI Act compliance."""
         checks = []
         violations = []

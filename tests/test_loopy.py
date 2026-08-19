@@ -1005,20 +1005,21 @@ class TestToolsPlugin:
 class TestMemoryPlugin:
     """Tests for v0.3.0 Memory plugin."""
     
-    def test_memory_store(self):
+    @pytest.mark.asyncio
+    async def test_memory_store(self):
         """Test memory store."""
         from loopy.plugins.memory import Memory, MemoryStore
         
         store = MemoryStore()
         
-        store.add(Memory(
+        await store.add(Memory(
             id="mem_1",
             content="User prefers dark mode",
             category="preferences",
             importance=0.8,
         ))
         
-        store.add(Memory(
+        await store.add(Memory(
             id="mem_2",
             content="User likes Python",
             category="preferences",
@@ -1039,7 +1040,8 @@ class TestMemoryPlugin:
         assert memory is not None
         assert memory.access_count >= 1  # May be accessed multiple times
     
-    def test_memory_persistence(self):
+    @pytest.mark.asyncio
+    async def test_memory_persistence(self):
         """Test memory persistence to file."""
         import os
         import tempfile
@@ -1052,7 +1054,7 @@ class TestMemoryPlugin:
         try:
             # Create and save
             store1 = MemoryStore(storage_path=temp_path)
-            store1.add(Memory(id="test", content="Persistent memory"))
+            await store1.add(Memory(id="test", content="Persistent memory"))
             
             # Load in new store
             store2 = MemoryStore(storage_path=temp_path)

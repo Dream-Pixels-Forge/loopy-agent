@@ -102,8 +102,13 @@ class DriftDetector:
         # Check required callbacks
         for callback in ["planner", "actor", "observer", "reflector"]:
             if config.get(callback) is not None and callback not in state:
-                # Not necessarily drift, but note it
-                pass
+                issues.append(DriftIssue(
+                    component=callback,
+                    expected="present in state",
+                    actual="missing from state",
+                    severity="warning",
+                ))
+                suggestions.append(f"Register callback '{callback}' in state for tracking")
 
         # Check state has required fields
         required_fields = ["current_task", "attempts", "history"]

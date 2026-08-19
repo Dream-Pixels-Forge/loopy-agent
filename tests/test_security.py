@@ -439,13 +439,14 @@ class TestMemorySecurity:
 
         _run(run_test())
 
-    def test_memory_clear_kill_switch(self):
+    @pytest.mark.asyncio
+    async def test_memory_clear_kill_switch(self):
         from loopy.plugins.memory import Memory, MemoryStore
 
         store = MemoryStore()
-        store.add(Memory(id="m1", content="a"))
-        store.add(Memory(id="m2", content="b"))
-        assert store.clear() == 2
+        await store.add(Memory(id="m1", content="a"))
+        await store.add(Memory(id="m2", content="b"))
+        assert await store.clear() == 2
         assert store.list_all() == []
 
 

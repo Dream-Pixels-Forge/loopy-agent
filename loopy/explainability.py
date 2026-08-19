@@ -92,7 +92,7 @@ class DecisionTracker:
     Track and explain agent decisions.
 
     Example:
-        tracker = DecisionTracker()
+        tracker = DecisionTracker(max_traces=100)
         trace = tracker.start("Summarize document")
         tracker.add_step(trace, DecisionType.PLAN, "Will extract key points")
         # ... agent works ...
@@ -100,13 +100,20 @@ class DecisionTracker:
         print(trace.summary)
     """
 
-    def __init__(self):
+    def __init__(self, max_traces: int = 100):
         self.traces: list[DecisionTrace] = []
+        self._max_traces = max_traces
 
     def start(self, task: str) -> DecisionTrace:
         """Start tracking a new task."""
         trace = DecisionTrace(task=task)
         self.traces.append(trace)
+
+        # Evict oldest when at capacity
+        if len(self.traces) > self._max_traces:
+            evicted = self.traces.pop(0)
+            logger.debug("Evicted old trace: %s", evicted.task)
+
         return trace
 
     def add_step(

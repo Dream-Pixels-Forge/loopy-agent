@@ -301,12 +301,36 @@ class A2AClient:
         capability: AgentCapability,
         task: str,
         sender: str = "",
+        *,
+        max_depth: int = 3,
+        _visited: set[str] | None = None,
+        _depth: int = 0,
     ) -> list[AgentResponse]:
-        """Broadcast request to all agents with a capability."""
+        """Broadcast request to all agents with a capability.
+
+        Includes cycle detection (skips agents already visited) and a
+        configurable depth limit to prevent amplification when agents
+        re-broadcast back.
+
+        Args:
+            capability: Filter agents by this capability.
+            task: Task description for each agent.
+            sender: Sender identity string.
+            max_depth: Maximum broadcast depth (default 3).
+        """
+        if _depth >= max_depth:
+            logger.warning("Broadcast depth limit (%d) reached", max_depth)
+            return []
+
         agents = self.registry.find_by_capability(capability)
+        visited = _visited if _visited is not None else set()
         responses: list[AgentResponse] = []
 
         for agent in agents:
+            if agent.name in visited:
+                continue
+            visited.add(agent.name)
+
             response = await self.call(agent.name, task, sender=sender)
             responses.append(response)
 
