@@ -5,6 +5,8 @@ Tests for loopy package.
 import asyncio
 import contextlib
 
+import pytest
+
 from loopy import (
     AgentLoop,
     AgentStatus,
