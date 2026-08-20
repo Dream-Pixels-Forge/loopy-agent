@@ -819,48 +819,6 @@ loopy agent list
 
 ---
 
-## 🚀 CI/CD & Releases
-
-GitHub Actions automate testing and publishing:
-
-| Workflow | Trigger | What it does |
-|----------|---------|-------------|
-| **CI** | Push/PR to master | Lint (ruff) + tests on Python 3.10/3.11/3.12 |
-| **Release** | Tag `v*` pushed | Tests → Build → Publish to PyPI → Create GitHub Release |
-
-### Releasing a new version
-
-```bash
-# One command — bumps version, tests, commits, tags, pushes
-./scripts/release.sh 0.7.8
-
-# GitHub Actions handles the rest:
-# 1. Runs lint + tests
-# 2. Builds wheel + sdist
-# 3. Publishes to PyPI (trusted publishing)
-# 4. Creates GitHub Release with auto-generated notes
-```
-
-Or manually:
-
-```bash
-# Bump version (canonical source is _version.py)
-sed -i 's/version = ".*"/version = "0.7.8"/' pyproject.toml
-sed -i 's/__version__ = ".*"/__version__ = "0.7.8"/' loopy/_version.py
-
-# Commit, tag, push
-git add -A && git commit -m "release: v0.7.8"
-git tag v0.7.8
-git push && git push --tags
-```
-
-### Required setup
-
-1. **PyPI Trusted Publishing** — Configure at https://pypi.org/manage/project/loopy-agent/settings/publishing/
-   - Add GitHub repository as a trusted publisher
-   - Workflow uses OIDC (`id-token: write`) — no API tokens needed
-
----
 
 ## 📄 License
 
