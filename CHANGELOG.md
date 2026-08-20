@@ -391,15 +391,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Roadmap
 
-### v0.6.0 (Planned)
-- Streaming improvements
+### Future
 - WebSocket support
 - Advanced vector embeddings
-- Rate limiting improvements
-- Multi-modal support
-- Image generation tools
 - Code execution sandbox
-- Enhanced security features
 
 ---
 

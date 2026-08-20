@@ -66,37 +66,25 @@
 
 ## 🚀 What's New
 
-### v0.3.0 — Plugins & Observability
+### v0.7.7 — Async I/O & Broadcast Safety
 
-#### OpenTelemetry Export
-- `TraceExporter` — Export traces to Jaeger, Zipkin, or HTTP endpoints
-- `export_opentelemetry()` — OTLP-compatible format
+- **`MemoryStore` non-blocking I/O** — `add()`, `delete()`, `clear()` now run file writes in a worker thread via `asyncio.to_thread`
+- **`A2AClient.broadcast` amplification guard** — `max_depth=3` default + per-call cycle detection prevents infinite broadcast loops
+- **CI ruff E402 fix** — reverted import structure to single try/except block for clean lint
 
-#### First-Party Plugins
-- **RAGPlugin** — Retrieval-Augmented Generation with vector/keyword search
-- **ToolsPlugin** — Tool registry with OpenAI function calling schemas
-- **MemoryPlugin** — Persistent agent memory with importance scoring
+### v0.7.6 — Compliance, Drift & Observability Fixes
 
----
+- **`ComplianceChecker` sync methods** — removed fake `async` from methods with zero `await` calls
+- **`DecisionTracker` bounded memory** — `max_traces=100` with FIFO eviction prevents OOM in long sessions
+- **`DriftDetector` real tracking** — dead-code callback check replaced with actual drift issue logging
+- **`MemoryStore` dirty flag** — disk writes only on structural mutations, not every access
+- **`TraceExporter.export_http` retry** — configurable `max_retries` with exponential backoff (1s, 2s, 4s)
 
-### v0.2.0 — Evaluator-Optimizer & Routing
+### v0.7.5 — Concept Count & Test Coverage
 
-#### Evaluator-Optimizer Pattern (2026 Agentic Workflow)
-- `EvalGate` — LLM-as-judge evaluation gate
-- `JudgeConfig` — Configure evaluation criteria and thresholds
-
-#### Orchestrator-Workers Pattern
-- `Router` — Classify and route tasks to specialist agents
-- `TaskDecomposer` — Break complex tasks into subtasks with dependencies
-
-#### Async & Connection Pooling
-- `Gateway` now supports async context managers
-- `ConnectionPool` — HTTP connection reuse for lower latency
-
-#### New Middleware
-- `RetryMiddleware` — Auto-retry with exponential backoff
-- `CircuitBreakerMiddleware` — Prevent cascade failures
-- `FallbackMiddleware` — Provider failover
+- Fixed "19 concepts" → "21" across README, pyproject.toml, CLI
+- 484 tests (up from 276 in v0.7.4), 92% coverage
+- `MarketplacePlugin` coverage: 57% → 100%
 
 ---
 
@@ -445,7 +433,7 @@ The `py.typed` marker file ensures type checkers (mypy, pyright) recognize loopy
 
 ---
 
-## 🧪 Evaluator-Optimizer Pattern (NEW in v0.2.0)
+## 🧪 Evaluator-Optimizer Pattern
 
 The 2026 agentic workflow evaluator-optimizer pattern uses LLM-as-judge to evaluate outputs.
 
@@ -482,7 +470,7 @@ asyncio.run(main())
 
 ---
 
-## 🎯 Orchestrator-Workers Pattern (NEW in v0.2.0)
+## 🎯 Orchestrator-Workers Pattern
 
 Route tasks to specialist agents and decompose complex tasks.
 
@@ -544,7 +532,7 @@ asyncio.run(main())
 
 ---
 
-## 🔌 Async Gateway with Connection Pooling (NEW in v0.2.0)
+## 🔌 Async Gateway with Connection Pooling
 
 ```python
 import asyncio
@@ -571,7 +559,7 @@ asyncio.run(main())
 
 ---
 
-## 🛡️ New Middleware (NEW in v0.2.0)
+## 🛡️ Middleware: Retry, Circuit Breaker & Fallback
 
 ```python
 import asyncio
@@ -621,7 +609,7 @@ asyncio.run(main())
 
 ---
 
-## 🔌 First-Party Plugins (NEW in v0.3.0)
+## 🔌 First-Party Plugins
 
 ### RAG Plugin — Retrieval-Augmented Generation
 
@@ -704,7 +692,7 @@ asyncio.run(main())
 
 ---
 
-## 📡 OpenTelemetry Export (NEW in v0.3.0)
+## 📡 OpenTelemetry Export
 
 ```python
 import asyncio
@@ -837,46 +825,40 @@ GitHub Actions automate testing and publishing:
 
 | Workflow | Trigger | What it does |
 |----------|---------|-------------|
-| **CI** | Push/PR to master | Runs tests + lint on Python 3.10/3.11/3.12 |
-| **Release** | Tag `v*` pushed | Tests → Build → GitHub Release → PyPI publish |
-| **Publish** | GitHub Release created | Build → PyPI publish |
+| **CI** | Push/PR to master | Lint (ruff) + tests on Python 3.10/3.11/3.12 |
+| **Release** | Tag `v*` pushed | Tests → Build → Publish to PyPI → Create GitHub Release |
 
 ### Releasing a new version
 
 ```bash
 # One command — bumps version, tests, commits, tags, pushes
-./scripts/release.sh 0.5.1
+./scripts/release.sh 0.7.8
 
 # GitHub Actions handles the rest:
-# 1. Runs tests
+# 1. Runs lint + tests
 # 2. Builds wheel + sdist
-# 3. Creates GitHub Release with artifacts
-# 4. Publishes to PyPI
+# 3. Publishes to PyPI (trusted publishing)
+# 4. Creates GitHub Release with auto-generated notes
 ```
 
 Or manually:
 
 ```bash
-# Bump version
-sed -i 's/version = ".*"/version = "0.5.1"/' pyproject.toml
-sed -i 's/__version__ = ".*"/__version__ = "0.5.1"/' loopy/__init__.py
+# Bump version (canonical source is _version.py)
+sed -i 's/version = ".*"/version = "0.7.8"/' pyproject.toml
+sed -i 's/__version__ = ".*"/__version__ = "0.7.8"/' loopy/_version.py
 
 # Commit, tag, push
-git add -A && git commit -m "release: v0.5.1"
-git tag v0.5.1
+git add -A && git commit -m "release: v0.7.8"
+git tag v0.7.8
 git push && git push --tags
 ```
 
 ### Required setup
 
-1. **PyPI API Token** — Add as GitHub secret `PYPI_API_TOKEN`
-   - Go to https://pypi.org/manage/account/token/
-   - Create token with scope: `loopy-agent`
-   - Add at: repo → Settings → Secrets → Actions
-
-2. **Trusted Publishing** (optional, more secure)
-   - Configure at https://pypi.org/manage/project/loopy-agent/settings/publishing/
-   - Remove `password` from workflow, keep `id-token: write`
+1. **PyPI Trusted Publishing** — Configure at https://pypi.org/manage/project/loopy-agent/settings/publishing/
+   - Add GitHub repository as a trusted publisher
+   - Workflow uses OIDC (`id-token: write`) — no API tokens needed
 
 ---
 
