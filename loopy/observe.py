@@ -7,6 +7,7 @@ Includes OpenTelemetry export for external observability backends.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -307,7 +308,6 @@ class TraceExporter:
                         "Trace export attempt %d/%d failed, retrying in %ds: %s",
                         attempt + 1, max_retries, delay, e,
                     )
-                    import asyncio
                     await asyncio.sleep(delay)
 
         logger.error(
