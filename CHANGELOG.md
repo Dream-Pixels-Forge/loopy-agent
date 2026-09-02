@@ -49,9 +49,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`MemoryStore` blocking I/O in event loop** — `add()`, `delete()`, `clear()` called `_save()` synchronously, blocking the event loop during disk writes. Refactored to `asyncio.to_thread` so file I/O runs in a worker thread.
 - **`A2AClient.broadcast` amplification** — unbounded broadcast could cause infinite loops when agents re-broadcast back. Added `max_depth` (default 3) and per-call cycle detection via a `visited` set.
 
+> **Note:** This release also ships every fix listed under the `[0.7.6]` section below. The `0.7.6` commit landed on master but was never tagged or published to PyPI — those changes rode along with `v0.7.7` instead.
+
 ---
 
 ## [0.7.6] - 2026-08-19
+
+> **Note:** This section documents fixes that were committed but **never released as a standalone version**. There is no `v0.7.6` tag on GitHub and no `0.7.6` on PyPI; these changes shipped as part of **`v0.7.7`** on 2026-08-19. They are preserved here as a historical record of what was merged in chronological order.
 
 ### Fixed
 
@@ -445,6 +449,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.6.0 | 198 | Streaming, Multi-modal, Compliance, Explainability, A2A |
 | 0.7.0 | 198 | Async MCPClient context manager, trusted-publishing release pipeline |
 | 0.7.5 | 484 | Concept count fix, README refresh, marketplace tests |
-| 0.7.6 | 484 | Compliance async fix, DecisionTracker bounds, drift detection, memory dirty flag, trace retry |
-| 0.7.7 | 484 | Memory async I/O, broadcast amplification guard |
+| 0.7.6 | — | *Unreleased — shipped as part of 0.7.7* (compliance async fix, DecisionTracker bounds, drift detection, memory dirty flag, trace retry) |
+| 0.7.7 | 484 | Memory async I/O, broadcast amplification guard *(also includes 0.7.6)* |
 | 0.7.8 | 508 | Loop resume+checkpoint, ranked skill match, async cache, eval JSON I/O |
