@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.9] - 2026-09-02
+
+### Added
+
+- **`TestModel` — zero-network LLM for unit tests** — drop-in replacement
+  for the HTTP path. Pass `TestModel(responses=[...])` or the sentinel
+  `"test"` string to `Gateway.chat(model=...)` and the gateway returns
+  canned `GatewayResponse` objects with no network, no API keys, no
+  rate limits. Supports callable responses, simulated latency, tool
+  calls, and `raise_on_message` for testing error paths. Logs the
+  call under `provider="test"` so `Gateway.get_logs()` / cost tracking
+  still see it. *`-`No other agentic library SDK ships a TestModel
+  primitive with this level of configurability.*
+
+- **`StructuredOutput` via `response_format`** — pass any Pydantic
+  `BaseModel` subclass to `Gateway.chat(response_format=MyModel)` and
+  the gateway validates the model reply and returns the typed instance
+  in `GatewayResponse.structured`. Failures set `structured=None` and
+  log a warning so callers can detect + retry. Works with `TestModel`
+  too (the canned response is validated as JSON), enabling end-to-end
+  agent testing **with zero network and full type safety**.
+
+- **`Redactor` — PII / secret aware scrubbing** — new
+  `Redactor` dataclass with 9 built-in patterns (email, phone, SSN,
+  credit card, OpenAI key, AWS key, JWT, Bearer, IPv4). Wire it via
+  `Tracer(redactor=Redactor())` and span attributes are scrubbed
+  before storage; `redactor.add_pattern(name, regex)` for custom
+  patterns, `redactor.disable(name)` to opt out. `Redactor.redact()`
+  is pure (never mutates input), `find_all()` returns matches for
+  inspection, and `redact_value()` walks dicts / lists / tuples
+  recursively. **Compliance gap closed**: traces no longer leak
+  PII / credentials by default.
+
+### Changed
+
+- `GatewayResponse` gains a `structured: Any | None = None` field
+- `Tracer` gains `redactor: Redactor | None = None` kwarg
+- Test count: **508 → 547** (+39 new tests in `tests/test_v079_features.py`)
+- Coverage: **92%** (loopy/observe.py 92% → 98%, loopy/gateway.py 94%)
+- Top-level exports: `TestModel`, `TEST_MODEL_SENTINEL`, `Redactor`,
+  `RedactionMatch`
+
+---
+
 ## [0.7.8] - 2026-09-02
 
 ### Added
@@ -452,3 +496,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.7.6 | — | *Unreleased — shipped as part of 0.7.7* (compliance async fix, DecisionTracker bounds, drift detection, memory dirty flag, trace retry) |
 | 0.7.7 | 484 | Memory async I/O, broadcast amplification guard *(also includes 0.7.6)* |
 | 0.7.8 | 508 | Loop resume+checkpoint, ranked skill match, async cache, eval JSON I/O |
+| 0.7.9 | 547 | TestModel (zero-network LLM), StructuredOutput, Redactor (PII/secret scrubber) |

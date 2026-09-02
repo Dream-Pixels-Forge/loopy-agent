@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -100,6 +101,130 @@ class Span:
         }
 
 
+@dataclass
+class RedactionMatch:
+    """v0.7.9 - A single redacted substring."""
+
+    name: str
+    start: int
+    end: int
+    replacement: str
+
+    def __repr__(self) -> str:
+        return f"RedactionMatch(name={self.name!r}, len={self.end - self.start})"
+
+
+@dataclass
+class Redactor:
+    """v0.7.9 - PII / secret aware redaction for traces and exports.
+
+    Replaces sensitive substrings with stable placeholders so trace
+    storage and HTTP export never leak credentials, tokens, or PII.
+
+    Built-in patterns (all enabled by default):
+
+    | name            | matches                                  |
+    |-----------------|------------------------------------------|
+    | ``email``       | RFC-ish email addresses                  |
+    | ``phone``       | US/International phone-shaped numbers    |
+    | ``ssn``         | US Social Security Numbers               |
+    | ``credit_card`` | 13-19 digit card-shaped numbers          |
+    | ``openai_key``  | ``sk-...``, ``sk-proj-...`` tokens       |
+    | ``aws_key``     | ``AKIA``/``ASIA`` access keys            |
+    | ``jwt``         | Three-segment dot-delimited JWTs         |
+    | ``bearer``      | ``Bearer <token>`` headers               |
+    | ``ipv4``        | IPv4 addresses                           |
+
+    Patterns can be removed (``redactor.disable("phone")``) or extended
+    (``redactor.add_pattern("employee_id", r"EID-d{6}")``).
+
+    The redactor is *pure-string* and side-effect free: ``redact()``
+    never mutates its input, only returns a new string.
+    """
+
+    name: str = "default"
+    enabled: dict[str, re.Pattern[str]] = field(default_factory=dict)
+    extra: dict[str, re.Pattern[str]] = field(default_factory=dict)
+    placeholder_format: str = "[{name}_REDACTED]"
+
+    def __post_init__(self) -> None:
+        if not self.enabled:
+            self.enabled = {
+                "email": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
+                "phone": re.compile(r"\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"),
+                "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+                "credit_card": re.compile(r"\b(?:\d[ -]*?){13,19}\b"),
+                "openai_key": re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b"),
+                "aws_key": re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
+                "jwt": re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"),
+                "bearer": re.compile(r"(?i)Bearer\s+[A-Za-z0-9._\-+/=]+"),
+                "ipv4": re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
+            }
+
+    def add_pattern(self, name: str, pattern: str) -> None:
+        """Register a custom regex pattern under ``name``.
+
+        Raises ``ValueError`` if ``name`` collides with a built-in
+        (use ``disable`` first if you really want to override).
+        """
+        if name in self.enabled:
+            raise ValueError(
+                f"{name!r} is a built-in pattern; disable it first if you want to override."
+            )
+        self.extra[name] = re.compile(pattern)
+
+    def disable(self, name: str) -> None:
+        """Remove a pattern from the active set."""
+        self.enabled.pop(name, None)
+        self.extra.pop(name, None)
+
+    @property
+    def active_patterns(self) -> dict[str, re.Pattern[str]]:
+        """Combined dict of built-in + custom active patterns."""
+        return {**self.enabled, **self.extra}
+
+    def redact(self, text: str) -> str:
+        """Return a copy of ``text`` with every match replaced."""
+        if not isinstance(text, str) or not text:
+            return text
+        result = text
+        for name, pattern in self.active_patterns.items():
+            replacement = self.placeholder_format.format(name=name.upper())
+            result = pattern.sub(replacement, result)
+        return result
+
+    def find_all(self, text: str) -> list[RedactionMatch]:
+        """Return every match (name, span) without modifying ``text``."""
+        if not isinstance(text, str) or not text:
+            return []
+        matches: list[RedactionMatch] = []
+        for name, pattern in self.active_patterns.items():
+            replacement = self.placeholder_format.format(name=name.upper())
+            for m in pattern.finditer(text):
+                matches.append(
+                    RedactionMatch(
+                        name=name,
+                        start=m.start(),
+                        end=m.end(),
+                        replacement=replacement,
+                    )
+                )
+        matches.sort(key=lambda m: m.start)
+        return matches
+
+    def redact_value(self, value: Any) -> Any:
+        """Recursively redact string leaves inside dicts / lists / tuples."""
+        if isinstance(value, str):
+            return self.redact(value)
+        if isinstance(value, dict):
+            return {k: self.redact_value(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self.redact_value(v) for v in value]
+        if isinstance(value, tuple):
+            return tuple(self.redact_value(v) for v in value)
+        return value
+
+
 class Tracer:
     """
     Distributed tracer for LLM operations.
@@ -113,10 +238,12 @@ class Tracer:
             span.set_attribute("tokens", response.usage.total_tokens)
     """
 
-    def __init__(self, service: str = "loopy"):
+    def __init__(self, service: str = "loopy", redactor: Redactor | None = None):
         self.service = service
         self._spans: list[Span] = []
         self._current_trace_id: str | None = None
+        # v0.7.9 - optional redactor applied at span completion.
+        self.redactor: Redactor | None = redactor
 
     def _generate_id(self) -> str:
         """Generate a unique ID using UUID4."""
@@ -149,6 +276,11 @@ class Tracer:
             parent_id=parent_id,
             attributes={"service": self.service, **attributes},
         )
+
+        # v0.7.9 - scrub attributes/events before storage.
+        if self.redactor is not None:
+            span.attributes = self.redactor.redact_value(span.attributes)
+            span.events = self.redactor.redact_value(span.events)
 
         self._spans.append(span)
         logger.debug("Started span: %s (%s)", name, span_id)

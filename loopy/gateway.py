@@ -10,11 +10,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -88,6 +89,9 @@ class GatewayResponse:
     latency_ms: float = 0
     cached: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
+    # v0.7.9 — populated when ``chat(response_format=...)`` was used;
+    # validated Pydantic instance, or ``None`` if validation failed.
+    structured: Any | None = None
 
 
 class ConnectionPool:
@@ -220,6 +224,9 @@ class Gateway:
         system: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 1000,
+        *,
+        model: TestModel | str | None = None,
+        response_format: type[BaseModel] | None = None,
         **kwargs,
     ) -> GatewayResponse:
         """
@@ -234,15 +241,39 @@ class Gateway:
             system: Optional system prompt.
             temperature: Sampling temperature.
             max_tokens: Maximum tokens in the response.
+            model: v0.7.9 - When set to a : ``TestModel`` (or the
+                sentinel string ``"test"``), the request is satisfied
+                locally without any HTTP/SDK call. Useful for unit
+                tests and CI.
+            response_format: v0.7.9 - When set to a Pydantic
+                ``BaseModel`` subclass, the gateway validates the
+                reply against that schema and returns the instance in
+                ``GatewayResponse.structured``.
             **kwargs: Additional arguments (ignored).
 
         Returns:
-            A GatewayResponse with the model reply.
+            A GatewayResponse with the model reply. When
+            ``response_format`` is provided, ``structured`` holds the
+            validated Pydantic instance (or ``None`` if validation
+            failed).
 
         Raises:
-            ValueError: If no providers are configured.
+            ValueError: If no providers are configured and no test
+                model is supplied.
             RuntimeError: If the provider's rate limit is exceeded.
         """
+        # v0.7.9 - Test model routing: short-circuit to local handler.
+        test_model = self._resolve_test_model(model)
+        if test_model is not None:
+            return await self._call_test(
+                test_model,
+                message,
+                system,
+                temperature,
+                max_tokens,
+                response_format,
+            )
+
         provider, config = self._resolve_provider(provider)
 
         # Check rate limits
@@ -275,6 +306,16 @@ class Gateway:
         config.record_request()
 
         response.latency_ms = latency_ms
+
+        # v0.7.9 - Structured output: validate the reply against the
+        # requested Pydantic schema. Failure logs a warning and sets
+        # ``structured`` to None so callers can detect + retry.
+        if response_format is not None:
+            try:
+                response.structured = response_format.model_validate_json(response.content)
+            except Exception as e:
+                logger.warning("Structured output validation failed: %s", e)
+                response.structured = None
         return response
 
     async def _call_openai(
@@ -512,6 +553,53 @@ class Gateway:
             result = await self.chat(message, provider, system, temperature, max_tokens)
             yield result.content
 
+    def _resolve_test_model(
+        self,
+        model: TestModel | str | None,
+    ) -> TestModel | None:
+        """v0.7.9 - Normalize the chat(model=) argument.
+
+        Accepts a TestModel, the sentinel string 'test', or None.
+        Returns the resolved TestModel, or None if the caller wants
+        the normal HTTP path.
+        """
+        return _resolve_test_model_arg(model)
+
+    async def _call_test(
+        self,
+        test_model: TestModel,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
+        response_format: type[BaseModel] | None,
+    ) -> GatewayResponse:
+        """v0.7.9 - Dispatch a chat call to a local TestModel.
+
+        Bypasses network and rate limits; logs the call under a
+        synthetic provider entry so get_logs() / cost tracking still
+        observe the test traffic.
+        """
+        start_time = time.time()
+        response = await test_model.handle(
+            message,
+            system,
+            temperature,
+            max_tokens,
+            response_format,
+        )
+        response.latency_ms = (time.time() - start_time) * 1000
+        self._logs.append(
+            {
+                "provider": "test",
+                "model": test_model.model_name,
+                "latency_ms": response.latency_ms,
+                "tokens": response.tokens_used,
+                "timestamp": time.time(),
+            }
+        )
+        return response
+
     def get_logs(self) -> list[dict[str, Any]]:
         """Return request logs."""
         return self._logs.copy()
@@ -519,3 +607,168 @@ class Gateway:
     async def close(self) -> None:
         """Close the connection pool."""
         await self._pool.close()
+
+
+# ---------------------------------------------------------------------------
+# v0.7.9 - TestModel (no-network LLM) and StructuredOutput helpers.
+# ---------------------------------------------------------------------------
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
+
+# Default test model: returns a deterministic, parameterised echo so
+# unit tests can assert on message content without any API key or network.
+DEFAULT_TEST_MODEL_RESPONSES: list[str] = [
+    "Test response: I received your message.",
+    "Mocked LLM reply.",
+    "OK",
+]
+
+
+class TestModel:
+    """v0.7.9 - Zero-network model for unit tests and CI.
+
+    Replace HTTP calls with deterministic scripted replies so you can
+    exercise the full agent loop without API keys, rate limits, or
+    billing. Compatible with :meth:`Gateway.chat`.
+
+    Example::
+
+        gw = Gateway()
+        response = await gw.chat(
+            "hi",
+            model=TestModel(responses=["hi back"]),
+        )
+        assert response.content == "hi back"
+        assert response.metadata["test_model"] is True
+
+    Args:
+        responses: Ordered list of canned replies. If exhausted, the
+            last entry is reused (so the model never raises for lack of
+            material). Use ``callable`` for dynamic replies.
+        tool_calls: Optional pre-canned tool calls to emit alongside
+            the text reply. Each entry is a dict with ``name`` and
+            ``args`` keys; the gateway surfaces them in
+            ``response.metadata["tool_calls"]``.
+        latency_ms: Artificial latency to inject per call (0 = instant).
+        model_name: Reported model name in ``GatewayResponse.model``.
+            Defaults to ``"test"``.
+        raise_on_message: If set, raise this exception when ``message``
+            matches the regex/string. Useful for testing error paths.
+    """
+
+    __slots__ = (
+        "responses",
+        "tool_calls",
+        "latency_ms",
+        "model_name",
+        "raise_on_message",
+        "_index",
+        "calls",
+    )
+
+    def __init__(
+        self,
+        responses: list[str | Callable[[str, str | None], str]] | None = None,
+        *,
+        tool_calls: list[dict[str, Any]] | None = None,
+        latency_ms: float = 0.0,
+        model_name: str = "test",
+        raise_on_message: re.Pattern[str] | str | None = None,
+    ) -> None:
+        self.responses: list[str | Callable[[str, str | None], str]] = (
+            list(responses) if responses is not None else list(DEFAULT_TEST_MODEL_RESPONSES)
+        )
+        self.tool_calls = tool_calls or []
+        self.latency_ms = float(latency_ms)
+        self.model_name = model_name
+        self.raise_on_message = raise_on_message
+        self._index = 0
+        self.calls: list[dict[str, Any]] = []
+
+    def next_response(self, message: str, system: str | None) -> str:
+        """Return the next scripted reply (advances the cursor)."""
+        if not self.responses:
+            return ""
+        if self._index < len(self.responses):
+            reply = self.responses[self._index]
+            self._index += 1
+        else:
+            # Reuse the last reply rather than exhausting.
+            reply = self.responses[-1]
+        if callable(reply):
+            return reply(message, system)
+        return reply
+
+    async def handle(
+        self,
+        message: str,
+        system: str | None,
+        temperature: float,  # noqa: ARG002 - accepted for protocol parity
+        max_tokens: int,  # noqa: ARG002
+        response_format: type[BaseModel] | None = None,
+    ) -> GatewayResponse:
+        """Produce a canned :class:`GatewayResponse` (no I/O)."""
+        if self.raise_on_message is not None:
+            pattern = self.raise_on_message
+            if isinstance(pattern, str):
+                if pattern in message:
+                    raise RuntimeError(f"Test model forced error: {pattern!r} in message")
+            elif pattern.search(message):
+                raise RuntimeError(f"Test model forced error on {pattern.pattern!r}")
+
+        self.calls.append({"message": message, "system": system})
+
+        if self.latency_ms > 0:
+            await asyncio.sleep(self.latency_ms / 1000.0)
+
+        content = self.next_response(message, system)
+
+        metadata: dict[str, Any] = {"test_model": True, "test_call_index": len(self.calls) - 1}
+        if self.tool_calls:
+            metadata["tool_calls"] = list(self.tool_calls)
+
+        structured: Any | None = None
+        if response_format is not None:
+            # Allow tests to pre-format their canned reply as JSON.
+            try:
+                structured = response_format.model_validate_json(content)
+            except Exception:
+                # Leave structured as None so callers see the failure path.
+                structured = None
+            metadata["response_format"] = response_format.__name__
+
+        return GatewayResponse(
+            content=content,
+            model=self.model_name,
+            provider=ModelProvider.OPENAI,  # placeholder; not used
+            tokens_used=len(content.split()),
+            metadata=metadata,
+            structured=structured,
+        )
+
+    def reset(self) -> None:
+        """Rewind the response cursor and clear recorded calls."""
+        self._index = 0
+        self.calls.clear()
+
+
+# Marker used in :meth:`Gateway.chat` to opt into the local test
+# handler without explicitly instantiating a TestModel.
+TEST_MODEL_SENTINEL = "test"
+
+
+def _resolve_test_model_arg(  # noqa: PLR0911 - small discriminated switch
+    value: TestModel | str | None,
+) -> TestModel | None:
+    """Normalize the ``model=`` argument into a :class:`TestModel` or ``None``."""
+    if value is None:
+        return None
+    if isinstance(value, TestModel):
+        return value
+    if isinstance(value, str) and value == TEST_MODEL_SENTINEL:
+        return TestModel()
+    raise ValueError(
+        f"Unsupported value for Gateway.chat(model=): {value!r}. "
+        f"Pass a TestModel, the sentinel 'test', or None."
+    )

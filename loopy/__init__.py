@@ -47,7 +47,15 @@ from loopy.evals import (
     JudgeConfig,
     Verdict,
 )
-from loopy.gateway import ConnectionPool, Gateway, GatewayResponse, ModelProvider, ProviderConfig
+from loopy.gateway import (
+    TEST_MODEL_SENTINEL,
+    ConnectionPool,
+    Gateway,
+    GatewayResponse,
+    ModelProvider,
+    ProviderConfig,
+    TestModel,
+)
 from loopy.guardrails import FilterAction, GuardrailPipeline, InputFilter, OutputFilter
 from loopy.loop import AgentLoop, LoopConfig, StepResult, StepStatus
 from loopy.mcp import LocalMCP, MCPClient, MCPToolResult
@@ -67,7 +75,14 @@ from loopy.middleware import (
     ValidationMiddleware,
 )
 from loopy.netutil import is_private_host, validate_outbound_url
-from loopy.observe import MetricsCollector, Span, SpanStatus, Tracer
+from loopy.observe import (
+    MetricsCollector,
+    RedactionMatch,
+    Redactor,
+    Span,
+    SpanStatus,
+    Tracer,
+)
 from loopy.plugins import Plugin, PluginInfo, PluginLoader, PluginRegistry
 from loopy.prompting import (
     CANARY_PREFIX,
@@ -133,6 +148,8 @@ __all__ = [
     "ProviderConfig",
     "GatewayResponse",
     "ConnectionPool",
+    "TestModel",  # v0.7.9
+    "TEST_MODEL_SENTINEL",  # v0.7.9
     # Guardrails
     "GuardrailPipeline",
     "InputFilter",
@@ -157,6 +174,8 @@ __all__ = [
     "Span",
     "SpanStatus",
     "MetricsCollector",
+    "Redactor",  # v0.7.9
+    "RedactionMatch",  # v0.7.9
     # MCP
     "MCPClient",
     "MCPToolResult",
