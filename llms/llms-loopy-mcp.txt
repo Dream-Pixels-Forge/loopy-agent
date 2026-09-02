@@ -1,0 +1,17 @@
+# loopy.mcp
+
+## MCPClient
+
+> Could not import `loopy.mcp.MCPClient`: No module named 'loopy'
+
+## MCPToolResult
+
+> Could not import `loopy.mcp.MCPToolResult`: No module named 'loopy'
+
+## LocalMCP
+
+> Could not import `loopy.mcp.LocalMCP`: No module named 'loopy'
+
+## MCPTool
+
+> Could not import `loopy.mcp.MCPTool`: No module named 'loopy'

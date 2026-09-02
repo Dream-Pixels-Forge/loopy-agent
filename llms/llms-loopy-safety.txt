@@ -1,0 +1,17 @@
+# loopy.safety
+
+## SafetyGate
+
+> Could not import `loopy.safety.SafetyGate`: No module named 'loopy'
+
+## SafetyCheck
+
+> Could not import `loopy.safety.SafetyCheck`: No module named 'loopy'
+
+## SafetyResult
+
+> Could not import `loopy.safety.SafetyResult`: No module named 'loopy'
+
+## EscalationReason
+
+> Could not import `loopy.safety.EscalationReason`: No module named 'loopy'

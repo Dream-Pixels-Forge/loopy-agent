@@ -1,0 +1,17 @@
+# loopy.patterns
+
+## PatternRegistry
+
+> Could not import `loopy.patterns.PatternRegistry`: No module named 'loopy'
+
+## LoopPattern
+
+> Could not import `loopy.patterns.LoopPattern`: No module named 'loopy'
+
+## PatternCadence
+
+> Could not import `loopy.patterns.PatternCadence`: No module named 'loopy'
+
+## RiskLevel
+
+> Could not import `loopy.patterns.RiskLevel`: No module named 'loopy'

@@ -1,0 +1,9 @@
+# loopy.cache
+
+## LLMCache
+
+> Could not import `loopy.cache.LLMCache`: No module named 'loopy'
+
+## CacheStats
+
+> Could not import `loopy.cache.CacheStats`: No module named 'loopy'

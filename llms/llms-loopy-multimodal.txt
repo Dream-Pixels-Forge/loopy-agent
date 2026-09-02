@@ -1,0 +1,37 @@
+# loopy.multimodal
+
+## MultiModalMessage
+
+> Could not import `loopy.multimodal.MultiModalMessage`: No module named 'loopy'
+
+## MultiModalBuilder
+
+> Could not import `loopy.multimodal.MultiModalBuilder`: No module named 'loopy'
+
+## MediaContent
+
+> Could not import `loopy.multimodal.MediaContent`: No module named 'loopy'
+
+## MediaType
+
+> Could not import `loopy.multimodal.MediaType`: No module named 'loopy'
+
+## ImageFormat
+
+> Could not import `loopy.multimodal.ImageFormat`: No module named 'loopy'
+
+## RealtimeSession
+
+> Could not import `loopy.multimodal.RealtimeSession`: No module named 'loopy'
+
+## RealtimeEvent
+
+> Could not import `loopy.multimodal.RealtimeEvent`: No module named 'loopy'
+
+## RealtimeEventType
+
+> Could not import `loopy.multimodal.RealtimeEventType`: No module named 'loopy'
+
+## RealtimeTransport
+
+> Could not import `loopy.multimodal.RealtimeTransport`: No module named 'loopy'

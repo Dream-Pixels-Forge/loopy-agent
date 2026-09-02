@@ -1,0 +1,9 @@
+# loopy.skills
+
+## Skill
+
+> Could not import `loopy.skills.Skill`: No module named 'loopy'
+
+## SkillRegistry
+
+> Could not import `loopy.skills.SkillRegistry`: No module named 'loopy'

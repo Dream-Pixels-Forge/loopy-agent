@@ -1,0 +1,41 @@
+# loopy.evals
+
+## EvalSuite
+
+> Could not import `loopy.evals.EvalSuite`: No module named 'loopy'
+
+## EvalCase
+
+> Could not import `loopy.evals.EvalCase`: No module named 'loopy'
+
+## EvalResult
+
+> Could not import `loopy.evals.EvalResult`: No module named 'loopy'
+
+## EvalReport
+
+> Could not import `loopy.evals.EvalReport`: No module named 'loopy'
+
+## Evaluator
+
+> Could not import `loopy.evals.Evaluator`: No module named 'loopy'
+
+## EvalGate
+
+> Could not import `loopy.evals.EvalGate`: No module named 'loopy'
+
+## EvalGateResult
+
+> Could not import `loopy.evals.EvalGateResult`: No module named 'loopy'
+
+## EvalGateType
+
+> Could not import `loopy.evals.EvalGateType`: No module named 'loopy'
+
+## JudgeConfig
+
+> Could not import `loopy.evals.JudgeConfig`: No module named 'loopy'
+
+## Verdict
+
+> Could not import `loopy.evals.Verdict`: No module named 'loopy'

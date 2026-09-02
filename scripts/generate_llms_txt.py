@@ -7,8 +7,8 @@ is borrowed from LlamaIndex and Atomic Agents.
 
 Usage::
 
-    python scripts/generate_llms_txt.py            # writes llms-full.txt + llms-*.txt
-    python scripts/generate_llms_txt.py --out docs # writes into ./docs instead
+    python scripts/generate_llms_txt.py               # writes llms/llms-full.txt + llms/llms-*.txt
+    python scripts/generate_llms_txt.py --out docs    # writes into ./docs instead
 
 The script is intentionally dependency-free (no ``loopy`` import) so
 it can run in CI without installing the package. It uses
@@ -166,8 +166,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate llms-*.txt files")
     parser.add_argument(
         "--out",
-        default=".",
-        help="output directory (default: project root)",
+        default="llms",
+        help="output directory (default: llms/)",
     )
     parser.add_argument(
         "--prefix",

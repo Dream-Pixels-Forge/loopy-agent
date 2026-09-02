@@ -1,0 +1,17 @@
+# loopy.plugins
+
+## Plugin
+
+> Could not import `loopy.plugins.Plugin`: No module named 'loopy'
+
+## PluginInfo
+
+> Could not import `loopy.plugins.PluginInfo`: No module named 'loopy'
+
+## PluginLoader
+
+> Could not import `loopy.plugins.PluginLoader`: No module named 'loopy'
+
+## PluginRegistry
+
+> Could not import `loopy.plugins.PluginRegistry`: No module named 'loopy'
