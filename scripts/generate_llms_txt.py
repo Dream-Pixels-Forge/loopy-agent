@@ -29,6 +29,7 @@ PUBLIC_MODULES: dict[str, list[str]] = {
     "loopy": sorted(  # Top-level __all__ entries (just the names that are exported)
         [
             "AgentLoop", "LoopConfig", "StepResult", "StepStatus",
+            "Node", "Edge", "StateGraph", "Context", "Workflow", "State",
             "Gateway", "GatewayResponse", "ModelProvider", "ProviderConfig",
             "ConnectionPool", "TestModel", "TEST_MODEL_SENTINEL",
             "GuardrailPipeline", "InputFilter", "OutputFilter", "FilterAction",
@@ -61,6 +62,7 @@ PUBLIC_MODULES: dict[str, list[str]] = {
         ]
     ),
     "loopy.loop": ["AgentLoop", "LoopConfig", "StepResult", "StepStatus"],
+    "loopy.flow": ["Node", "Edge", "StateGraph", "Context", "Workflow", "State"],
     "loopy.gateway": [
         "Gateway", "GatewayResponse", "ModelProvider", "ProviderConfig",
         "ConnectionPool", "TestModel", "TEST_MODEL_SENTINEL",

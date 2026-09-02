@@ -12,6 +12,8 @@ from loopy import (
     # Gateway + TestModel + structured outputs
     Gateway, GatewayResponse, ModelProvider, ProviderConfig,
     TestModel, TEST_MODEL_SENTINEL, ConnectionPool,
+    # Graph control flow (v0.8.0)
+    Node, Edge, StateGraph, Context, Workflow, State,
     # Guardrails + safety
     GuardrailPipeline, InputFilter, OutputFilter, FilterAction,
     SafetyGate, SafetyCheck, SafetyResult, EscalationReason,
@@ -64,6 +66,7 @@ from loopy import (
 | Module | What it does |
 |---|---|
 | `loopy.loop` | Agentic loop engine |
+| `loopy.flow` | Graph control flow (typed, persistent, checkpointable) |
 | `loopy.gateway` | Multi-provider LLM gateway |
 | `loopy.guardrails` | PII / jailbreak filters |
 | `loopy.evals` | Eval suites + gates + JSON I/O |

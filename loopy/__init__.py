@@ -47,6 +47,7 @@ from loopy.evals import (
     JudgeConfig,
     Verdict,
 )
+from loopy.flow import Context, Edge, Node, State, StateGraph, Workflow
 from loopy.gateway import (
     TEST_MODEL_SENTINEL,
     ConnectionPool,
@@ -164,6 +165,13 @@ __all__ = [
     "InputFilter",
     "OutputFilter",
     "FilterAction",
+    # v0.8.0 - Graph control flow
+    "Node",
+    "Edge",
+    "StateGraph",
+    "Context",
+    "Workflow",
+    "State",
     # Evals (including v0.2.0 evaluator-optimizer)
     "Evaluator",
     "EvalCase",
