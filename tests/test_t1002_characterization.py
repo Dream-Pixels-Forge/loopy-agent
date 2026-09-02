@@ -122,15 +122,15 @@ class TestSpanCharacterization:
 
 class TestTracerNegativeControls:
     def test_tracer_disabled_flag(self):
-        """Currently Tracer has no `disabled` flag (v0.8.0 will add one).
-
-        Pinning the negative contract: today the flag does not exist.
-        v0.8.0's auto_instrument must guard against the flag being set
-        and produce zero spans in that case.
+        """v0.8.0 (T1.3.1) — ``Tracer.disabled`` is now a public flag
+        that suppresses span recording. The auto-instrumentation
+        helpers honor it; @observe() with a disabled tracer produces
+        no spans (verified in tests/test_observe_coverage.py).
         """
         tracer = Tracer()
-        # Pinning: this attribute must NOT exist before T1.3
-        assert not hasattr(tracer, "disabled")
+        # v0.8.0 contract: the flag is now part of the public surface.
+        assert hasattr(tracer, "disabled")
+        assert tracer.disabled is False
 
 
 # ---------------------------------------------------------------------------

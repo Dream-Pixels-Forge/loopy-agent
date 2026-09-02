@@ -90,6 +90,12 @@ from loopy.observe import (
     Span,
     SpanStatus,
     Tracer,
+    auto_instrument_gateway,
+    auto_instrument_mcp,
+    build_otlp_envelope,
+    get_default_tracer,
+    observe,
+    set_default_tracer,
 )
 from loopy.plugins import Plugin, PluginInfo, PluginLoader, PluginRegistry
 from loopy.prompting import (
@@ -202,6 +208,12 @@ __all__ = [
     "MetricsCollector",
     "Redactor",  # v0.7.9
     "RedactionMatch",  # v0.7.9
+    "observe",  # v0.8.0
+    "auto_instrument_gateway",  # v0.8.0
+    "auto_instrument_mcp",  # v0.8.0
+    "build_otlp_envelope",  # v0.8.0
+    "get_default_tracer",  # v0.8.0
+    "set_default_tracer",  # v0.8.0
     # MCP
     "MCPClient",
     "MCPToolResult",

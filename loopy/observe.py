@@ -8,6 +8,7 @@ Includes OpenTelemetry export for external observability backends.
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import logging
 import re
@@ -54,6 +55,10 @@ class Span:
     status: SpanStatus = SpanStatus.UNSET
     attributes: dict[str, Any] = field(default_factory=dict)
     events: list[dict[str, Any]] = field(default_factory=list)
+    # v0.8.0 — False for sentinel spans returned by a disabled or
+    # shutdown tracer. Drives cheap no-ops in the @observe() decorator
+    # and keeps export methods from surfacing internal noise.
+    recorded: bool = True
 
     @property
     def duration_ms(self) -> float | None:
@@ -244,6 +249,14 @@ class Tracer:
         self._current_trace_id: str | None = None
         # v0.7.9 - optional redactor applied at span completion.
         self.redactor: Redactor | None = redactor
+        # v0.8.0 - instrumentation controls. ``disabled`` is a runtime
+        # flag (sets it to True to skip span recording without
+        # touching call sites); ``shutdown`` is a one-way latch set
+        # by :meth:`shutdown` and makes every public entry point a
+        # graceful no-op (used by the @observe() decorator so it
+        # never raises after a tracer is torn down).
+        self.disabled: bool = False
+        self._shutdown: bool = False
 
     def _generate_id(self) -> str:
         """Generate a unique ID using UUID4."""
@@ -264,10 +277,23 @@ class Tracer:
             **attributes: Initial attributes
 
         Returns:
-            New Span instance
+            New Span instance. When ``self.disabled`` is True or the
+            tracer has been :meth:`shutdown`, a sentinel
+            :class:`Span` with ``recorded=False`` is returned so the
+            @observe() decorator can drive its lifecycle without
+            raising.
         """
         trace_id = self._current_trace_id or self._generate_id()
         span_id = self._generate_id()
+
+        if self.disabled or self._shutdown:
+            return Span(
+                name=name,
+                trace_id=trace_id,
+                span_id=span_id,
+                parent_id=parent_id,
+                recorded=False,
+            )
 
         span = Span(
             name=name,
@@ -286,6 +312,12 @@ class Tracer:
         logger.debug("Started span: %s (%s)", name, span_id)
 
         return span
+
+    def shutdown(self) -> None:
+        """v0.8.0 — one-way latch: subsequent ``start_span`` calls return
+        non-recording sentinel spans so instrumentation never raises.
+        """
+        self._shutdown = True
 
     def start(self, name: str, **attributes: Any) -> SpanContext:
         """
@@ -567,3 +599,240 @@ class MetricsCollector:
     def clear(self) -> None:
         """Clear all metrics."""
         self._metrics.clear()
+
+
+# ── v0.8.0 — OTel auto-instrumentation ───────────────────────────────
+
+
+_default_tracer: Tracer | None = None
+
+
+def get_default_tracer() -> Tracer:
+    """Return the process-wide default :class:`Tracer`, creating one on first use.
+
+    Decorators and auto-instrumentation helpers resolve to this tracer
+    unless an explicit one is passed in.
+    """
+    global _default_tracer
+    if _default_tracer is None:
+        _default_tracer = Tracer()
+    return _default_tracer
+
+
+def set_default_tracer(tracer: Tracer | None) -> None:
+    """Replace the process-wide default tracer (pass ``None`` to clear)."""
+    global _default_tracer
+    _default_tracer = tracer
+
+
+def _resolve_tracer(tracer: Tracer | None) -> Tracer:
+    return tracer if tracer is not None else get_default_tracer()
+
+
+def observe(
+    name: str | None = None,
+    *,
+    attributes: dict[str, Any] | None = None,
+    tracer: Tracer | None = None,
+):
+    """Decorator: wrap a sync or async function in a :class:`Span`.
+
+    Args:
+        name: Span name. Defaults to the wrapped function's qualified
+            name (``module.func``) when omitted.
+        attributes: Static attributes applied to every span this
+            decorator produces.
+        tracer: Tracer to use. Defaults to the process-wide
+            :func:`get_default_tracer`.
+
+    Notes:
+        * Re-applying ``@observe()`` to a function that is already
+          observed is a no-op (idempotent).
+        * Exceptions inside the wrapped function mark the span as
+          ``SpanStatus.ERROR`` with ``error.message`` set, then
+          re-raise.
+        * When the resolved tracer is :attr:`disabled` or has been
+          :meth:`shutdown`, the call is a graceful no-op.
+    """
+
+    def deco(fn):  # type: ignore[no-untyped-def]
+        if getattr(fn, "_loopy_observed", False):
+            return fn
+
+        span_name = name or f"{fn.__module__}.{fn.__qualname__}"
+        base_attrs = dict(attributes or {})
+
+        if asyncio.iscoroutinefunction(fn):
+
+            @functools.wraps(fn)
+            async def async_wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
+                t = _resolve_tracer(tracer)
+                span = t.start_span(span_name, **base_attrs)
+                try:
+                    result = await fn(*args, **kwargs)
+                except Exception as exc:
+                    if span.recorded:
+                        span.set_status(SpanStatus.ERROR, str(exc))
+                        span.attributes["error.message"] = str(exc)
+                        span.attributes["error.type"] = type(exc).__name__
+                    raise
+                else:
+                    if span.recorded:
+                        span.set_status(SpanStatus.OK)
+                finally:
+                    span.end()
+                return result
+
+            async_wrapper._loopy_observed = True
+            return async_wrapper
+
+        @functools.wraps(fn)
+        def sync_wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
+            t = _resolve_tracer(tracer)
+            span = t.start_span(span_name, **base_attrs)
+            try:
+                result = fn(*args, **kwargs)
+            except Exception as exc:
+                if span.recorded:
+                    span.set_status(SpanStatus.ERROR, str(exc))
+                    span.attributes["error.message"] = str(exc)
+                    span.attributes["error.type"] = type(exc).__name__
+                raise
+            else:
+                if span.recorded:
+                    span.set_status(SpanStatus.OK)
+            finally:
+                span.end()
+            return result
+
+        sync_wrapper._loopy_observed = True
+        return sync_wrapper
+
+    return deco
+
+
+_INSTRUMENTED_ATTR = "_loopy_instrumented"
+
+
+def auto_instrument_gateway(tracer: Tracer | None = None) -> None:
+    """Monkey-patch :meth:`Gateway.chat` so every call is wrapped in a span.
+
+    Idempotent: calling more than once is a no-op. The original
+    method is preserved on the class as ``Gateway._chat_untraced``
+    so tests and recovery paths can reach it.
+    """
+    from loopy.gateway import Gateway  # local import — avoid a cycle at module load
+
+    if getattr(Gateway.chat, _INSTRUMENTED_ATTR, False):
+        return
+
+    t = _resolve_tracer(tracer)
+    original = Gateway.chat
+
+    @functools.wraps(original)
+    async def wrapped(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        span = t.start_span("gateway.chat", **{"gateway.model": getattr(self, "model", "")})
+        try:
+            result = await original(self, *args, **kwargs)
+        except Exception as exc:
+            if span.recorded:
+                span.set_status(SpanStatus.ERROR, str(exc))
+                span.attributes["error.message"] = str(exc)
+            raise
+        else:
+            if span.recorded:
+                span.attributes.setdefault(
+                    "gateway.tokens",
+                    getattr(result, "total_tokens", 0) if result is not None else 0,
+                )
+                span.set_status(SpanStatus.OK)
+        finally:
+            span.end()
+        return result
+
+    wrapped._lopy_observed = True
+    setattr(wrapped, _INSTRUMENTED_ATTR, True)
+    Gateway.chat = wrapped  # type: ignore[assignment]
+
+
+def auto_instrument_mcp(tracer: Tracer | None = None) -> None:
+    """Monkey-patch :meth:`MCPClient.call_tool` so every call is wrapped in a span."""
+    from loopy.mcp import MCPClient
+
+    if getattr(MCPClient.call_tool, _INSTRUMENTED_ATTR, False):
+        return
+
+    t = _resolve_tracer(tracer)
+    original = MCPClient.call_tool
+
+    @functools.wraps(original)
+    async def wrapped(self, name, arguments=None, *args, **kwargs):  # type: ignore[no-untyped-def]
+        span = t.start_span("mcp.call_tool", **{"mcp.tool": name})
+        try:
+            result = await original(self, name, arguments, *args, **kwargs)
+        except Exception as exc:
+            if span.recorded:
+                span.set_status(SpanStatus.ERROR, str(exc))
+                span.attributes["error.message"] = str(exc)
+            raise
+        else:
+            if span.recorded:
+                span.attributes.setdefault("mcp.ok", bool(getattr(result, "ok", True)))
+                span.set_status(SpanStatus.OK)
+        finally:
+            span.end()
+        return result
+
+    wrapped._loopy_observed = True
+    setattr(wrapped, _INSTRUMENTED_ATTR, True)
+    MCPClient.call_tool = wrapped  # type: ignore[assignment]
+
+
+def build_otlp_envelope(spans: list[Span], service: str = "loopy") -> dict[str, Any]:
+    """Build an OTLP ``ExportTraceServiceRequest``-shaped envelope.
+
+    The shape mirrors the OTel collector's HTTP/JSON intake
+    (``POST /v1/traces`` with ``Content-Type: application/json``).
+    """
+    return {
+        "resourceSpans": [
+            {
+                "resource": {
+                    "attributes": [
+                        {"key": "service.name", "value": {"stringValue": service}},
+                        {"key": "service.version", "value": {"stringValue": __version__}},
+                    ]
+                },
+                "scopeSpans": [
+                    {
+                        "scope": {"name": "loopy", "version": __version__},
+                        "spans": [
+                            {
+                                "traceId": s.trace_id,
+                                "spanId": s.span_id,
+                                "parentSpanId": s.parent_id or "",
+                                "name": s.name,
+                                "startTimeUnixNano": str(int(s.start_time * 1e9)),
+                                "endTimeUnixNano": str(int((s.end_time or time.time()) * 1e9)),
+                                "status": {"code": _otel_status_code(s.status)},
+                                "attributes": [
+                                    {"key": k, "value": {"stringValue": str(v)}}
+                                    for k, v in s.attributes.items()
+                                ],
+                            }
+                            for s in spans
+                            if s.recorded
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+
+
+def _otel_status_code(status: SpanStatus) -> int:
+    return {
+        SpanStatus.UNSET: 0,
+        SpanStatus.OK: 1,
+        SpanStatus.ERROR: 2,
+    }.get(status, 0)
