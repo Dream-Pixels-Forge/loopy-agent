@@ -288,13 +288,13 @@ class TestDocsAndLLMS:
         assert Path("scripts/generate_llms_txt.py").exists()
 
     def test_llms_txt_was_generated(self):
-        assert Path("llms-full.txt").exists()
-        size = Path("llms-full.txt").stat().st_size
+        assert Path("llms/llms-full.txt").exists()
+        size = Path("llms/llms-full.txt").stat().st_size
         # Should be non-trivial - at least 5KB
-        assert size > 5000, f"llms-full.txt too small: {size} bytes"
+        assert size > 5000, f"llms/llms-full.txt too small: {size} bytes"
 
     def test_llms_txt_contains_known_sections(self):
-        text = Path("llms-full.txt").read_text(encoding="utf-8")
+        text = Path("llms/llms-full.txt").read_text(encoding="utf-8")
         assert "loopy-agent" in text
         assert "AgentLoop" in text
         assert "TestModel" in text
@@ -310,7 +310,13 @@ class TestDocsAndLLMS:
             cwd=".",
         )
         assert result.returncode == 0
-        assert "wrote llms-full.txt" in result.stdout
+        # The script prints one line per file with "wrote <path>". Match
+        # on the basename so Windows backslashes and POSIX forward
+        # slashes both pass.
+        assert any(
+            "llms-full.txt" in line and line.startswith("wrote ")
+            for line in result.stdout.splitlines()
+        )
 
 
 # ---------------------------------------------------------------------------
