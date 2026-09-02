@@ -58,7 +58,14 @@ from loopy.gateway import (
     TestModel,
 )
 from loopy.guardrails import FilterAction, GuardrailPipeline, InputFilter, OutputFilter
-from loopy.loop import AgentLoop, LoopConfig, StepResult, StepStatus
+from loopy.loop import (
+    AgentLoop,
+    AgentLoopRejected,
+    Interrupt,
+    LoopConfig,
+    StepResult,
+    StepStatus,
+)
 from loopy.mcp import LocalMCP, MCPClient, MCPToolResult
 from loopy.mcp import Tool as MCPTool
 from loopy.middleware import (
@@ -152,6 +159,8 @@ __all__ = [
     "StepResult",
     "LoopConfig",
     "StepStatus",
+    "Interrupt",  # v0.8.0
+    "AgentLoopRejected",  # v0.8.0
     # Gateway
     "Gateway",
     "ModelProvider",

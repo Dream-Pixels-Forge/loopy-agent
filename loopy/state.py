@@ -32,6 +32,8 @@ class RunOutcome(str, Enum):
     SUCCESS = "success"
     FAILURE = "failure"
     ESCALATED = "escalated"
+    # v0.8.0 — loop paused for human-in-the-loop review.
+    INTERRUPTED = "interrupted"
 
 
 @dataclass
