@@ -123,6 +123,44 @@ async def main():
 asyncio.run(main())
 ```
 
+## Human-in-the-loop interrupts (v0.8.0)
+
+Pause the loop at any phase so a human can review the proposed
+action before it runs (or after it runs, to review the output):
+
+```python
+import asyncio
+from loopy import AgentLoop, LoopConfig, Interrupt
+
+async def main():
+    loop = AgentLoop(LoopConfig(
+        max_steps=5,
+        interrupt_before=["actor"],   # pause right before the actor runs
+    ))
+
+    first = await loop.run()
+    if isinstance(first, Interrupt):
+        # Show the user `first.proposed_action` + `first.context`
+        approved = Interrupt(
+            proposed_action=first.proposed_action,
+            decision="approve",
+            context=first.context,
+            phase=first.phase,
+            step=first.step,
+        )
+        results = await loop.run(resume_from=approved)
+        # ...or pass decision="reject" to raise AgentLoopRejected
+
+asyncio.run(main())
+```
+
+`interrupt_before` and `interrupt_after` accept any subset of
+`"plan"`, `"actor"`, `"observer"`, `"reflector"`. Combine them to
+review twice per iteration (e.g. `interrupt_before=["actor"]` and
+`interrupt_after=["actor"]`). When `LoopConfig.state_manager` is
+configured, pending interrupts persist as
+`RunRecord(outcome=INTERRUPTED)` so a crashed run can be replayed.
+
 ## What's next?
 
 - [Concepts](concepts.md) — the 21 modules at a glance

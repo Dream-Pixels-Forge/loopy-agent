@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.0] - 2026-09-02
+
+The **Agent Control Plane** release — ships the missing 2026 primitives
+so loopy is production-deployable as a runtime, not just a library.
+
+### Added
+
+- **Graph control flow (T1.1)** — `loopy.flow` now exports `Node`, `Edge`,
+  `StateGraph`, and `Workflow` primitives. Compose typed, persistent,
+  checkpointable workflows that integrate with `StateManager`, `Tracer`,
+  `Redactor`, and `SkillRegistry` — a uniquely scrub-aware, skill-aware
+  graph primitive set. Closes the **Graph control flow** row in the
+  2026 capability matrix.
+
+- **Human-in-the-loop interrupts (T1.2)** — `AgentLoop` gains
+  `LoopConfig.interrupt_before` and `LoopConfig.interrupt_after` to
+  pause any of `plan / actor / observer / reflector` before or after
+  it runs. `run()` returns an `Interrupt` carrying the proposed action
+  and a `when` context (`"before"` or `"after"`); resume with
+  `run(resume_from=Interrupt(decision="approve"))` to continue or
+  `decision="reject"` to raise `AgentLoopRejected`. Approved
+  before-gates re-enter the same step so the after-gate can still
+  fire. When `state_manager` is configured, pending interrupts
+  persist as `RunRecord(outcome=INTERRUPTED)` and
+  `LoopState.metadata["interrupts"]` so a crashed run can be replayed.
+  21 new tests in `tests/test_loop_interrupt.py`. Closes the
+  **HITL interrupts** row in the 2026 capability matrix.
+
+- **`RunOutcome.INTERRUPTED`** — new enum value giving `RunRecord`
+  a typed outcome for HITL-paused steps.
+
+---
+
 ## [0.7.10] - 2026-09-02
 
 ### Added

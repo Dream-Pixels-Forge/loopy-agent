@@ -1,6 +1,6 @@
 # Competitive Analysis & Roadmap — 2026
 
-> **Status:** Living document. Last updated 2026-09-02 alongside v0.7.10 release planning.
+> **Status:** Living document. Last updated 2026-09-02 alongside v0.8.0 release planning.
 > **Owner:** Dream Pixels Forge
 > **Purpose:** Capture the strategic landscape so future contributors don't repeat the survey.
 
@@ -264,14 +264,14 @@ Google ADK.
 
 ## 3. The capability matrix
 
-| Capability (2026 must-have) | pydantic-ai | LangGraph | CrewAI | AutoGen | OpenAI Agents SDK | LlamaIndex | Atomic Agents | **loopy 0.7.9** | Gap severity |
+| Capability (2026 must-have) | pydantic-ai | LangGraph | CrewAI | AutoGen | OpenAI Agents SDK | LlamaIndex | Atomic Agents | **loopy 0.8.0** | Gap severity |
 |---|---|---|---|---|---|---|---|---|---|
 | Typed structured outputs | ✅ | ❌ | partial | ❌ | ✅ | ✅ | ✅ | **✅** (v0.7.9) | — |
 | Zero-network TestModel | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** (v0.7.9) | — |
 | PII redaction in traces | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** (v0.7.9) | — |
-| Graph control flow (vs flat loop) | ✅ (Pydantic Graph) | ✅✅ (Pregel core) | partial (Flows) | ❌ (loop-based) | ❌ | ✅✅ (event-step Workflows) | partial | ❌ (flat Plan→Act→Observe→Reflect) | **HIGH** |
+| Graph control flow (vs flat loop) | ✅ (Pydantic Graph) | ✅✅ (Pregel core) | partial (Flows) | ❌ (loop-based) | ❌ | ✅✅ (event-step Workflows) | partial | **✅** (T1.1 — flow.py: Node, Edge, StateGraph, Workflow) | — |
 | Durable workflows (Temporal-grade) | ✅ (capability) | ❌ (host) | ❌ | ❌ | ✅ (plugin preview) | ❌ | ❌ | ❌ | **HIGH** |
-| Human-in-the-loop interrupts | ✅ (deferred tools) | ✅✅ (interrupt primitive) | ✅ (Flows @router) | ✅ (UserProxy) | ✅ (concept) | ✅ (wait_for_event) | ❌ | ❌ (no interrupt primitive) | **HIGH** |
+| Human-in-the-loop interrupts | ✅ (deferred tools) | ✅✅ (interrupt primitive) | ✅ (Flows @router) | ✅ (UserProxy) | ✅ (concept) | ✅ (wait_for_event) | ❌ | **✅** (T1.2 — Interrupt + interrupt_before/after + AgentLoopRejected) | — |
 | Multi-agent handoffs + A2A | partial | partial (subgraphs) | ✅✅ (Crews) | ✅ (group chat) | ✅✅ (handoffs) | partial | ❌ | partial (A2A broadcast only) | **HIGH** |
 | Voice / Realtime | ✅ (Realtime) | ❌ | ❌ | ❌ | ✅✅ (WebSocket) | ❌ | ❌ | ❌ | MEDIUM |
 | Code-execution sandbox | partial (Harness) | ❌ | ❌ | ✅ (Magentic-One) | ✅✅ (SandboxAgent) | ❌ | ❌ | ❌ (SafetyGate for paths only) | MEDIUM |
@@ -285,9 +285,9 @@ Google ADK.
 | **Built-in safety + decision audit trail** | partial (guardrails) | ❌ | ❌ | ❌ | partial (guardrails) | ❌ | ❌ | ✅✅ (safety.py + DecisionTracker — UNIQUE) | — |
 | **Pure-Python, zero-deps core** | partial | ❌ (LangChain heavy) | ❌ | ❌ | partial | ❌ | ❌ | ✅✅ (httpx + pydantic only) | — |
 | **AI-coding-assistant discovery** (llms-full.txt) | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅✅ | ❌ | MEDIUM |
-| Total primary capabilities | 14 | 8 | 8 | 7 | 12 | 9 | 6 | **12** | |
+| Total primary capabilities | 14 | 8 | 8 | 7 | 12 | 9 | 6 | **14** | |
 
-**Score:** Loopy wins on **8 unique axes** no competitor covers; ties on **4** axes; loses on **6** axes (5 HIGH + 1 MEDIUM).
+**Score (v0.8.0):** Loopy wins on **8 unique axes** no competitor covers; ties on **6** axes (up from 4 in 0.7.9 — picked up graph control flow + HITL interrupts); loses on **5** axes (Durable workflows HIGH; Multi-agent A2A HIGH; Voice/Realtime MEDIUM; Code-exec sandbox MEDIUM; AI-coding-assistant discovery MEDIUM).
 
 ---
 
@@ -297,7 +297,7 @@ Google ADK.
 
 Goal: bring loopy up to parity with the 2026 production leaders. ~2-3 releases (0.8.x).
 
-#### F1. Graph control flow — `loopy/flow.py`
+#### F1. Graph control flow — `loopy/flow.py` ✅ shipped in v0.8.0 (T1.1)
 
 Replace / augment the flat Plan→Act→Observe→Reflect loop with **typed,
 persistent, checkpointable workflows**.
@@ -305,15 +305,15 @@ persistent, checkpointable workflows**.
 - **Primitive:** `Node`, `Edge`, `StateGraph`, `Workflow`
 - **Loopy's angle:** integrate with `StateManager` for persistence, `Tracer` for spans, `Redactor` for PII, `SkillRegistry` for node-level skill bindings
 - **Wins:** matches LangGraph + LlamaIndex Workflows + Pydantic Graph. "Ship a checkpointable, type-safe, scrub-aware, skill-aware graph" is genuinely unique.
-- **Effort:** ~1 week, ~30 tests
+- **Effort:** ~1 week, ~30 tests — **DONE** (see `loopy/flow.py`, exported via `loopy.flow` and `loopy.flow_primitives`).
 
-#### F2. Human-in-the-loop interrupts — extend `loop.py`
+#### F2. Human-in-the-loop interrupts — extend `loop.py` ✅ shipped in v0.8.0 (T1.2)
 
 - `AgentLoop` gets `interrupt_before: list[str] | None` and `interrupt_after: list[str]`
-- `await loop.run(input, resume_from_checkpoint=...)` returns an `Interrupt`; `loop.resume(interrupt_id, decision=...)` continues
-- Backed by `StateManager` (already in 0.7.8) and `SafetyGate`
+- `await loop.run(input, resume_from=Interrupt)` returns an `Interrupt` when a gate fires; `Interrupt(decision="approve")` continues, `decision="reject"` raises `AgentLoopRejected`
+- Backed by `StateManager` — pending interrupts persist as `RunRecord(outcome=INTERRUPTED)` and `LoopState.metadata["interrupts"]` so a crash+resume can replay
 - **Wins:** matches LangGraph `interrupt`, OpenAI Agents HITL, Pydantic AI deferred tools
-- **Effort:** ~2 days, ~12 tests
+- **Effort:** ~2 days, ~12 tests — **DONE** (21 new tests in `tests/test_loop_interrupt.py`, 671 total tests passing)
 
 #### F3. A2A handoff — extend `a2a.py`
 
