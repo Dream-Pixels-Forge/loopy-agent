@@ -38,7 +38,7 @@ class EvalCase:
 @dataclass
 class EvalResult:
     """Result of evaluating a single case."""
-    
+
     case: EvalCase
     actual_output: str
     verdict: Verdict
@@ -46,6 +46,46 @@ class EvalResult:
     reasoning: str = ""
     criteria_scores: dict[str, float] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    # v0.7.8 — JSON round-trip helpers so EvalReport can be serialized whole.
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "case": {
+                "name": self.case.name,
+                "input_text": self.case.input_text,
+                "expected_output": self.case.expected_output,
+                "criteria": list(self.case.criteria),
+                "tags": list(self.case.tags),
+                "threshold": self.case.threshold,
+            },
+            "actual_output": self.actual_output,
+            "verdict": self.verdict.value,
+            "score": self.score,
+            "reasoning": self.reasoning,
+            "criteria_scores": dict(self.criteria_scores),
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EvalResult:
+        case_data = data.get("case", {})
+        case = EvalCase(
+            name=case_data.get("name", ""),
+            input_text=case_data.get("input_text", ""),
+            expected_output=case_data.get("expected_output"),
+            criteria=list(case_data.get("criteria", [])),
+            tags=list(case_data.get("tags", [])),
+            threshold=case_data.get("threshold", 0.7),
+        )
+        return cls(
+            case=case,
+            actual_output=data.get("actual_output", ""),
+            verdict=Verdict(data.get("verdict", "fail")),
+            score=float(data.get("score", 0.0)),
+            reasoning=data.get("reasoning", ""),
+            criteria_scores=dict(data.get("criteria_scores", {})),
+            metadata=dict(data.get("metadata", {})),
+        )
 
 
 @dataclass
@@ -101,6 +141,62 @@ class EvalReport:
             "pass_rate": f"{self.pass_rate:.1%}",
             "average_score": f"{self.average_score:.2f}",
         }
+
+    # v0.7.8 — JSON serialization / file I/O so eval reports become
+    # CI-friendly artifacts (compare across runs, archive, attach to PRs).
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the report (and every nested case/result) to a dict."""
+        return {
+            "suite_name": self.suite_name,
+            "results": [r.to_dict() for r in self.results],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EvalReport:
+        """Reconstruct an :class:`EvalReport` from :meth:`to_dict` output."""
+        return cls(
+            suite_name=data.get("suite_name", ""),
+            results=[EvalResult.from_dict(r) for r in data.get("results", [])],
+        )
+
+    def to_json(self, indent: int = 2) -> str:
+        """Serialize the report to a JSON string."""
+        return json.dumps(self.to_dict(), indent=indent)
+
+    @classmethod
+    def from_json(cls, payload: str) -> EvalReport:
+        """Reconstruct an :class:`EvalReport` from a JSON string."""
+        return cls.from_dict(json.loads(payload))
+
+    def save(self, path: str) -> None:
+        """Write the report to ``path`` as JSON.
+
+        Creates parent directories if they do not exist.
+        """
+        from pathlib import Path  # local import keeps top of file unchanged
+
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(self.to_json(), encoding="utf-8")
+
+    @classmethod
+    def load(cls, path: str) -> EvalReport:
+        """Load a report previously written by :meth:`save`.
+
+        Returns an empty report if the file does not exist or is unreadable;
+        a warning is logged in either failure mode.
+        """
+        from pathlib import Path
+
+        p = Path(path)
+        if not p.exists():
+            logger.warning("Eval report not found at %s; returning empty report", path)
+            return cls(suite_name="")
+
+        try:
+            return cls.from_dict(json.loads(p.read_text(encoding="utf-8")))
+        except Exception as e:
+            logger.warning("Failed to load eval report %s: %s", path, e)
+            return cls(suite_name="")
 
 
 class EvalGateType(str, Enum):

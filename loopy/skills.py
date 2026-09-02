@@ -41,18 +41,38 @@ class Skill:
         Single-word triggers require a whole-word match (word boundary)
         to avoid false positives from substrings.
         """
+        return self.score(task) > 0.0
+
+    def score(self, task: str) -> float:
+        """v0.7.8 — Return a relevance score in [0.0, 1.0+].
+
+        Scoring rules:
+        - Each multi-word trigger matched contributes +1.0 if every word is
+          present in the task, +0.5 if only some words are present.
+        - Each single-word trigger matched (whole-word) contributes +0.5.
+        - Result is normalized by the number of triggers so a skill with
+          many triggers doesn't dominate simply by volume. Final score is
+          clamped at 1.0.
+        """
+        if not self.triggers:
+            return 0.0
+
         task_lower = task.lower()
+        total = 0.0
+
         for trigger in self.triggers:
             trigger_words = trigger.lower().split()
             if len(trigger_words) > 1:
-                # Multi-word: all words must appear
-                if all(w in task_lower for w in trigger_words):
-                    return True
+                hits = sum(1 for w in trigger_words if w in task_lower)
+                if hits == len(trigger_words):
+                    total += 1.0
+                elif hits > 0:
+                    total += 0.5 * (hits / len(trigger_words))
             else:
-                # Single-word: require whole-word match
                 if re.search(r'\b' + re.escape(trigger_words[0]) + r'\b', task_lower):
-                    return True
-        return False
+                    total += 0.5
+
+        return min(total / max(len(self.triggers), 1), 1.0)
 
     @classmethod
     def from_markdown(cls, content: str) -> Skill:
@@ -155,6 +175,43 @@ class SkillRegistry:
     def match(self, task: str) -> list[Skill]:
         """Match skills to a task."""
         return [s for s in self._skills.values() if s.matches(task)]
+
+    def match_ranked(
+        self,
+        task: str,
+        min_score: float = 0.0,
+        limit: int | None = None,
+    ) -> list[tuple[Skill, float]]:
+        """v0.7.8 — Return matched skills ordered by relevance score (desc).
+
+        Args:
+            task: Task description to match against.
+            min_score: Drop matches below this score (default 0.0).
+            limit: Cap on number of returned matches (default unlimited).
+
+        Returns:
+            List of ``(Skill, score)`` tuples, highest score first.
+        """
+        scored: list[tuple[Skill, float]] = []
+        for skill in self._skills.values():
+            score = skill.score(task)
+            if score >= min_score:
+                scored.append((skill, score))
+
+        scored.sort(key=lambda pair: pair[1], reverse=True)
+        if limit is not None:
+            scored = scored[:limit]
+        return scored
+
+    def match_one(self, task: str, min_score: float = 0.0) -> Skill | None:
+        """v0.7.8 — Return the single best-matching skill, or None.
+
+        Convenience wrapper around :meth:`match_ranked` for the common
+        "pick one" case. Returns the highest-scoring skill above
+        ``min_score``, or ``None`` if nothing qualifies.
+        """
+        ranked = self.match_ranked(task, min_score=min_score, limit=1)
+        return ranked[0][0] if ranked else None
 
     def load_file(self, path: str) -> Skill:
         """Load a single skill file."""

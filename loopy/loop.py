@@ -10,8 +10,14 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from loopy.state import StateManager
+else:
+    StateManager = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger("loopy.loop")
 
@@ -28,7 +34,7 @@ class StepStatus(str, Enum):
 @dataclass
 class StepResult:
     """Result of a single loop iteration."""
-    
+
     step: int
     status: StepStatus
     plan: str = ""
@@ -42,45 +48,53 @@ class StepResult:
 @dataclass
 class LoopConfig:
     """Configuration for the agentic loop."""
-    
+
     max_steps: int = 10
     max_retries: int = 3
     stop_on_error: bool = False
-    
+
     # Callbacks
     planner: Callable[[list[StepResult]], Awaitable[str]] | None = None
     actor: Callable[[str], Awaitable[str]] | None = None
     observer: Callable[[str], Awaitable[str]] | None = None
     reflector: Callable[[list[StepResult]], Awaitable[str]] | None = None
-    
+
     # Optional: custom stop condition
     should_stop: Callable[[list[StepResult]], Awaitable[bool]] | None = None
+
+    # v0.7.8 — Resume from checkpoint
+    # Set to an integer step number to skip ahead, or leave None to start fresh.
+    # When `state_manager` is provided, history is checkpointed after each step
+    # and a `RunRecord` is appended so crashed runs can be resumed.
+    resume_from: int | None = None
+    state_manager: StateManager | None = None
+    task: str = ""  # Label for RunRecord metadata
 
 
 class AgentLoop:
     """
     The agentic loop engine.
-    
+
     Example:
         async def my_planner(history):
             return "I will search for information about Python."
-        
+
         async def my_actor(plan):
             return "Searched the web and found 3 results."
-        
+
         async def my_observer(action):
             return "Found relevant docs about Python asyncio."
-        
+
         async def my_reflector(history):
             return "Good progress, but need more details on threading."
-        
+
         loop = AgentLoop(LoopConfig(
             planner=my_planner,
             actor=my_actor,
             observer=my_observer,
             reflector=my_reflector,
         ))
-        
+
         results = await loop.run()
     """
 
@@ -91,12 +105,12 @@ class AgentLoop:
     async def run(self, initial_context: str = "") -> list[StepResult]:
         """
         Execute the full agentic loop.
-        
+
         Returns:
             List of StepResult for each iteration.
         """
         self.history = []
-        
+
         if initial_context:
             self.history.append(
                 StepResult(
@@ -106,14 +120,24 @@ class AgentLoop:
                 )
             )
 
-        for step_num in range(1, self.config.max_steps + 1):
+        # v0.7.8 — resume support: skip ahead to resume_from when set
+        if self.config.resume_from is not None:
+            start_step = max(1, self.config.resume_from + 1)
+            logger.info("Resuming loop at step %d", start_step)
+        else:
+            start_step = 1
+
+        for step_num in range(start_step, self.config.max_steps + 1):
             result = await self._run_step(step_num)
             self.history.append(result)
-            
+
+            # v0.7.8 — checkpoint after every step when configured
+            self._checkpoint(result)
+
             if result.status == StepStatus.FAILED and self.config.stop_on_error:
                 logger.error("Loop stopped at step %d: %s", step_num, result.error)
                 break
-            
+
             # Check custom stop condition
             if self.config.should_stop:
                 try:
@@ -124,48 +148,97 @@ class AgentLoop:
                     logger.warning("Stop condition check failed: %s", e)
 
             # Default stop: all callbacks are None (no-op loop)
-            if not any([self.config.planner, self.config.actor, 
-                       self.config.observer, self.config.reflector]):
+            if not any([self.config.planner, self.config.actor,
+                        self.config.observer, self.config.reflector]):
                 logger.info("No callbacks configured, stopping loop")
                 break
 
         return self.history
 
+    def _checkpoint(self, result: StepResult) -> None:
+        """v0.7.8 — Persist a step result to the configured StateManager.
+
+        Records a RunRecord per step and updates LoopState.attempts so a
+        subsequent run with ``resume_from`` can pick up where this one left off.
+        Failures are logged but do not interrupt the loop — checkpointing is
+        best-effort observability, not a transactional write-ahead log.
+        """
+        if not self.config.state_manager:
+            return
+
+        try:
+            from loopy.state import RunOutcome, RunRecord
+
+            state_manager = self.config.state_manager
+            state = state_manager.load()
+            state.current_task = self.config.task or None
+            state.attempts = result.step
+
+            outcome = (
+                RunOutcome.SUCCESS
+                if result.status == StepStatus.COMPLETE
+                else RunOutcome.FAILURE
+            )
+            state.add_record(
+                RunRecord(
+                    task=self.config.task or f"step_{result.step}",
+                    outcome=outcome,
+                    tokens_used=0,
+                    duration_ms=0,
+                    timestamp=datetime.now().isoformat(),
+                    metadata={
+                        "step": result.step,
+                        "plan": result.plan[:200],
+                        "action": result.action[:200],
+                        "observation": result.observation[:200],
+                    },
+                )
+            )
+
+            # Cap stored RunRecords to avoid unbounded growth (matches the
+            # DecisionTracker FIFO bound from v0.7.6).
+            if len(state.history) > 100:
+                state.history = state.history[-100:]
+
+            state_manager.save(state)
+        except Exception as e:
+            logger.warning("Checkpoint failed at step %d: %s", result.step, e)
+
     async def _run_step(self, step_num: int) -> StepResult:
         """Execute a single iteration of the loop."""
         result = StepResult(step=step_num, status=StepStatus.PLANNING)
-        
+
         try:
             # PLAN
             if self.config.planner:
                 result.plan = await self.config.planner(self.history)
                 logger.debug("Step %d plan: %s...", step_num, result.plan[:100])
-            
+
             # ACT
             result.status = StepStatus.ACTING
             if self.config.actor:
                 result.action = await self.config.actor(result.plan)
                 logger.debug("Step %d action: %s...", step_num, result.action[:100])
-            
+
             # OBSERVE
             result.status = StepStatus.OBSERVING
             if self.config.observer:
                 result.observation = await self.config.observer(result.action)
                 logger.debug("Step %d observation: %s...", step_num, result.observation[:100])
-            
+
             # REFLECT
             result.status = StepStatus.REFLECTING
             if self.config.reflector:
                 result.reflection = await self.config.reflector(self.history)
                 logger.debug("Step %d reflection: %s...", step_num, result.reflection[:100])
-            
+
             result.status = StepStatus.COMPLETE
-            
+
         except Exception as e:
             result.status = StepStatus.FAILED
             result.error = str(e)
             logger.error("Step %d failed: %s", step_num, e)
-            
+
             if self.config.stop_on_error:
                 raise
 

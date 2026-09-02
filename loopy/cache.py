@@ -6,6 +6,7 @@ Semantic token caching to reduce LLM inference costs by ~10-30%.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -178,6 +179,44 @@ class LLMCache:
             return True
         return False
 
+    async def aget(self, prompt: str, model: str, **kwargs: Any) -> str | None:
+        """v0.7.8 — Async wrapper around :meth:`get`.
+
+        Identical semantics; provided so async callers can `await` without
+        having to drop into a thread executor themselves.
+        """
+        return self.get(prompt, model, **kwargs)
+
+    async def aset(
+        self,
+        prompt: str,
+        response: str,
+        model: str,
+        tokens: int = 0,
+        **kwargs: Any,
+    ) -> None:
+        """v0.7.8 — Async wrapper around :meth:`set` with non-blocking I/O.
+
+        Mirrors the v0.7.7 ``MemoryStore`` async-save pattern: the in-memory
+        write happens synchronously (cheap), and disk persistence — when
+        ``persist_path`` is configured — runs in a worker thread via
+        ``asyncio.to_thread`` so a slow filesystem cannot stall the loop.
+        """
+        key = self._make_key(prompt, model, **kwargs)
+
+        if len(self._cache) >= self.max_size and key not in self._cache:
+            self._evict()
+
+        self._cache[key] = CacheEntry(
+            key=key,
+            response=response,
+            model=model,
+            tokens_saved=tokens,
+        )
+
+        if self.persist_path:
+            await self._asave()
+
     def clear(self) -> None:
         """Clear all cached entries."""
         self._cache.clear()
@@ -223,6 +262,32 @@ class LLMCache:
             }
 
         self.persist_path.write_text(json.dumps(data, indent=2))
+
+    async def _asave(self) -> None:
+        """v0.7.8 - Async persistence; runs the blocking write in a worker.
+
+        Snapshots the cache into a plain dict on the event-loop thread
+        (cheap), then writes the JSON file via ``asyncio.to_thread`` so a
+        slow disk never blocks other coroutines.
+        """
+        if not self.persist_path:
+            return
+
+        self.persist_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            key: {
+                "response": entry.response,
+                "model": entry.model,
+                "tokens_saved": entry.tokens_saved,
+                "created_at": entry.created_at,
+            }
+            for key, entry in self._cache.items()
+        }
+
+        def _write() -> None:
+            self.persist_path.write_text(json.dumps(payload, indent=2))
+
+        await asyncio.to_thread(_write)
 
     def _load(self) -> None:
         """Restore the in-memory cache from the persisted JSON file.

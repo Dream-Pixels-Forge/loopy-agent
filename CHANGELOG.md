@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.8] - 2026-09-02
+
+### Added
+
+- **`AgentLoop` resume + checkpoint** — `LoopConfig` gains `resume_from: int`,
+  `state_manager: StateManager`, and `task: str`. When `state_manager` is set,
+  every completed step is recorded as a `RunRecord` (FIFO-bounded at 100) so
+  crashed runs can be resumed by passing `resume_from=N` to pick up at step N+1.
+  Compatible with the existing v0.5.0 `StateManager` / `LoopState` /
+  `RunRecord` surface — no API churn for callers that don't opt in.
+- **`SkillRegistry.match_ranked()` / `match_one()`** — ranked variant of
+  `match()` returning `list[tuple[Skill, float]]` ordered by relevance
+  (desc), plus a convenience `match_one()` that returns the best match or
+  `None`. Backed by a new `Skill.score()` (multi-word triggers weight
+  higher than single-word, normalized by trigger count, clamped at 1.0).
+  `Skill.matches()` is preserved as a boolean API built on `score()`.
+- **`LLMCache.aget()` / `aset()`** — async wrappers around the sync
+  `get`/`set`. `aset()` runs disk persistence via `asyncio.to_thread` so a
+  slow filesystem cannot block the event loop (mirrors the v0.7.7
+  `MemoryStore` async-save pattern).
+- **`EvalReport` JSON I/O** — `to_dict()`, `from_dict()`, `to_json()`,
+  `from_json()`, `save(path)`, `load(path)`. Round-trips a full report
+  (including every `EvalResult` and nested `EvalCase`) so eval reports can
+  be archived, attached to PRs, and diffed across CI runs. `load()` returns
+  an empty report on missing/unreadable files (with a warning) instead of
+  raising. `EvalReport` is now exported from the top-level `loopy` package.
+
+### Changed
+
+- `EvalReport` added to public API surface (`loopy` re-export + `__all__`)
+- Test count: **484 → 508** (+24 new tests in `tests/test_v078_features.py`)
+- Coverage: 92% → ~93% (loop, skills, cache, evals paths all covered)
+
+---
+
 ## [0.7.7] - 2026-08-19
 
 ### Fixed
@@ -412,3 +447,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.7.5 | 484 | Concept count fix, README refresh, marketplace tests |
 | 0.7.6 | 484 | Compliance async fix, DecisionTracker bounds, drift detection, memory dirty flag, trace retry |
 | 0.7.7 | 484 | Memory async I/O, broadcast amplification guard |
+| 0.7.8 | 508 | Loop resume+checkpoint, ranked skill match, async cache, eval JSON I/O |

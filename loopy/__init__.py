@@ -40,6 +40,7 @@ from loopy.evals import (
     EvalGate,
     EvalGateResult,
     EvalGateType,
+    EvalReport,
     EvalResult,
     EvalSuite,
     Evaluator,
@@ -140,6 +141,7 @@ __all__ = [
     # Evals (including v0.2.0 evaluator-optimizer)
     "Evaluator",
     "EvalCase",
+    "EvalReport",
     "EvalResult",
     "EvalSuite",
     "Verdict",
