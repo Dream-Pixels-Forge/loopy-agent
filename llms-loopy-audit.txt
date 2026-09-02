@@ -1,0 +1,71 @@
+# loopy.audit
+
+## `loopy.audit.AuditReport` (class)
+
+Full audit report with score and suggestions.
+
+```python
+@dataclass
+class AuditReport:
+    """Full audit report with score and suggestions."""
+
+    score: int
+    level: ReadinessLevel
+    checks: list[CheckItem]
+    suggestions: list[str]
+
+    def summary(self) -> dict[str, Any]:
+        """Return summary dict."""
+        return {
+            "score": self.score,
+            "level": self.level.value,
+            "passed": sum(1 for c in self.checks if c.passed),
+            "failed": sum(1 for c in self.checks if not c.passed),
+            "total": len(self.checks),
+            "suggestions": self.suggestions,
+        }
+```
+
+## `loopy.audit.CheckItem` (class)
+
+A single audit check.
+
+```python
+@dataclass
+class CheckItem:
+    """A single audit check."""
+
+    name: str
+    passed: bool
+    weight: int
+    description: str
+
+    @property
+    def score(self) -> int:
+        return self.weight if self.passed else 0
+```
+
+## `loopy.audit.ReadinessLevel` (class)
+
+Loop readiness levels.
+
+```python
+class ReadinessLevel(str, Enum):
+    """Loop readiness levels."""
+
+    L0 = "L0"  # 0-29: Draft
+    L1 = "L1"  # 30-59: Report only
+    L2 = "L2"  # 60-79: Assisted fixes
+    L3 = "L3"  # 80-100: Unattended
+
+    @classmethod
+    def from_score(cls, score: int) -> ReadinessLevel:
+        """Derive readiness level from score."""
+        if score < 30:
+            return cls.L0
+        if score < 60:
+            return cls.L1
+        if score < 80:
+            return cls.L2
+        return cls.L3
+```

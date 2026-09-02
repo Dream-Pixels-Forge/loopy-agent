@@ -1,0 +1,102 @@
+site_name: loopy-agent
+site_description: >-
+  The Python agent SDK with built-in zero-cost testing, typed LLM outputs,
+  and compliance-grade PII redaction.
+site_url: https://dream-pixels-forge.github.io/loopy-agent/
+repo_url: https://github.com/Dream-Pixels-Forge/loopy-agent
+repo_name: Dream-Pixels-Forge/loopy-agent
+edit_uri: edit/master/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - meta
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Concepts: concepts.md
+  - The 21 modules:
+      - Agentic loop: modules/loop.md
+      - Gateway + structured outputs: modules/gateway.md
+      - Multi-modal + realtime: modules/multimodal.md
+      - Guardrails + safety: modules/safety.md
+      - Skills registry: modules/skills.md
+      - MCP: modules/mcp.md
+      - State + persistence: modules/state.md
+      - Audit + compliance: modules/audit.md
+      - All modules: modules/index.md
+  - Recipes: recipes/index.md
+  - Research:
+      - 2026 competitive analysis: research/competitive-analysis-2026.md
+  - API reference: api/index.md
+  - Changelog: changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Dream-Pixels-Forge/loopy-agent
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/loopy-agent/
+
+markdown_configurations:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+copyright: Copyright &copy; 2026 Dream Pixels Forge. MIT Licensed.

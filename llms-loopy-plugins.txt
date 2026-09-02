@@ -1,0 +1,460 @@
+# loopy.plugins
+
+## `loopy.plugins.Plugin` (class)
+
+Base plugin class.
+
+All plugins must inherit from this and implement `setup()`.
+
+Example:
+    class MyPlugin(Plugin):
+        @property
+        def info(self) -> PluginInfo:
+            return PluginInfo(
+                name="my-plugin",
+                version="1.0.0",
+                description="My awesome plugin",
+            )
+
+        async def setup(self, registry: PluginRegistry) -> None:
+            # Register tools, middleware, etc.
+            registry.register_tool("my_tool", my_tool_handler)
+
+```python
+class Plugin(ABC):
+    """
+    Base plugin class.
+
+    All plugins must inherit from this and implement `setup()`.
+
+    Example:
+        class MyPlugin(Plugin):
+            @property
+            def info(self) -> PluginInfo:
+                return PluginInfo(
+                    name="my-plugin",
+                    version="1.0.0",
+                    description="My awesome plugin",
+                )
+
+            async def setup(self, registry: PluginRegistry) -> None:
+                # Register tools, middleware, etc.
+                registry.register_tool("my_tool", my_tool_handler)
+    """
+
+    @property
+    @abstractmethod
+    def info(self) -> PluginInfo:
+        """Return plugin metadata."""
+        ...
+
+    @abstractmethod
+    async def setup(self, registry: PluginRegistry) -> None:
+        """Initialize the plugin."""
+        ...
+
+    async def teardown(self) -> None:  # noqa: B027
+        """Cleanup when plugin is unloaded."""
+```
+
+## `loopy.plugins.PluginInfo` (class)
+
+Metadata about a plugin.
+
+```python
+@dataclass
+class PluginInfo:
+    """Metadata about a plugin."""
+
+    name: str
+    version: str = "0.1.0"
+    description: str = ""
+    author: str = ""
+    url: str = ""
+
+    # Capabilities this plugin provides
+    capabilities: list[str] = field(default_factory=list)
+
+    # Dependencies
+    requires: list[str] = field(default_factory=list)
+```
+
+## `loopy.plugins.PluginLoader` (class)
+
+Automatic plugin discovery and loading.
+
+Example:
+    loader = PluginLoader()
+
+    # Discover plugins from entry points
+    await loader.discover()
+
+    # Or from specific locations
+    await loader.discover(
+        package="my_package.plugins",
+        directory="~/.loopy/plugins",
+    )
+
+```python
+class PluginLoader:
+    """
+    Automatic plugin discovery and loading.
+
+    Example:
+        loader = PluginLoader()
+
+        # Discover plugins from entry points
+        await loader.discover()
+
+        # Or from specific locations
+        await loader.discover(
+            package="my_package.plugins",
+            directory="~/.loopy/plugins",
+        )
+    """
+
+    def __init__(self, registry: PluginRegistry | None = None):
+        self.registry = registry or PluginRegistry()
+
+    async def discover(
+        self,
+        package: str | None = None,
+        directory: str | Path | None = None,
+    ) -> int:
+        """
+        Discover and load plugins.
+
+        Returns:
+            Number of plugins loaded
+        """
+        loaded = 0
+
+        # Load from package
+        if package:
+            try:
+                mod = importlib.import_module(package)
+                plugins_attr = getattr(mod, "__plugins__", [])
+                for plugin_cls in plugins_attr:
+                    if isinstance(plugin_cls, type) and issubclass(plugin_cls, Plugin):
+                        await self.registry.load(plugin_cls())
+                        loaded += 1
+            except ImportError as e:
+                logger.warning("Could not import %s: %s", package, e)
+
+        # Load from directory
+        if directory:
+            loaded += await self.registry.load_directory(directory)
+
+        return loaded
+```
+
+## `loopy.plugins.PluginRegistry` (class)
+
+Central registry for plugins and their components.
+
+Example:
+    registry = PluginRegistry()
+
+    # Load plugins
+    await registry.load(MyPlugin())
+    await registry.load_package("loopy.plugins.anthropic")
+
+    # Use registered components
+    tool = registry.get_tool("my_tool")
+    middleware = registry.get_middleware("cache")
+
+```python
+class PluginRegistry:
+    """
+    Central registry for plugins and their components.
+
+    Example:
+        registry = PluginRegistry()
+
+        # Load plugins
+        await registry.load(MyPlugin())
+        await registry.load_package("loopy.plugins.anthropic")
+
+        # Use registered components
+        tool = registry.get_tool("my_tool")
+        middleware = registry.get_middleware("cache")
+    """
+
+    def __init__(self):
+        self._plugins: dict[str, Plugin] = {}
+        self._tools: dict[str, Callable] = {}
+        self._tool_specs: dict[str, dict[str, Any]] = {}
+        self._middleware: dict[str, Any] = {}
+        self._providers: dict[str, Any] = {}
+        self._extensions: dict[str, list[Callable]] = {}
+        self._denials: deque = deque(maxlen=DENIAL_LOG_MAX)
+
+    async def load(self, plugin: Plugin) -> None:
+        """Load a plugin instance."""
+        info = plugin.info
+
+        if info.name in self._plugins:
+            logger.warning("Plugin %s already loaded, skipping", info.name)
+            return
+
+        # Check dependencies
+        for dep in info.requires:
+            if dep not in self._plugins:
+                raise RuntimeError(f"Plugin {info.name} requires {dep}, which is not loaded")
+
+        # Load the plugin
+        await plugin.setup(self)
+        self._plugins[info.name] = plugin
+
+        logger.info("Loaded plugin: %s v%s", info.name, info.version)
+
+    async def load_package(self, module_path: str) -> None:
+        """
+        Load a plugin from a Python module path.
+
+        The module must have a `plugin` attribute that is a Plugin instance.
+
+        Example:
+            await registry.load_package("my_package.my_plugin")
+        """
+        try:
+            module = importlib.import_module(module_path)
+            plugin_instance = getattr(module, "plugin", None)
+
+            if plugin_instance is None:
+                raise ValueError(f"No 'plugin' attribute in {module_path}")
+
+            if not isinstance(plugin_instance, Plugin):
+                raise TypeError(f"'plugin' in {module_path} is not a Plugin instance")
+
+            await self.load(plugin_instance)
+
+        except ImportError as e:
+            logger.error("Failed to import %s: %s", module_path, e)
+            raise
+
+    async def load_directory(self, directory: str | Path) -> int:
+        """
+        Load all plugins from a directory.
+
+        Looks for Python files with a `plugin` attribute.
+
+        Returns:
+            Number of plugins loaded
+        """
+        directory = Path(directory)
+        loaded = 0
+
+        if not directory.exists():
+            logger.warning("Plugin directory not found: %s", directory)
+            return 0
+
+        for py_file in directory.glob("*.py"):
+            if py_file.name.startswith("_"):
+                continue
+
+            module_name = py_file.stem
+            try:
+                spec = importlib.util.spec_from_file_location(
+                    f"loopy_plugins.{module_name}",
+                    py_file,
+                )
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+
+                    plugin_instance = getattr(module, "plugin", None)
+                    if plugin_instance and isinstance(plugin_instance, Plugin):
+                        await self.load(plugin_instance)
+                        loaded += 1
+            except Exception as e:
+                logger.error("Failed to load plugin from %s: %s", py_file, e)
+
+        return loaded
+
+    def register_tool(
+        self,
+        name: str,
+        handler: Callable,
+        *,
+        agent_visible: bool = True,
+        requires_approval: bool = False,
+        scope: str = "side_effecting",
+        allowed_values: dict[str, set[str]] | None = None,
+    ) -> None:
+        """Register a tool handler.
+
+        Args:
+            name: The tool name.
+            handler: The callable to invoke.
+            agent_visible: If False, the tool is hidden from :meth:`list_tools`
+                and is intended for operator callers only (the model cannot
+                discover it). Defaults True.
+            requires_approval: If True, :meth:`execute_tool` demands a human
+                approver before running (deny-by-default otherwise).
+            scope: ``"read_only"`` or ``"side_effecting"``.
+            allowed_values: Per-parameter allow-lists (enum constraints)
+                enforced by :meth:`execute_tool`.
+        """
+        self._tools[name] = handler
+        self._tool_specs[name] = {
+            "agent_visible": agent_visible,
+            "requires_approval": requires_approval,
+            "scope": scope,
+            "allowed_values": allowed_values or {},
+        }
+        logger.debug("Registered tool: %s (visible=%s, scope=%s)", name, agent_visible, scope)
+
+    def get_tool(self, name: str) -> Callable | None:
+        """Get a registered tool handler."""
+        return self._tools.get(name)
+
+    def get_tool_spec(self, name: str) -> dict[str, Any] | None:
+        """Get a registered tool's capability spec (security metadata)."""
+        return self._tool_specs.get(name)
+
+    def list_tools(self) -> list[str]:
+        """List agent-visible tool names (hidden/operator tools excluded)."""
+        return [name for name, spec in self._tool_specs.items() if spec["agent_visible"]]
+
+    def list_all_tools(self) -> list[str]:
+        """List every registered tool name, visible or not."""
+        return list(self._tools.keys())
+
+    def denials(self) -> list[dict[str, Any]]:
+        """Audit trail of denied/blocked tool executions.
+
+        Bounded to ``DENIAL_LOG_MAX`` entries (oldest dropped first);
+        secret-looking argument values are redacted.
+        """
+        return list(self._denials)
+
+    async def execute_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        approver: Callable[[str, dict[str, Any]], Awaitable[bool]] | None = None,
+    ) -> Any:
+        """Execute a registered tool with capability-gate enforcement.
+
+        Enforces tool existence, per-parameter allow-lists, and the
+        human-in-the-loop approval gate (a ``requires_approval`` tool is
+        denied unless an *approver* approves). Denials are recorded.
+
+        Args:
+            name: The tool to execute.
+            arguments: Keyword arguments for the handler.
+            approver: Optional async callback ``(name, arguments) -> bool``.
+
+        Returns:
+            The handler's return value.
+
+        Raises:
+            PermissionError: If the call requires approval and none is given.
+            ValueError: If an argument falls outside its allow-list.
+        """
+        handler = self._tools.get(name)
+        if handler is None:
+            self._denials.append({"tool": name, "reason": "not_found"})
+            raise ValueError(f"Tool not found: {name}")
+
+        spec = self._tool_specs.get(name, {})
+        arguments = arguments or {}
+
+        if spec.get("requires_approval"):
+            if approver is None:
+                self._denials.append(
+                    {
+                        "tool": name,
+                        "reason": "approval_required_no_approver",
+                        "arguments": redact_arguments(arguments),
+                    }
+                )
+                raise PermissionError(
+                    f"Tool '{name}' requires approval and no approver is configured"
+                )
+            approved = await approver(name, arguments)
+            if not approved:
+                self._denials.append(
+                    {
+                        "tool": name,
+                        "reason": "approval_denied",
+                        "arguments": redact_arguments(arguments),
+                    }
+                )
+                raise PermissionError(f"Tool '{name}' was not approved")
+
+        allowed = spec.get("allowed_values") or {}
+        for param, values in allowed.items():
+            value = arguments.get(param)
+            if value is not None and value not in values:
+                self._denials.append({"tool": name, "reason": f"parameter '{param}' out of range"})
+                raise ValueError(f"Parameter '{param}' outside allowed values")
+
+        return await handler(**arguments)
+
+    def register_middleware(self, name: str, middleware: Any) -> None:
+        """Register middleware."""
+        self._middleware[name] = middleware
+        logger.debug("Registered middleware: %s", name)
+
+    def get_middleware(self, name: str) -> Any:
+        """Get registered middleware."""
+        return self._middleware.get(name)
+
+    def register_provider(self, name: str, provider: Any) -> None:
+        """Register an LLM provider."""
+        self._providers[name] = provider
+        logger.debug("Registered provider: %s", name)
+
+    def get_provider(self, name: str) -> Any:
+        """Get a registered provider."""
+        return self._providers.get(name)
+
+    def register_extension(self, hook_name: str, callback: Callable) -> None:
+        """Register an extension hook."""
+        if hook_name not in self._extensions:
+            self._extensions[hook_name] = []
+        self._extensions[hook_name].append(callback)
+        logger.debug("Registered extension for hook: %s", hook_name)
+
+    async def trigger_extension(self, hook_name: str, *args: Any, **kwargs: Any) -> list[Any]:
+        """Trigger all callbacks for a hook."""
+        results = []
+        for callback in self._extensions.get(hook_name, []):
+            try:
+                if callable(callback):
+                    result = await callback(*args, **kwargs)
+                else:
+                    result = callback(*args, **kwargs)
+                results.append(result)
+            except Exception as e:
+                logger.error("Extension hook %s failed: %s", hook_name, e)
+        return results
+
+    def get_plugin(self, name: str) -> Plugin | None:
+        """Get a loaded plugin."""
+        return self._plugins.get(name)
+
+    def list_plugins(self) -> list[PluginInfo]:
+        """List all loaded plugins."""
+        return [p.info for p in self._plugins.values()]
+
+    async def unload(self, name: str) -> bool:
+        """Unload a plugin."""
+        if name not in self._plugins:
+            return False
+
+        plugin = self._plugins[name]
+        await plugin.teardown()
+        del self._plugins[name]
+
+        logger.info("Unloaded plugin: %s", name)
+        return True
+
+    async def unload_all(self) -> None:
+        """Unload all plugins."""
+        for name in list(self._plugins.keys()):
+            await self.unload(name)
+```

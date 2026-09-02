@@ -1,0 +1,9 @@
+# loopy.verification
+
+## Verifier
+
+> Not exported by `loopy.verification`.
+
+## AssertionResult
+
+> Not exported by `loopy.verification`.

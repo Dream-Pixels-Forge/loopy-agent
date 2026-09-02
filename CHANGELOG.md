@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.10] - 2026-09-02
+
+### Added
+
+- **A2A Skill interop** — `Skill.to_a2a_card()` / `Skill.from_a2a_card()`
+  serialize to / from the A2A Skill primitive shape. `SkillRegistry.to_a2a_skills()`
+  exports every skill as A2A primitives, suitable for embedding in an
+  Agent Card served at `/.well-known/agent-card.json` (A2A v1.0 spec).
+  Names slugify to ids, modality metadata round-trips, and JSON serialization
+  is verified by tests. Positions loopy as the **interoperability hub**
+  between MCP and A2A.
+
+- **`RealtimeSession` for voice-first agents** — new async iterator in
+  `loopy.multimodal.RealtimeSession` wrapping any `RealtimeTransport`
+  implementation (Protocol class). Yields normalized `RealtimeEvent`
+  objects (SESSION_CREATED / TRANSCRIPT_DELTA / AUDIO_DELTA / TOOL_CALL /
+  ERROR / CLOSED). The WebSocket transport itself is pluggable; loopy
+  ships no hard `web` dep, users wire in their preferred client.
+  Background pump runs as a task; `contextlib.suppress` ensures graceful
+  shutdown. New optional extra: `pip install loopy-agent[voice]`
+  (installs `websockets>=12.0`).
+
+- **Docs site (`docs/`)** — mkdocs-material configuration at
+  `docs/mkdocs.yml`. Pages: `index.md`, `getting-started.md`,
+  `concepts.md`, `modules/{loop,gateway,multimodal,skills,safety,mcp,state,audit}.md`,
+  `recipes/index.md`, `api/index.md`, `research/competitive-analysis-2026.md`.
+
+- **`llms-full.txt` + per-module dumps** — `scripts/generate_llms_txt.py`
+  emits the public API surface as plain text that AI coding assistants
+  (Cursor, Claude Code, Continue, Aider, Cody, etc.) can ingest. 22 per-module
+  files (`llms-loopy-loop.txt` ... `llms-loopy-patterns.txt`) for finer
+  context. Generated automatically; CI-friendly.
+
+- **`AGENTS.md`** — context document for Cursor / Cline / Continue /
+  Aider / Windsurf, including coding conventions, test patterns, and
+  release process.
+
+- **`skills/loopy-router.md`** — routing skill for Claude Code / Copilot /
+  Codex / Windsurf / Gemini CLI that maps user requests to the right
+  loopy module.
+
+- **Strategic research doc** — `docs/research/competitive-analysis-2026.md`
+  captures the deep analysis of Pydantic AI, LangGraph, LlamaIndex,
+  CrewAI, OpenAI Agents SDK, AutoGen, Atomic Agents, plus Temporal,
+  Langfuse, MCP, and A2A. Includes a 3-tier roadmap for v0.8.0 /
+  v0.9.0 / v1.0.0 with implementation anchors.
+
+### Changed
+
+- `pyproject.toml` adds new optional `voice` extra
+- Test count: **547 → 581** (+34 new tests in `tests/test_v0710_features.py`)
+- Coverage: **92%** (loopy/multimodal.py 94%, loopy/skills.py 86%)
+- Top-level exports: `RealtimeSession`, `RealtimeEvent`,
+  `RealtimeEventType`, `RealtimeTransport`
+
+---
+
 ## [0.7.9] - 2026-09-02
 
 ### Added
@@ -497,3 +554,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.7.7 | 484 | Memory async I/O, broadcast amplification guard *(also includes 0.7.6)* |
 | 0.7.8 | 508 | Loop resume+checkpoint, ranked skill match, async cache, eval JSON I/O |
 | 0.7.9 | 547 | TestModel (zero-network LLM), StructuredOutput, Redactor (PII/secret scrubber) |
+| 0.7.10 | 581 | A2A Skill interop, RealtimeSession (voice), docs site + llms-full.txt + AGENTS.md + skills/ |

@@ -1,30 +1,10 @@
-"""
-Skills — Persistent Agent Knowledge.
+# loopy.skills
 
-Load and manage SKILL.md files for agent knowledge.
-Inspired by loop-engineering's skills system.
-"""
+## `loopy.skills.Skill` (class)
 
-from __future__ import annotations
+Persistent agent knowledge.
 
-import logging
-import re
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
-
-logger = logging.getLogger("loopy.skills")
-
-
-def _extract_triggers(section_content: list[str]) -> list[str]:
-    """Extract triggers from section content lines."""
-    return [
-        line.strip().lstrip("- ").strip()
-        for line in section_content
-        if line.strip().startswith("-")
-    ]
-
-
+```python
 @dataclass
 class Skill:
     """Persistent agent knowledge."""
@@ -230,8 +210,18 @@ class Skill:
             triggers=triggers,
             metadata=metadata,
         )
+```
 
+## `loopy.skills.SkillRegistry` (class)
 
+Load and manage skills.
+
+Example:
+    registry = SkillRegistry()
+    registry.load_directory("./skills")
+    matched = registry.match("Fix CI workflow")
+
+```python
 class SkillRegistry:
     """
     Load and manage skills.
@@ -331,3 +321,4 @@ class SkillRegistry:
                 logger.error("Failed to load skill from %s: %s", md_file, e)
 
         return loaded
+```

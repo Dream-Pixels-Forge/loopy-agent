@@ -1,43 +1,121 @@
-"""
-Multi-modal — Image, audio, video support for agent loops.
+# loopy.multimodal
 
-Critical gap: 2026 agents must see, hear, and speak.
-"""
+## `loopy.multimodal.MultiModalMessage` (class)
 
-from __future__ import annotations
+A message with text and media content.
 
-import asyncio
-import base64
-import contextlib
-import logging
-from dataclasses import dataclass, field
-from enum import Enum
-from pathlib import Path
-from typing import Any, Protocol
+```python
+@dataclass
+class MultiModalMessage:
+    """A message with text and media content."""
 
-from loopy.netutil import validate_outbound_url
+    text: str
+    media: list[MediaContent] = field(default_factory=list)
 
-logger = logging.getLogger("loopy.multimodal")
+    @property
+    def has_media(self) -> bool:
+        return len(self.media) > 0
 
+    @property
+    def images(self) -> list[MediaContent]:
+        return [m for m in self.media if m.type == MediaType.IMAGE]
 
-class MediaType(str, Enum):
-    """Supported media types."""
+    @property
+    def audio(self) -> list[MediaContent]:
+        return [m for m in self.media if m.type == MediaType.AUDIO]
 
-    IMAGE = "image"
-    AUDIO = "audio"
-    VIDEO = "video"
-    DOCUMENT = "document"
+    def to_openai(self) -> list[dict[str, Any]]:
+        """Convert to OpenAI multi-modal format."""
+        content: list[dict[str, Any]] = []
 
+        # Add images first
+        for media in self.media:
+            if media.type == MediaType.IMAGE:
+                content.append(media.to_openai())
 
-class ImageFormat(str, Enum):
-    """Image formats."""
+        # Add text
+        if self.text:
+            content.append({"type": "text", "text": self.text})
 
-    PNG = "png"
-    JPEG = "jpeg"
-    WEBP = "webp"
-    GIF = "gif"
+        return content
 
+    def to_anthropic(self) -> list[dict[str, Any]]:
+        """Convert to Anthropic multi-modal format."""
+        content: list[dict[str, Any]] = []
 
+        for media in self.media:
+            content.append(media.to_anthropic())
+
+        if self.text:
+            content.append({"type": "text", "text": self.text})
+
+        return content
+```
+
+## `loopy.multimodal.MultiModalBuilder` (class)
+
+Build multi-modal messages easily.
+
+Example:
+    msg = (MultiModalBuilder()
+        .text("What's in this image?")
+        .image("photo.jpg")
+        .image("https://example.com/chart.png")
+        .build())
+
+```python
+class MultiModalBuilder:
+    """
+    Build multi-modal messages easily.
+
+    Example:
+        msg = (MultiModalBuilder()
+            .text("What's in this image?")
+            .image("photo.jpg")
+            .image("https://example.com/chart.png")
+            .build())
+    """
+
+    def __init__(self):
+        self._text = ""
+        self._media: list[MediaContent] = []
+
+    def text(self, content: str) -> MultiModalBuilder:
+        """Add text content."""
+        self._text = content
+        return self
+
+    def image(self, source: str) -> MultiModalBuilder:
+        """Add image from file or URL."""
+        if source.startswith(("http://", "https://")):
+            self._media.append(MediaContent.from_url(source, MediaType.IMAGE))
+        else:
+            self._media.append(MediaContent.from_file(source))
+        return self
+
+    def audio(self, source: str) -> MultiModalBuilder:
+        """Add audio from file or URL."""
+        if source.startswith(("http://", "https://")):
+            self._media.append(MediaContent.from_url(source, MediaType.AUDIO))
+        else:
+            self._media.append(MediaContent.from_file(source))
+        return self
+
+    def file(self, path: str) -> MultiModalBuilder:
+        """Add any file as media."""
+        self._media.append(MediaContent.from_file(path))
+        return self
+
+    def build(self) -> MultiModalMessage:
+        """Build the multi-modal message."""
+        return MultiModalMessage(text=self._text, media=self._media)
+```
+
+## `loopy.multimodal.MediaContent` (class)
+
+A piece of media content.
+
+```python
 @dataclass
 class MediaContent:
     """A piece of media content."""
@@ -136,166 +214,67 @@ class MediaContent:
             "type": "image",
             "source": {"type": "base64", "media_type": self.mime_type, "data": self.data},
         }
+```
 
+## `loopy.multimodal.MediaType` (class)
 
-@dataclass
-class MultiModalMessage:
-    """A message with text and media content."""
+Supported media types.
 
-    text: str
-    media: list[MediaContent] = field(default_factory=list)
+```python
+class MediaType(str, Enum):
+    """Supported media types."""
 
-    @property
-    def has_media(self) -> bool:
-        return len(self.media) > 0
+    IMAGE = "image"
+    AUDIO = "audio"
+    VIDEO = "video"
+    DOCUMENT = "document"
+```
 
-    @property
-    def images(self) -> list[MediaContent]:
-        return [m for m in self.media if m.type == MediaType.IMAGE]
+## `loopy.multimodal.ImageFormat` (class)
 
-    @property
-    def audio(self) -> list[MediaContent]:
-        return [m for m in self.media if m.type == MediaType.AUDIO]
+Image formats.
 
-    def to_openai(self) -> list[dict[str, Any]]:
-        """Convert to OpenAI multi-modal format."""
-        content: list[dict[str, Any]] = []
+```python
+class ImageFormat(str, Enum):
+    """Image formats."""
 
-        # Add images first
-        for media in self.media:
-            if media.type == MediaType.IMAGE:
-                content.append(media.to_openai())
+    PNG = "png"
+    JPEG = "jpeg"
+    WEBP = "webp"
+    GIF = "gif"
+```
 
-        # Add text
-        if self.text:
-            content.append({"type": "text", "text": self.text})
+## `loopy.multimodal.RealtimeSession` (class)
 
-        return content
+v0.7.10 - Async iterator over realtime events from a transport.
 
-    def to_anthropic(self) -> list[dict[str, Any]]:
-        """Convert to Anthropic multi-modal format."""
-        content: list[dict[str, Any]] = []
+Lightweight adapter that consumes raw WebSocket frames from any
+:class:`RealtimeTransport` and yields normalized
+:class:`RealtimeEvent` instances. Useful for voice-first agent
+loops, transcription-only bots, and OpenAI Realtime clients.
 
-        for media in self.media:
-            content.append(media.to_anthropic())
+Example `` `` ``
+    from loopy.multimodal import RealtimeSession, RealtimeTransport
 
-        if self.text:
-            content.append({"type": "text", "text": self.text})
+    class MyOpenAITransport:
+        async def send(self, payload): ...
+        async def recv(self): ...
+        async def close(self): ...
 
-        return content
+    async with RealtimeSession(MyOpenAITransport()) as session:
+        await session.send({"type": "session.update", "session": {...}})
+        async for event in session:
+            if event.type == RealtimeEventType.TRANSCRIPT_DELTA:
+                print(event.transcript, end="", flush=True)
+```
 
+The ``websockets`` library itself is NOT a dependency - users wire
+in their preferred WebSocket client via the ``transport=`` argument.
+This keeps the loopy-agent core dependency surface at just
+``httpx`` + ``pydantic`` while leaving the door open for voice /
+realtime use cases.
 
-class MultiModalBuilder:
-    """
-    Build multi-modal messages easily.
-
-    Example:
-        msg = (MultiModalBuilder()
-            .text("What's in this image?")
-            .image("photo.jpg")
-            .image("https://example.com/chart.png")
-            .build())
-    """
-
-    def __init__(self):
-        self._text = ""
-        self._media: list[MediaContent] = []
-
-    def text(self, content: str) -> MultiModalBuilder:
-        """Add text content."""
-        self._text = content
-        return self
-
-    def image(self, source: str) -> MultiModalBuilder:
-        """Add image from file or URL."""
-        if source.startswith(("http://", "https://")):
-            self._media.append(MediaContent.from_url(source, MediaType.IMAGE))
-        else:
-            self._media.append(MediaContent.from_file(source))
-        return self
-
-    def audio(self, source: str) -> MultiModalBuilder:
-        """Add audio from file or URL."""
-        if source.startswith(("http://", "https://")):
-            self._media.append(MediaContent.from_url(source, MediaType.AUDIO))
-        else:
-            self._media.append(MediaContent.from_file(source))
-        return self
-
-    def file(self, path: str) -> MultiModalBuilder:
-        """Add any file as media."""
-        self._media.append(MediaContent.from_file(path))
-        return self
-
-    def build(self) -> MultiModalMessage:
-        """Build the multi-modal message."""
-        return MultiModalMessage(text=self._text, media=self._media)
-
-
-# ---------------------------------------------------------------------------
-# v0.7.10 - RealtimeSession (lazy websockets extra)
-# ---------------------------------------------------------------------------
-
-
-class RealtimeEventType(str, Enum):
-    """v0.7.10 - Subset of OpenAI Realtime event types we support natively."""
-
-    SESSION_CREATED = "session.created"
-    TRANSCRIPT_DELTA = "transcript.delta"
-    TRANSCRIPT_DONE = "transcript.done"
-    AUDIO_DELTA = "audio.delta"
-    TOOL_CALL = "tool.call"
-    ERROR = "error"
-    CLOSED = "closed"
-
-
-@dataclass
-class RealtimeEvent:
-    """v0.7.10 - Normalized realtime event surfaced to the agent loop."""
-
-    type: RealtimeEventType
-    data: dict[str, Any] = field(default_factory=dict)
-    timestamp: float = field(default_factory=lambda: __import__("time").time())
-
-    @property
-    def transcript(self) -> str:
-        """Concatenated transcript text (from ``transcript.delta`` events)."""
-        return str(self.data.get("transcript", ""))
-
-    @property
-    def audio_bytes(self) -> bytes:
-        """Raw audio payload (from ``audio.delta`` events)."""
-        return self.data.get("audio", b"")
-
-
-class RealtimeTransport(Protocol):
-    """v0.7.10 - Pluggable WebSocket transport for ``RealtimeSession``.
-
-    Any object exposing ``async send(payload)``, ``async recv()``, and
-    ``async close()`` can drive a ``RealtimeSession``. Loopy ships no
-    concrete WebSocket implementation - users wire in their preferred
-    client (``websockets``, ``openai-agents`` realtime client, etc.).
-    """
-
-    async def send(self, payload: dict[str, Any]) -> None: ...
-
-    async def recv(self) -> dict[str, Any] | None: ...
-
-    async def close(self) -> None: ...
-
-
-def _build_event(payload: dict[str, Any]) -> RealtimeEvent:
-    """Translate a raw transport payload into a normalized ``RealtimeEvent``."""
-    raw_type = payload.get("type", "unknown")
-    try:
-        etype = RealtimeEventType(raw_type)
-    except ValueError:
-        # Unknown event types become ``ERROR`` placeholders so consumers
-        # can still observe them without crashing.
-        etype = RealtimeEventType.ERROR
-    return RealtimeEvent(type=etype, data=payload)
-
-
+```python
 class RealtimeSession:
     """v0.7.10 - Async iterator over realtime events from a transport.
 
@@ -402,3 +381,71 @@ class RealtimeSession:
                     break
         except asyncio.CancelledError:
             pass
+```
+
+## `loopy.multimodal.RealtimeEvent` (class)
+
+v0.7.10 - Normalized realtime event surfaced to the agent loop.
+
+```python
+@dataclass
+class RealtimeEvent:
+    """v0.7.10 - Normalized realtime event surfaced to the agent loop."""
+
+    type: RealtimeEventType
+    data: dict[str, Any] = field(default_factory=dict)
+    timestamp: float = field(default_factory=lambda: __import__("time").time())
+
+    @property
+    def transcript(self) -> str:
+        """Concatenated transcript text (from ``transcript.delta`` events)."""
+        return str(self.data.get("transcript", ""))
+
+    @property
+    def audio_bytes(self) -> bytes:
+        """Raw audio payload (from ``audio.delta`` events)."""
+        return self.data.get("audio", b"")
+```
+
+## `loopy.multimodal.RealtimeEventType` (class)
+
+v0.7.10 - Subset of OpenAI Realtime event types we support natively.
+
+```python
+class RealtimeEventType(str, Enum):
+    """v0.7.10 - Subset of OpenAI Realtime event types we support natively."""
+
+    SESSION_CREATED = "session.created"
+    TRANSCRIPT_DELTA = "transcript.delta"
+    TRANSCRIPT_DONE = "transcript.done"
+    AUDIO_DELTA = "audio.delta"
+    TOOL_CALL = "tool.call"
+    ERROR = "error"
+    CLOSED = "closed"
+```
+
+## `loopy.multimodal.RealtimeTransport` (class)
+
+v0.7.10 - Pluggable WebSocket transport for ``RealtimeSession``.
+
+Any object exposing ``async send(payload)``, ``async recv()``, and
+``async close()`` can drive a ``RealtimeSession``. Loopy ships no
+concrete WebSocket implementation - users wire in their preferred
+client (``websockets``, ``openai-agents`` realtime client, etc.).
+
+```python
+class RealtimeTransport(Protocol):
+    """v0.7.10 - Pluggable WebSocket transport for ``RealtimeSession``.
+
+    Any object exposing ``async send(payload)``, ``async recv()``, and
+    ``async close()`` can drive a ``RealtimeSession``. Loopy ships no
+    concrete WebSocket implementation - users wire in their preferred
+    client (``websockets``, ``openai-agents`` realtime client, etc.).
+    """
+
+    async def send(self, payload: dict[str, Any]) -> None: ...
+
+    async def recv(self) -> dict[str, Any] | None: ...
+
+    async def close(self) -> None: ...
+```

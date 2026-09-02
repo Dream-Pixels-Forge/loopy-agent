@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "loopy-agent"
-version = "0.7.9"
+version = "0.7.10"
 description = "loopy-agent: 21 Essential AI Concepts in one toolkit — agentic loops, gateway, guardrails, evals, caching, observability, MCP, multi-agent, middleware, plugins, state, safety, cost, drift, skills, verification, audit, streaming, multi-modal, compliance, and explainability."
 readme = "README.md"
 license = "MIT"
@@ -44,11 +44,16 @@ gateway = ["tenacity>=8.0.0"]
 cache = ["diskcache>=5.0.0"]
 guardrails = ["regex>=2023.0.0"]
 observe = ["rich>=13.0.0"]
+# v0.7.10 — voice/realtime transport. ``RealtimeSession`` is in core
+# but the WebSocket transport itself is pluggable; this extra provides
+# the most common concrete implementation.
+voice = ["websockets>=12.0"]
 all = [
     "tenacity>=8.0.0",
     "diskcache>=5.0.0",
     "regex>=2023.0.0",
     "rich>=13.0.0",
+    "websockets>=12.0",
 ]
 dev = [
     "pytest>=7.0.0",

@@ -1,0 +1,103 @@
+# loopy.streaming
+
+## `loopy.streaming.StreamBuffer` (class)
+
+Buffer for accumulating stream tokens.
+
+Accumulates tokens and periodically flushes them into
+larger chunks when *flush_threshold* is reached.
+
+Args:
+    flush_threshold: Number of tokens before auto-flush.
+
+```python
+class StreamBuffer:
+    """Buffer for accumulating stream tokens.
+
+    Accumulates tokens and periodically flushes them into
+    larger chunks when *flush_threshold* is reached.
+
+    Args:
+        flush_threshold: Number of tokens before auto-flush.
+    """
+
+    def __init__(self, flush_threshold: int = 10):
+        self.tokens: list[str] = []
+        self.flush_threshold = flush_threshold
+        self.total_tokens = 0
+
+    def add(self, token: str) -> str | None:
+        """Append a token; returns flushed content if threshold met.
+
+        Args:
+            token: A single token string.
+
+        Returns:
+            Flushed content if threshold reached, else *None*.
+        """
+        self.tokens.append(token)
+        self.total_tokens += 1
+
+        if len(self.tokens) >= self.flush_threshold:
+            return self.flush()
+        return None
+
+    def flush(self) -> str:
+        """Flush all buffered tokens into a single string.
+
+        Returns:
+            The concatenated buffered content.
+        """
+        content = "".join(self.tokens)
+        self.tokens.clear()
+        return content
+
+    @property
+    def pending(self) -> str:
+        """The currently buffered (not yet flushed) content."""
+        return "".join(self.tokens)
+```
+
+## `loopy.streaming.StreamEvent` (class)
+
+Types of stream events.
+
+```python
+class StreamEvent(str, Enum):
+    """Types of stream events."""
+
+    TOKEN = "token"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"
+    THINKING = "thinking"
+    ERROR = "error"
+    DONE = "done"
+```
+
+## `loopy.streaming.StreamChunk` (class)
+
+A single chunk in a stream.
+
+```python
+@dataclass
+class StreamChunk:
+    """A single chunk in a stream."""
+
+    event: StreamEvent
+    data: Any
+    index: int = 0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "event": self.event.value,
+            "data": self.data,
+            "index": self.index,
+            "metadata": self.metadata,
+        }
+
+    def to_sse(self) -> str:
+        """Format as Server-Sent Event."""
+        payload = json.dumps(self.to_dict())
+        return f"event: {self.event.value}\ndata: {payload}\n\n"
+```

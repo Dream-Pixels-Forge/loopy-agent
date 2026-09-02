@@ -125,7 +125,16 @@ from loopy.compliance import (
 from loopy.cost import BudgetExceeded, CostReport, CostTracker
 from loopy.drift import DriftDetector, DriftIssue, DriftReport
 from loopy.explainability import DecisionStep, DecisionTrace, DecisionTracker, DecisionType
-from loopy.multimodal import MediaContent, MediaType, MultiModalBuilder, MultiModalMessage
+from loopy.multimodal import (
+    MediaContent,
+    MediaType,
+    MultiModalBuilder,
+    MultiModalMessage,
+    RealtimeEvent,
+    RealtimeEventType,
+    RealtimeSession,
+    RealtimeTransport,
+)
 from loopy.observe import TraceExporter
 from loopy.patterns import LoopPattern, PatternCadence, PatternRegistry, RiskLevel
 from loopy.safety import EscalationReason, SafetyCheck, SafetyGate, SafetyResult
@@ -292,6 +301,10 @@ __all__ = [
     "MediaContent",
     "MultiModalMessage",
     "MultiModalBuilder",
+    "RealtimeEvent",  # # v0.7.10
+    "RealtimeEventType",  # # v0.7.10
+    "RealtimeSession",  # # v0.7.10
+    "RealtimeTransport",  # # v0.7.10
     # Streaming
     "StreamEvent",
     "StreamChunk",

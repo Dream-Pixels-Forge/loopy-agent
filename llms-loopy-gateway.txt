@@ -1,0 +1,831 @@
+# loopy.gateway
+
+## `loopy.gateway.Gateway` (class)
+
+AI Gateway for routing LLM requests across providers.
+
+Supports both standalone and async context manager usage.
+
+Example (async context manager):
+    async with Gateway() as gateway:
+        gateway.add_provider("openai", ProviderConfig(...))
+        response = await gateway.chat("What is 2+2?")
+
+Example (standalone):
+    gateway = Gateway()
+    gateway.add_provider("openai", ProviderConfig(...))
+    response = await gateway.chat("What is 2+2?", provider="openai")
+    await gateway.close()
+
+```python
+class Gateway:
+    """
+    AI Gateway for routing LLM requests across providers.
+
+    Supports both standalone and async context manager usage.
+
+    Example (async context manager):
+        async with Gateway() as gateway:
+            gateway.add_provider("openai", ProviderConfig(...))
+            response = await gateway.chat("What is 2+2?")
+
+    Example (standalone):
+        gateway = Gateway()
+        gateway.add_provider("openai", ProviderConfig(...))
+        response = await gateway.chat("What is 2+2?", provider="openai")
+        await gateway.close()
+    """
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.close()
+        return False
+
+    def __init__(self):
+        self.providers: dict[str, ProviderConfig] = {}
+        self._pool: ConnectionPool = ConnectionPool()
+        self._logs: list[dict[str, Any]] = []
+
+    def add_provider(self, name: str, config: ProviderConfig) -> None:
+        """Register a provider."""
+        self.providers[name] = config
+        logger.info("Added provider: %s (%s)", name, config.provider.value)
+
+    def _resolve_provider(self, provider: str | None = None) -> tuple[str, ProviderConfig]:
+        """Resolve a provider name to a (name, config) pair.
+
+        Args:
+            provider: Preferred provider name, or *None* for the first
+                      available provider.
+
+        Returns:
+            A tuple of (provider_name, ProviderConfig).
+
+        Raises:
+            ValueError: If no providers are configured.
+        """
+        if provider and provider in self.providers:
+            return provider, self.providers[provider]
+        if self.providers:
+            name, config = next(iter(self.providers.items()))
+            return name, config
+        raise ValueError("No providers configured. Call add_provider() first.")
+
+    # Dispatch table for provider-specific API calls
+    _PROVIDER_HANDLERS: dict[ModelProvider, str] = {
+        ModelProvider.OPENAI: "_call_openai",
+        ModelProvider.ANTHROPIC: "_call_anthropic",
+        ModelProvider.OLLAMA: "_call_ollama",
+    }
+
+    async def chat(
+        self,
+        message: str,
+        provider: str | None = None,
+        system: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        *,
+        model: TestModel | str | None = None,
+        response_format: type[BaseModel] | None = None,
+        **kwargs,
+    ) -> GatewayResponse:
+        """
+        Send a chat completion request through the gateway.
+
+        Routes to the specified provider, or the first available if
+        *provider* is *None*.
+
+        Args:
+            message: The user message.
+            provider: Provider name to route to.
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+            model: v0.7.9 - When set to a : ``TestModel`` (or the
+                sentinel string ``"test"``), the request is satisfied
+                locally without any HTTP/SDK call. Useful for unit
+                tests and CI.
+            response_format: v0.7.9 - When set to a Pydantic
+                ``BaseModel`` subclass, the gateway validates the
+                reply against that schema and returns the instance in
+                ``GatewayResponse.structured``.
+            **kwargs: Additional arguments (ignored).
+
+        Returns:
+            A GatewayResponse with the model reply. When
+            ``response_format`` is provided, ``structured`` holds the
+            validated Pydantic instance (or ``None`` if validation
+            failed).
+
+        Raises:
+            ValueError: If no providers are configured and no test
+                model is supplied.
+            RuntimeError: If the provider's rate limit is exceeded.
+        """
+        # v0.7.9 - Test model routing: short-circuit to local handler.
+        test_model = self._resolve_test_model(model)
+        if test_model is not None:
+            return await self._call_test(
+                test_model,
+                message,
+                system,
+                temperature,
+                max_tokens,
+                response_format,
+            )
+
+        provider, config = self._resolve_provider(provider)
+
+        # Check rate limits
+        config.check_rate_limit()
+
+        # Route to provider
+        start_time = time.time()
+
+        try:
+            handler_name = self._PROVIDER_HANDLERS.get(config.provider)
+            if handler_name is None:
+                raise ValueError(f"Unsupported provider: {config.provider}")
+            handler = getattr(self, handler_name)
+            response = await handler(config, message, system, temperature, max_tokens)
+        except Exception as e:
+            logger.error("Gateway error (%s): %s", provider, e)
+            raise
+
+        latency_ms = (time.time() - start_time) * 1000
+
+        # Log request
+        log_entry = {
+            "provider": provider,
+            "model": config.model,
+            "latency_ms": latency_ms,
+            "tokens": response.tokens_used,
+            "timestamp": time.time(),
+        }
+        self._logs.append(log_entry)
+        config.record_request()
+
+        response.latency_ms = latency_ms
+
+        # v0.7.9 - Structured output: validate the reply against the
+        # requested Pydantic schema. Failure logs a warning and sets
+        # ``structured`` to None so callers can detect + retry.
+        if response_format is not None:
+            try:
+                response.structured = response_format.model_validate_json(response.content)
+            except Exception as e:
+                logger.warning("Structured output validation failed: %s", e)
+                response.structured = None
+        return response
+
+    async def _call_openai(
+        self,
+        config: ProviderConfig,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
+    ) -> GatewayResponse:
+        """Route a chat request to the OpenAI API.
+
+        Args:
+            config: Provider configuration.
+            message: The user message.
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+
+        Returns:
+            A GatewayResponse with the model reply.
+        """
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": message})
+
+        client = await self._pool.get_connection("openai")
+        response = await client.post(
+            f"{config.base_url or 'https://api.openai.com/v1'}/chat/completions",
+            headers={"Authorization": f"Bearer {config.api_key}"},
+            json={
+                "model": config.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        return GatewayResponse(
+            content=data["choices"][0]["message"]["content"],
+            model=config.model,
+            provider=ModelProvider.OPENAI,
+            tokens_used=data.get("usage", {}).get("total_tokens", 0),
+        )
+
+    async def _call_anthropic(
+        self,
+        config: ProviderConfig,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
+    ) -> GatewayResponse:
+        """Route a chat request to the Anthropic API.
+
+        Args:
+            config: Provider configuration.
+            message: The user message.
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+
+        Returns:
+            A GatewayResponse with the model reply.
+        """
+        body: dict[str, Any] = {
+            "model": config.model,
+            "messages": [{"role": "user", "content": message}],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if system:
+            body["system"] = system
+
+        client = await self._pool.get_connection("anthropic")
+        response = await client.post(
+            f"{config.base_url or 'https://api.anthropic.com/v1'}/messages",
+            headers={
+                "x-api-key": config.api_key or "",
+                "anthropic-version": "2023-06-01",
+            },
+            json=body,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        return GatewayResponse(
+            content=data["content"][0]["text"],
+            model=config.model,
+            provider=ModelProvider.ANTHROPIC,
+            tokens_used=data.get("usage", {}).get("input_tokens", 0)
+            + data.get("usage", {}).get("output_tokens", 0),
+        )
+
+    async def _call_ollama(
+        self,
+        config: ProviderConfig,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
+    ) -> GatewayResponse:
+        """Route a chat request to a local Ollama instance.
+
+        Args:
+            config: Provider configuration.
+            message: The user message.
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+
+        Returns:
+            A GatewayResponse with the model reply.
+        """
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": message})
+
+        client = await self._pool.get_connection("ollama")
+        response = await client.post(
+            f"{config.base_url or 'http://localhost:11434'}/api/chat",
+            json={
+                "model": config.model,
+                "messages": messages,
+                "stream": False,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        return GatewayResponse(
+            content=data["message"]["content"],
+            model=config.model,
+            provider=ModelProvider.OLLAMA,
+            tokens_used=data.get("eval_count", 0),
+        )
+
+    async def chat_batch(
+        self,
+        messages: list[str],
+        provider: str | None = None,
+        system: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        max_concurrent: int = 5,
+    ) -> list[GatewayResponse]:
+        """
+        Send multiple chat requests concurrently.
+
+        Args:
+            messages: List of messages to send.
+            provider: Provider name (or first available).
+            system: Optional system prompt for all requests.
+            temperature: Temperature for all requests.
+            max_tokens: Max tokens for all requests.
+            max_concurrent: Max concurrent requests.
+
+        Returns:
+            List of GatewayResponse objects.
+        """
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def _single_chat(msg: str) -> GatewayResponse:
+            async with semaphore:
+                return await self.chat(
+                    message=msg,
+                    provider=provider,
+                    system=system,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+
+        tasks = [_single_chat(msg) for msg in messages]
+        return await asyncio.gather(*tasks)
+
+    async def chat_streaming(
+        self,
+        message: str,
+        provider: str | None = None,
+        system: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Send a streaming chat request.
+
+        Yields content chunks as they arrive from the provider.
+        Falls back to a single non-streaming call for providers
+        other than OpenAI.
+
+        Args:
+            message: The user message.
+            provider: Provider name (or first available).
+            system: Optional system prompt.
+            temperature: Sampling temperature.
+            max_tokens: Maximum tokens in the response.
+
+        Yields:
+            Content strings as they are received.
+        """
+        provider, config = self._resolve_provider(provider)
+
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": message})
+
+        if config.provider == ModelProvider.OPENAI:
+            client = await self._pool.get_connection("openai")
+            async with client.stream(
+                "POST",
+                f"{config.base_url or 'https://api.openai.com/v1'}/chat/completions",
+                headers={"Authorization": f"Bearer {config.api_key}"},
+                json={
+                    "model": config.model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "stream": True,
+                },
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line.startswith("data: ") and line != "data: [DONE]":
+                        data = json.loads(line[6:])
+                        delta = data.get("choices", [{}])[0].get("delta", {})
+                        if "content" in delta:
+                            yield delta["content"]
+        else:
+            # Fallback to non-streaming for other providers
+            result = await self.chat(message, provider, system, temperature, max_tokens)
+            yield result.content
+
+    def _resolve_test_model(
+        self,
+        model: TestModel | str | None,
+    ) -> TestModel | None:
+        """v0.7.9 - Normalize the chat(model=) argument.
+
+        Accepts a TestModel, the sentinel string 'test', or None.
+        Returns the resolved TestModel, or None if the caller wants
+        the normal HTTP path.
+        """
+        return _resolve_test_model_arg(model)
+
+    async def _call_test(
+        self,
+        test_model: TestModel,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
+        response_format: type[BaseModel] | None,
+    ) -> GatewayResponse:
+        """v0.7.9 - Dispatch a chat call to a local TestModel.
+
+        Bypasses network and rate limits; logs the call under a
+        synthetic provider entry so get_logs() / cost tracking still
+        observe the test traffic.
+        """
+        start_time = time.time()
+        response = await test_model.handle(
+            message,
+            system,
+            temperature,
+            max_tokens,
+            response_format,
+        )
+        response.latency_ms = (time.time() - start_time) * 1000
+        self._logs.append(
+            {
+                "provider": "test",
+                "model": test_model.model_name,
+                "latency_ms": response.latency_ms,
+                "tokens": response.tokens_used,
+                "timestamp": time.time(),
+            }
+        )
+        return response
+
+    def get_logs(self) -> list[dict[str, Any]]:
+        """Return request logs."""
+        return self._logs.copy()
+
+    async def close(self) -> None:
+        """Close the connection pool."""
+        await self._pool.close()
+```
+
+## `loopy.gateway.GatewayResponse` (class)
+
+Unified response from the gateway.
+
+```python
+@dataclass
+class GatewayResponse:
+    """Unified response from the gateway."""
+
+    content: str
+    model: str
+    provider: ModelProvider
+    tokens_used: int = 0
+    latency_ms: float = 0
+    cached: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)
+    # v0.7.9 — populated when ``chat(response_format=...)`` was used;
+    # validated Pydantic instance, or ``None`` if validation failed.
+    structured: Any | None = None
+```
+
+## `loopy.gateway.ModelProvider` (class)
+
+str(object='') -> str
+str(bytes_or_buffer[, encoding[, errors]]) -> str
+
+Create a new string object from the given object. If encoding or
+errors is specified, then the object must expose a data buffer
+that will be decoded using the given encoding and error handler.
+Otherwise, returns the result of object.__str__() (if defined)
+or repr(object).
+encoding defaults to sys.getdefaultencoding().
+errors defaults to 'strict'.
+
+```python
+class ModelProvider(str, Enum):
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    OLLAMA = "ollama"
+    CUSTOM = "custom"
+```
+
+## `loopy.gateway.ProviderConfig` (class)
+
+Configuration for a single LLM provider.
+
+Includes rate-limit tracking via :meth:`check_rate_limit` and
+:meth:`record_request`.
+
+Args:
+    provider: The LLM provider enum.
+    api_key: Optional API key for authentication.
+    base_url: Base URL for the provider API.
+    model: Model identifier (e.g. "gpt-4").
+    rpm: Max requests per minute.
+    tpm: Max tokens per minute.
+
+```python
+@dataclass
+class ProviderConfig:
+    """Configuration for a single LLM provider.
+
+    Includes rate-limit tracking via :meth:`check_rate_limit` and
+    :meth:`record_request`.
+
+    Args:
+        provider: The LLM provider enum.
+        api_key: Optional API key for authentication.
+        base_url: Base URL for the provider API.
+        model: Model identifier (e.g. "gpt-4").
+        rpm: Max requests per minute.
+        tpm: Max tokens per minute.
+    """
+
+    provider: ModelProvider
+    api_key: str | None = None
+    base_url: str = ""
+    model: str = "gpt-4"
+
+    # Rate limiting
+    rpm: int = 60  # requests per minute
+    tpm: int = 100_000  # tokens per minute
+
+    # Internal tracking
+    _request_count: int = field(default=0, repr=False)
+    _window_start: float = field(default_factory=time.time, repr=False)
+
+    def check_rate_limit(self) -> None:
+        """Check whether the rate limit has been reached.
+
+        Raises:
+            RuntimeError: If the number of requests in the current
+                rolling 60-second window exceeds *rpm*.
+        """
+        now = time.time()
+        if now - self._window_start > 60:
+            self._request_count = 0
+            self._window_start = now
+
+        if self._request_count >= self.rpm:
+            raise RuntimeError(f"Rate limit exceeded for {self.provider.value}")
+
+    def record_request(self) -> None:
+        """Increment the request counter for rate tracking."""
+        self._request_count += 1
+```
+
+## `loopy.gateway.ConnectionPool` (class)
+
+HTTP connection pool for reusing connections to providers.
+
+Reduces latency by reusing TCP connections and SSL handshakes.
+Evicts the least-recently-used connection when at capacity.
+
+Example:
+    pool = ConnectionPool(max_size=10)
+    async with pool.get_connection("openai") as client:
+        response = await client.post(...)
+
+```python
+class ConnectionPool:
+    """
+    HTTP connection pool for reusing connections to providers.
+
+    Reduces latency by reusing TCP connections and SSL handshakes.
+    Evicts the least-recently-used connection when at capacity.
+
+    Example:
+        pool = ConnectionPool(max_size=10)
+        async with pool.get_connection("openai") as client:
+            response = await client.post(...)
+    """
+
+    def __init__(self, max_size: int = 10):
+        self.max_size = max_size
+        self._connections: dict[str, httpx.AsyncClient] = {}
+        self._last_used: dict[str, float] = {}
+        self._lock = asyncio.Lock()
+
+    async def get_connection(self, provider: str) -> httpx.AsyncClient:
+        """Get or create a connection for a provider."""
+        async with self._lock:
+            if provider in self._connections:
+                self._last_used[provider] = time.time()
+                return self._connections[provider]
+
+            if len(self._connections) >= self.max_size:
+                # Evict least recently used connection
+                lru_key = min(self._last_used, key=self._last_used.get)
+                await self._connections[lru_key].aclose()
+                del self._connections[lru_key]
+                del self._last_used[lru_key]
+
+            self._connections[provider] = httpx.AsyncClient(
+                timeout=60.0,
+                limits=httpx.Limits(
+                    max_connections=5,
+                    max_keepalive_connections=2,
+                ),
+            )
+            self._last_used[provider] = time.time()
+            return self._connections[provider]
+
+    async def close(self) -> None:
+        """Close all connections in the pool."""
+        for client in self._connections.values():
+            await client.aclose()
+        self._connections.clear()
+        self._last_used.clear()
+
+    def stats(self) -> dict[str, Any]:
+        """Get pool statistics."""
+        return {
+            "active_connections": len(self._connections),
+            "max_size": self.max_size,
+            "providers": list(self._connections.keys()),
+        }
+```
+
+## `loopy.gateway.TestModel` (class)
+
+v0.7.9 - Zero-network model for unit tests and CI.
+
+Replace HTTP calls with deterministic scripted replies so you can
+exercise the full agent loop without API keys, rate limits, or
+billing. Compatible with :meth:`Gateway.chat`.
+
+Example::
+
+    gw = Gateway()
+    response = await gw.chat(
+        "hi",
+        model=TestModel(responses=["hi back"]),
+    )
+    assert response.content == "hi back"
+    assert response.metadata["test_model"] is True
+
+Args:
+    responses: Ordered list of canned replies. If exhausted, the
+        last entry is reused (so the model never raises for lack of
+        material). Use ``callable`` for dynamic replies.
+    tool_calls: Optional pre-canned tool calls to emit alongside
+        the text reply. Each entry is a dict with ``name`` and
+        ``args`` keys; the gateway surfaces them in
+        ``response.metadata["tool_calls"]``.
+    latency_ms: Artificial latency to inject per call (0 = instant).
+    model_name: Reported model name in ``GatewayResponse.model``.
+        Defaults to ``"test"``.
+    raise_on_message: If set, raise this exception when ``message``
+        matches the regex/string. Useful for testing error paths.
+
+```python
+class TestModel:
+    """v0.7.9 - Zero-network model for unit tests and CI.
+
+    Replace HTTP calls with deterministic scripted replies so you can
+    exercise the full agent loop without API keys, rate limits, or
+    billing. Compatible with :meth:`Gateway.chat`.
+
+    Example::
+
+        gw = Gateway()
+        response = await gw.chat(
+            "hi",
+            model=TestModel(responses=["hi back"]),
+        )
+        assert response.content == "hi back"
+        assert response.metadata["test_model"] is True
+
+    Args:
+        responses: Ordered list of canned replies. If exhausted, the
+            last entry is reused (so the model never raises for lack of
+            material). Use ``callable`` for dynamic replies.
+        tool_calls: Optional pre-canned tool calls to emit alongside
+            the text reply. Each entry is a dict with ``name`` and
+            ``args`` keys; the gateway surfaces them in
+            ``response.metadata["tool_calls"]``.
+        latency_ms: Artificial latency to inject per call (0 = instant).
+        model_name: Reported model name in ``GatewayResponse.model``.
+            Defaults to ``"test"``.
+        raise_on_message: If set, raise this exception when ``message``
+            matches the regex/string. Useful for testing error paths.
+    """
+
+    __slots__ = (
+        "responses",
+        "tool_calls",
+        "latency_ms",
+        "model_name",
+        "raise_on_message",
+        "_index",
+        "calls",
+    )
+
+    def __init__(
+        self,
+        responses: list[str | Callable[[str, str | None], str]] | None = None,
+        *,
+        tool_calls: list[dict[str, Any]] | None = None,
+        latency_ms: float = 0.0,
+        model_name: str = "test",
+        raise_on_message: re.Pattern[str] | str | None = None,
+    ) -> None:
+        self.responses: list[str | Callable[[str, str | None], str]] = (
+            list(responses) if responses is not None else list(DEFAULT_TEST_MODEL_RESPONSES)
+        )
+        self.tool_calls = tool_calls or []
+        self.latency_ms = float(latency_ms)
+        self.model_name = model_name
+        self.raise_on_message = raise_on_message
+        self._index = 0
+        self.calls: list[dict[str, Any]] = []
+
+    def next_response(self, message: str, system: str | None) -> str:
+        """Return the next scripted reply (advances the cursor)."""
+        if not self.responses:
+            return ""
+        if self._index < len(self.responses):
+            reply = self.responses[self._index]
+            self._index += 1
+        else:
+            # Reuse the last reply rather than exhausting.
+            reply = self.responses[-1]
+        if callable(reply):
+            return reply(message, system)
+        return reply
+
+    async def handle(
+        self,
+        message: str,
+        system: str | None,
+        temperature: float,  # noqa: ARG002 - accepted for protocol parity
+        max_tokens: int,  # noqa: ARG002
+        response_format: type[BaseModel] | None = None,
+    ) -> GatewayResponse:
+        """Produce a canned :class:`GatewayResponse` (no I/O)."""
+        if self.raise_on_message is not None:
+            pattern = self.raise_on_message
+            if isinstance(pattern, str):
+                if pattern in message:
+                    raise RuntimeError(f"Test model forced error: {pattern!r} in message")
+            elif pattern.search(message):
+                raise RuntimeError(f"Test model forced error on {pattern.pattern!r}")
+
+        self.calls.append({"message": message, "system": system})
+
+        if self.latency_ms > 0:
+            await asyncio.sleep(self.latency_ms / 1000.0)
+
+        content = self.next_response(message, system)
+
+        metadata: dict[str, Any] = {"test_model": True, "test_call_index": len(self.calls) - 1}
+        if self.tool_calls:
+            metadata["tool_calls"] = list(self.tool_calls)
+
+        structured: Any | None = None
+        if response_format is not None:
+            # Allow tests to pre-format their canned reply as JSON.
+            try:
+                structured = response_format.model_validate_json(content)
+            except Exception:
+                # Leave structured as None so callers see the failure path.
+                structured = None
+            metadata["response_format"] = response_format.__name__
+
+        return GatewayResponse(
+            content=content,
+            model=self.model_name,
+            provider=ModelProvider.OPENAI,  # placeholder; not used
+            tokens_used=len(content.split()),
+            metadata=metadata,
+            structured=structured,
+        )
+
+    def reset(self) -> None:
+        """Rewind the response cursor and clear recorded calls."""
+        self._index = 0
+        self.calls.clear()
+```
+
+## `loopy.gateway.TEST_MODEL_SENTINEL`
+
+str(object='') -> str
+str(bytes_or_buffer[, encoding[, errors]]) -> str
+
+Create a new string object from the given object. If encoding or
+errors is specified, then the object must expose a data buffer
+that will be decoded using the given encoding and error handler.
+Otherwise, returns the result of object.__str__() (if defined)
+or repr(object).
+encoding defaults to sys.getdefaultencoding().
+errors defaults to 'strict'.
+
+```python
+(source unavailable)```
