@@ -30,13 +30,13 @@ logger = logging.getLogger("loopy.plugins.tools")
 @dataclass
 class ToolParameter:
     """A tool parameter definition."""
-    
+
     name: str
     type: str  # "string", "number", "boolean", "array", "object"
     description: str = ""
     required: bool = True
     default: Any = None
-    
+
     def to_schema(self) -> dict[str, Any]:
         """Convert to JSON Schema format."""
         schema: dict[str, Any] = {
@@ -65,7 +65,7 @@ class Tool:
 
     # --- capability scoping (security) ---
     scope: str = "side_effecting"  # "read_only" | "side_effecting"
-    enabled: bool = True           # deny-by-default — False = never executes
+    enabled: bool = True  # deny-by-default — False = never executes
     requires_approval: bool = False  # HITL gate, enforced in execute()
     # Enumerate legal values per parameter (allow-list for free-text args)
     allowed_values: dict[str, set[str]] | None = None
@@ -78,12 +78,12 @@ class Tool:
         """Convert to OpenAI function calling schema."""
         properties = {}
         required = []
-        
+
         for param in self.parameters:
             properties[param.name] = param.to_schema()
             if param.required:
                 required.append(param.name)
-        
+
         return {
             "type": "function",
             "function": {
@@ -101,7 +101,7 @@ class Tool:
 @dataclass
 class ToolResult:
     """Result of a tool execution."""
-    
+
     success: bool
     output: Any = None
     error: str | None = None
@@ -141,9 +141,9 @@ class ToolRegistry:
         approver: Callable[[Tool, dict[str, Any]], Awaitable[bool]] | None = None,
     ):
         """Args:
-            approver: Optional async callback ``(tool, arguments) -> bool``
-                that decides whether a ``requires_approval`` tool may run.
-                If None, any tool with ``requires_approval=True`` is denied.
+        approver: Optional async callback ``(tool, arguments) -> bool``
+            that decides whether a ``requires_approval`` tool may run.
+            If None, any tool with ``requires_approval=True`` is denied.
         """
         self.tools: dict[str, Tool] = {}
         self.approver = approver
@@ -153,15 +153,15 @@ class ToolRegistry:
         """Register a tool."""
         self.tools[tool.name] = tool
         logger.info("Registered tool: %s", tool.name)
-    
+
     def get(self, name: str) -> Tool | None:
         """Get a tool by name."""
         return self.tools.get(name)
-    
+
     def list_all(self) -> list[Tool]:
         """List all registered tools."""
         return list(self.tools.values())
-    
+
     def list_schemas(self) -> list[dict[str, Any]]:
         """List all tool schemas (for OpenAI function calling)."""
         return [tool.to_schema() for tool in self.tools.values()]
@@ -221,9 +221,7 @@ class ToolRegistry:
         # Human-in-the-loop gate for consequential tools.
         if tool.requires_approval:
             if self.approver is None:
-                self._denials.append(
-                    {"tool": name, "reason": "approval_required_no_approver"}
-                )
+                self._denials.append({"tool": name, "reason": "approval_required_no_approver"})
                 return ToolResult(
                     success=False,
                     error=f"Tool '{name}' requires approval and no approver is configured",
@@ -243,11 +241,11 @@ class ToolRegistry:
                 )
 
         start_time = time.time()
-        
+
         try:
             output = await tool.handler(**arguments)
             duration_ms = (time.time() - start_time) * 1000
-            
+
             return ToolResult(
                 success=True,
                 output=output,
@@ -255,13 +253,13 @@ class ToolRegistry:
             )
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
-            
+
             return ToolResult(
                 success=False,
                 error=str(e),
                 duration_ms=duration_ms,
             )
-    
+
     def get_summary(self) -> dict[str, Any]:
         """Get summary of registered tools."""
         return {
@@ -326,26 +324,26 @@ def _eval_math(expression: str) -> float:
 class ToolsPlugin(Plugin):
     """
     Tool-use plugin for function calling.
-    
+
     Provides a registry for tools that agents can use during execution.
-    
+
     Example:
         plugin = ToolsPlugin()
         await registry.load(plugin)
-        
+
         tool_registry = plugin.tool_registry
-        
+
         # Register custom tools
         tool_registry.register(Tool(
             name="calculate",
             description="Perform a calculation",
             handler=calculate_fn,
         ))
-        
+
         # Execute
         result = await tool_registry.execute("calculate", {"expression": "2+2"})
     """
-    
+
     @property
     def info(self) -> PluginInfo:
         return PluginInfo(
@@ -356,14 +354,14 @@ class ToolsPlugin(Plugin):
             capabilities=["tool", "registry"],
             requires=[],
         )
-    
+
     async def setup(self, registry: PluginRegistry) -> None:
         """Initialize the Tools plugin."""
         self.tool_registry = ToolRegistry()
-        
+
         # Register built-in tools
         self._register_builtins()
-        
+
         # Register read-only registry introspection tools (agent-visible).
         # NOTE: a universal 'execute_tool' meta-tool is deliberately NOT
         # registered — it would grant the model arbitrary execution over the
@@ -371,37 +369,41 @@ class ToolsPlugin(Plugin):
         # job via ToolRegistry.execute(), which enforces capability gates.
         registry.register_tool("list_tools", self._list_tools, scope="read_only")
         registry.register_tool("get_tool_schema", self._get_tool_schema, scope="read_only")
-        
+
         logger.info("Tools plugin initialized")
 
     def _register_builtins(self) -> None:
         """Register built-in tools (read-only, no approval needed)."""
         # Calculator tool
-        self.tool_registry.register(Tool(
-            name="calculator",
-            description="Perform basic arithmetic calculations",
-            handler=self._calculator,
-            scope="read_only",
-            parameters=[
-                ToolParameter(
-                    name="expression",
-                    type="string",
-                    description="Math expression (e.g., '2 + 2')",
-                ),
-            ],
-        ))
-        
+        self.tool_registry.register(
+            Tool(
+                name="calculator",
+                description="Perform basic arithmetic calculations",
+                handler=self._calculator,
+                scope="read_only",
+                parameters=[
+                    ToolParameter(
+                        name="expression",
+                        type="string",
+                        description="Math expression (e.g., '2 + 2')",
+                    ),
+                ],
+            )
+        )
+
         # JSON parser tool
-        self.tool_registry.register(Tool(
-            name="parse_json",
-            description="Parse a JSON string",
-            handler=self._parse_json,
-            scope="read_only",
-            parameters=[
-                ToolParameter(name="text", type="string", description="JSON string to parse"),
-            ],
-        ))
-    
+        self.tool_registry.register(
+            Tool(
+                name="parse_json",
+                description="Parse a JSON string",
+                handler=self._parse_json,
+                scope="read_only",
+                parameters=[
+                    ToolParameter(name="text", type="string", description="JSON string to parse"),
+                ],
+            )
+        )
+
     async def _calculator(self, expression: str) -> Any:
         """Calculate a math expression using an AST whitelist (no ``eval``).
 
@@ -413,11 +415,11 @@ class ToolsPlugin(Plugin):
             ValueError: If the expression uses unsupported syntax.
         """
         return {"result": _eval_math(expression), "expression": expression}
-    
+
     async def _parse_json(self, text: str) -> Any:
         """Parse JSON text."""
         return json.loads(text)
-    
+
     async def _execute_tool(
         self,
         name: str,
@@ -436,7 +438,7 @@ class ToolsPlugin(Plugin):
             "error": result.error,
             "duration_ms": result.duration_ms,
         }
-    
+
     async def _list_tools(self) -> list[dict[str, Any]]:
         """List all available tools."""
         return [
@@ -447,7 +449,7 @@ class ToolsPlugin(Plugin):
             }
             for tool in self.tool_registry.list_all()
         ]
-    
+
     async def _get_tool_schema(self, name: str) -> dict[str, Any] | None:
         """Get a tool's schema."""
         tool = self.tool_registry.get(name)

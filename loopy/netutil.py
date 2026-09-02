@@ -86,7 +86,5 @@ def validate_outbound_url(
         raise ValueError("URL has no host")
 
     if not allow_private and is_private_host(host):
-        raise ValueError(
-            f"URL host '{host}' resolves to a private/loopback address (SSRF guard)"
-        )
+        raise ValueError(f"URL host '{host}' resolves to a private/loopback address (SSRF guard)")
     return url

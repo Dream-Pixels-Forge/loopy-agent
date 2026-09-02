@@ -364,9 +364,7 @@ class TestSSRFGuard:
     )
     def test_allows_public(self, url, monkeypatch):
         # Deterministic: resolve every hostname to a global address (8.8.8.8).
-        monkeypatch.setattr(
-            loopy.netutil.socket, "getaddrinfo", _fake_getaddrinfo_public
-        )
+        monkeypatch.setattr(loopy.netutil.socket, "getaddrinfo", _fake_getaddrinfo_public)
         assert validate_outbound_url(url) == url
 
     def test_blocks_bad_scheme(self):
@@ -425,9 +423,7 @@ class TestMemorySecurity:
 
             # Write without approver -> denied.
             with pytest.raises(PermissionError):
-                await registry.execute_tool(
-                    "memory_store", {"content": "poisoned instruction"}
-                )
+                await registry.execute_tool("memory_store", {"content": "poisoned instruction"})
 
             # With approver -> allowed.
             result = await registry.execute_tool(
@@ -541,6 +537,4 @@ async def _deny() -> bool:
 
 def _fake_getaddrinfo_public(host, port):
     """Deterministic DNS: resolve any hostname to a global IP (8.8.8.8)."""
-    return [
-        (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", port or 0))
-    ]
+    return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", port or 0))]

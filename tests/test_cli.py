@@ -18,6 +18,7 @@ from loopy.cli import (
 
 # ── Argument parser ──────────────────────────────────────────
 
+
 class TestCreateParser:
     def test_parser_created(self):
         parser = create_parser()
@@ -89,6 +90,7 @@ class TestCreateParser:
 
 # ── Guard command ─────────────────────────────────────────────
 
+
 class TestCmdGuard:
     def test_guard_clean_input(self, capsys):
         args = MagicMock()
@@ -141,6 +143,7 @@ class TestCmdGuard:
 
 # ── Cache command ─────────────────────────────────────────────
 
+
 class TestCmdCache:
     def test_cache_stats(self, capsys):
         args = MagicMock()
@@ -160,6 +163,7 @@ class TestCmdCache:
 
 
 # ── Trace command ─────────────────────────────────────────────
+
 
 class TestCmdTrace:
     def test_trace_export(self, capsys):
@@ -182,6 +186,7 @@ class TestCmdTrace:
 
 # ── Eval command ──────────────────────────────────────────────
 
+
 class TestCmdEval:
     def test_eval_run_missing_suite(self, capsys):
         args = MagicMock()
@@ -194,17 +199,21 @@ class TestCmdEval:
 
     def test_eval_run_with_suite(self, tmp_path, capsys):
         suite_file = tmp_path / "test_suite.json"
-        suite_file.write_text(json.dumps({
-            "name": "basic",
-            "cases": [
+        suite_file.write_text(
+            json.dumps(
                 {
-                    "name": "addition",
-                    "input_text": "What is 2+2?",
-                    "expected_output": "4",
-                    "criteria": ["correct"],
+                    "name": "basic",
+                    "cases": [
+                        {
+                            "name": "addition",
+                            "input_text": "What is 2+2?",
+                            "expected_output": "4",
+                            "criteria": ["correct"],
+                        }
+                    ],
                 }
-            ],
-        }))
+            )
+        )
 
         args = MagicMock()
         args.eval_action = "run"
@@ -217,6 +226,7 @@ class TestCmdEval:
 
 
 # ── Info command ──────────────────────────────────────────────
+
 
 class TestCmdInfo:
     def test_info_output(self, capsys):

@@ -21,7 +21,7 @@ logger = logging.getLogger("loopy.mcp")
 @dataclass
 class Tool:
     """An MCP tool definition."""
-    
+
     name: str
     description: str
     input_schema: dict[str, Any] = field(default_factory=dict)
@@ -31,7 +31,7 @@ class Tool:
 @dataclass
 class ToolCall:
     """A request to call a tool."""
-    
+
     name: str
     arguments: dict[str, Any] = field(default_factory=dict)
 
@@ -39,7 +39,7 @@ class ToolCall:
 @dataclass
 class MCPToolResult:
     """Result of a tool call via MCP server."""
-    
+
     content: str | list[dict[str, Any]]
     is_error: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -48,17 +48,17 @@ class MCPToolResult:
 class MCPClient:
     """
     Model Context Protocol client.
-    
+
     Connects to MCP servers and exposes their tools.
-    
+
     Example:
         client = MCPClient("http://localhost:3000")
-        
+
         # List available tools
         tools = await client.list_tools()
         for tool in tools:
             print(f"{tool.name}: {tool.description}")
-        
+
         # Call a tool
         result = await client.call_tool("get_weather", {"city": "Portland"})
     """
@@ -89,13 +89,13 @@ class MCPClient:
         self._headers: dict[str, str] = {"Content-Type": "application/json"}
         if api_key:
             self._headers["Authorization"] = f"Bearer {api_key}"
-        
+
         self._tools: list[Tool] = []
 
     async def list_tools(self) -> list[Tool]:
         """
         List available tools from the MCP server.
-        
+
         Returns:
             List of Tool definitions
         """
@@ -196,16 +196,16 @@ class MCPClient:
 class LocalMCP:
     """
     Local MCP server for testing without a running server.
-    
+
     Registers tools locally and routes calls to handlers.
-    
+
     Example:
         mcp = LocalMCP()
-        
+
         @mcp.tool("get_weather", "Get weather for a city")
         async def get_weather(city: str) -> str:
             return f"Sunny in {city}"
-        
+
         result = await mcp.call_tool("get_weather", {"city": "Portland"})
     """
 
@@ -220,6 +220,7 @@ class LocalMCP:
         input_schema: dict[str, Any] | None = None,
     ) -> Callable:
         """Decorator to register a tool handler."""
+
         def decorator(fn: Callable[..., Awaitable[Any]]) -> Callable:
             self._tools[name] = Tool(
                 name=name,
@@ -228,6 +229,7 @@ class LocalMCP:
             )
             self._handlers[name] = fn
             return fn
+
         return decorator
 
     async def list_tools(self) -> list[Tool]:

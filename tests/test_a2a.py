@@ -1,6 +1,5 @@
 """Tests for loopy.a2a — Agent-to-Agent protocol."""
 
-
 import pytest
 
 from loopy.a2a import (
@@ -75,20 +74,24 @@ class TestAgentRegistry:
 
     def test_find_by_capability(self):
         reg = AgentRegistry()
-        reg.register(AgentCard(
-            name="text-bot",
-            description="Text",
-            version="1.0",
-            capabilities=[AgentCapability.TEXT_GENERATION],
-            endpoint="http://text",
-        ))
-        reg.register(AgentCard(
-            name="code-bot",
-            description="Code",
-            version="1.0",
-            capabilities=[AgentCapability.CODE_GENERATION],
-            endpoint="http://code",
-        ))
+        reg.register(
+            AgentCard(
+                name="text-bot",
+                description="Text",
+                version="1.0",
+                capabilities=[AgentCapability.TEXT_GENERATION],
+                endpoint="http://text",
+            )
+        )
+        reg.register(
+            AgentCard(
+                name="code-bot",
+                description="Code",
+                version="1.0",
+                capabilities=[AgentCapability.CODE_GENERATION],
+                endpoint="http://code",
+            )
+        )
 
         text_agents = reg.find_by_capability(AgentCapability.TEXT_GENERATION)
         assert len(text_agents) == 1
@@ -104,13 +107,15 @@ class TestA2AClient:
     @pytest.mark.asyncio
     async def test_call_agent(self):
         reg = AgentRegistry()
-        reg.register(AgentCard(
-            name="echo",
-            description="Echo bot",
-            version="1.0",
-            capabilities=[AgentCapability.TEXT_GENERATION],
-            endpoint="",  # No remote endpoint → falls through to placeholder
-        ))
+        reg.register(
+            AgentCard(
+                name="echo",
+                description="Echo bot",
+                version="1.0",
+                capabilities=[AgentCapability.TEXT_GENERATION],
+                endpoint="",  # No remote endpoint → falls through to placeholder
+            )
+        )
         client = A2AClient(reg)
         response = await client.call("echo", "Hello")
         assert response.success is True
@@ -121,13 +126,15 @@ class TestA2AClient:
     async def test_call_agent_local_handler(self):
         """Test that a registered local handler is preferred over placeholder."""
         reg = AgentRegistry()
-        reg.register(AgentCard(
-            name="echo",
-            description="Echo bot",
-            version="1.0",
-            capabilities=[AgentCapability.TEXT_GENERATION],
-            endpoint="http://remote",
-        ))
+        reg.register(
+            AgentCard(
+                name="echo",
+                description="Echo bot",
+                version="1.0",
+                capabilities=[AgentCapability.TEXT_GENERATION],
+                endpoint="http://remote",
+            )
+        )
         client = A2AClient(reg)
 
         async def echo_handler(request: AgentRequest) -> AgentResponse:
@@ -149,20 +156,24 @@ class TestA2AClient:
     @pytest.mark.asyncio
     async def test_broadcast(self):
         reg = AgentRegistry()
-        reg.register(AgentCard(
-            name="a1",
-            description="Agent 1",
-            version="1.0",
-            capabilities=[AgentCapability.TEXT_GENERATION],
-            endpoint="",  # No remote endpoint → placeholder
-        ))
-        reg.register(AgentCard(
-            name="a2",
-            description="Agent 2",
-            version="1.0",
-            capabilities=[AgentCapability.TEXT_GENERATION],
-            endpoint="",
-        ))
+        reg.register(
+            AgentCard(
+                name="a1",
+                description="Agent 1",
+                version="1.0",
+                capabilities=[AgentCapability.TEXT_GENERATION],
+                endpoint="",  # No remote endpoint → placeholder
+            )
+        )
+        reg.register(
+            AgentCard(
+                name="a2",
+                description="Agent 2",
+                version="1.0",
+                capabilities=[AgentCapability.TEXT_GENERATION],
+                endpoint="",
+            )
+        )
         client = A2AClient(reg)
         responses = await client.broadcast(AgentCapability.TEXT_GENERATION, "Test")
         assert len(responses) == 2

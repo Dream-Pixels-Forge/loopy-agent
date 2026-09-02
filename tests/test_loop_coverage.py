@@ -22,14 +22,16 @@ class TestLoopErrorPaths:
         async def reflector(h):
             return "ref"
 
-        loop = AgentLoop(LoopConfig(
-            planner=planner,
-            actor=actor,
-            observer=observer,
-            reflector=reflector,
-            max_steps=5,
-            stop_on_error=True,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=planner,
+                actor=actor,
+                observer=observer,
+                reflector=reflector,
+                max_steps=5,
+                stop_on_error=True,
+            )
+        )
 
         with pytest.raises(RuntimeError, match="boom"):
             await loop.run()
@@ -54,14 +56,16 @@ class TestLoopErrorPaths:
         async def reflector(h):
             return "ref"
 
-        loop = AgentLoop(LoopConfig(
-            planner=planner,
-            actor=actor,
-            observer=observer,
-            reflector=reflector,
-            max_steps=3,
-            stop_on_error=False,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=planner,
+                actor=actor,
+                observer=observer,
+                reflector=reflector,
+                max_steps=3,
+                stop_on_error=False,
+            )
+        )
 
         results = await loop.run()
         # Step 1 failed, step 2 succeeded
@@ -86,12 +90,14 @@ class TestLoopErrorPaths:
         async def should_stop(history):
             return len(history) >= 2
 
-        loop = AgentLoop(LoopConfig(
-            planner=planner,
-            actor=actor,
-            max_steps=10,
-            should_stop=should_stop,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=planner,
+                actor=actor,
+                max_steps=10,
+                should_stop=should_stop,
+            )
+        )
 
         results = await loop.run()
         assert len(results) == 2
@@ -104,11 +110,13 @@ class TestLoopErrorPaths:
         async def planner(h):
             return "plan"
 
-        loop = AgentLoop(LoopConfig(
-            planner=planner,
-            max_steps=2,
-            should_stop=bad_stop,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=planner,
+                max_steps=2,
+                should_stop=bad_stop,
+            )
+        )
 
         results = await loop.run()
         assert len(results) == 2
@@ -121,11 +129,13 @@ class TestLoopErrorPaths:
         async def actor(plan):
             return "action"
 
-        loop = AgentLoop(LoopConfig(
-            planner=planner,
-            actor=actor,
-            max_steps=1,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=planner,
+                actor=actor,
+                max_steps=1,
+            )
+        )
 
         results = await loop.run(initial_context="starting point")
         assert results[0].observation == "starting point"
@@ -144,13 +154,15 @@ class TestLoopErrorPaths:
         async def reflector(h):
             return "ref"
 
-        loop = AgentLoop(LoopConfig(
-            planner=planner,
-            actor=actor,
-            observer=observer,
-            reflector=reflector,
-            max_steps=1,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=planner,
+                actor=actor,
+                observer=observer,
+                reflector=reflector,
+                max_steps=1,
+            )
+        )
 
         results = await loop.run()
         result = results[0]

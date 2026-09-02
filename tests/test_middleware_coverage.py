@@ -23,6 +23,7 @@ from loopy.middleware import (
 
 # ── Helpers ──────────────────────────────────────────────────
 
+
 async def _ok_handler(data: dict[str, Any], **kwargs: Any) -> str:
     return f"ok:{data.get('msg', '')}"
 
@@ -43,6 +44,7 @@ async def _fail_then_ok_handler(data: dict[str, Any], **kwargs: Any) -> str:
 
 
 # ── Pipeline basics ──────────────────────────────────────────
+
 
 class TestPipelineBasics:
     @pytest.mark.asyncio
@@ -81,6 +83,7 @@ class TestPipelineBasics:
 
 # ── RetryMiddleware ──────────────────────────────────────────
 
+
 class TestRetryMiddleware:
     @pytest.mark.asyncio
     async def test_retry_success_after_failures(self):
@@ -114,17 +117,20 @@ class TestRetryMiddleware:
             raise CustomError("custom")
 
         pipe = MiddlewarePipeline()
-        pipe.add(RetryMiddleware(
-            max_retries=3,
-            base_delay=0.01,
-            retryable_exceptions=(ValueError,),  # CustomError not included
-        ))
+        pipe.add(
+            RetryMiddleware(
+                max_retries=3,
+                base_delay=0.01,
+                retryable_exceptions=(ValueError,),  # CustomError not included
+            )
+        )
 
         with pytest.raises(CustomError):
             await pipe.execute("test", custom_fail, {})
 
 
 # ── CircuitBreakerMiddleware ─────────────────────────────────
+
 
 class TestCircuitBreaker:
     @pytest.mark.asyncio
@@ -180,6 +186,7 @@ class TestCircuitBreaker:
 
 # ── FallbackMiddleware ───────────────────────────────────────
 
+
 class TestFallbackMiddleware:
     @pytest.mark.asyncio
     async def test_fallback_static_data(self):
@@ -215,6 +222,7 @@ class TestFallbackMiddleware:
 
 # ── CacheMiddleware ──────────────────────────────────────────
 
+
 class TestCacheMiddleware:
     @pytest.mark.asyncio
     async def test_cache_hit_short_circuits(self):
@@ -244,6 +252,7 @@ class TestCacheMiddleware:
 
 # ── ValidationMiddleware ─────────────────────────────────────
 
+
 class TestValidationMiddleware:
     @pytest.mark.asyncio
     async def test_missing_required_field(self):
@@ -262,15 +271,18 @@ class TestValidationMiddleware:
     @pytest.mark.asyncio
     async def test_all_valid(self):
         pipe = MiddlewarePipeline()
-        pipe.add(ValidationMiddleware(
-            required_fields=["name"],
-            validators={"age": lambda x: x > 0},
-        ))
+        pipe.add(
+            ValidationMiddleware(
+                required_fields=["name"],
+                validators={"age": lambda x: x > 0},
+            )
+        )
         result = await pipe.execute("test", _ok_handler, {"name": "Alice", "age": 30})
         assert result == "ok:"
 
 
 # ── RateLimitMiddleware ──────────────────────────────────────
+
 
 class TestRateLimitMiddleware:
     @pytest.mark.asyncio

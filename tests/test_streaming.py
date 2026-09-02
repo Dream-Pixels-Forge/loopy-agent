@@ -1,6 +1,5 @@
 """Tests for loopy.streaming — Real-time token streaming."""
 
-
 import pytest
 
 from loopy.streaming import StreamBuffer, StreamChunk, Streamer, StreamEvent

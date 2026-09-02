@@ -3,7 +3,6 @@ cache load/save/update, and the MarketplacePlugin tool surface."""
 
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -17,7 +16,6 @@ from loopy.plugins.marketplace import (
     PluginMarketplace,
     PluginPackage,
 )
-
 
 # ---------------------------------------------------------------------------
 # PluginPackage

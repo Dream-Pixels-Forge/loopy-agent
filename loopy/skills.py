@@ -28,6 +28,7 @@ def _extract_triggers(section_content: list[str]) -> list[str]:
 @dataclass
 class Skill:
     """Persistent agent knowledge."""
+
     name: str
     description: str
     instructions: str
@@ -69,7 +70,7 @@ class Skill:
                 elif hits > 0:
                     total += 0.5 * (hits / len(trigger_words))
             else:
-                if re.search(r'\b' + re.escape(trigger_words[0]) + r'\b', task_lower):
+                if re.search(r"\b" + re.escape(trigger_words[0]) + r"\b", task_lower):
                     total += 0.5
 
         return min(total / max(len(self.triggers), 1), 1.0)

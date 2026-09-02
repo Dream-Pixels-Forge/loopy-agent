@@ -26,7 +26,7 @@ class Verdict(str, Enum):
 @dataclass
 class EvalCase:
     """A single evaluation test case."""
-    
+
     name: str
     input_text: str
     expected_output: str | None = None
@@ -91,7 +91,7 @@ class EvalResult:
 @dataclass
 class EvalSuite:
     """Collection of evaluation cases."""
-    
+
     name: str
     cases: list[EvalCase] = field(default_factory=list)
     description: str = ""
@@ -100,36 +100,36 @@ class EvalSuite:
 @dataclass
 class EvalReport:
     """Full evaluation report."""
-    
+
     suite_name: str
     results: list[EvalResult] = field(default_factory=list)
-    
+
     @property
     def total(self) -> int:
         return len(self.results)
-    
+
     @property
     def passed(self) -> int:
         return sum(1 for r in self.results if r.verdict == Verdict.PASS)
-    
+
     @property
     def failed(self) -> int:
         return sum(1 for r in self.results if r.verdict == Verdict.FAIL)
-    
+
     @property
     def partial(self) -> int:
         return sum(1 for r in self.results if r.verdict == Verdict.PARTIAL)
-    
+
     @property
     def pass_rate(self) -> float:
         return self.passed / self.total if self.total > 0 else 0.0
-    
+
     @property
     def average_score(self) -> float:
         if not self.results:
             return 0.0
         return sum(r.score for r in self.results) / len(self.results)
-    
+
     def summary(self) -> dict[str, Any]:
         """Return summary dict."""
         return {
@@ -201,13 +201,15 @@ class EvalReport:
 
 class EvalGateType(str, Enum):
     """Types of evaluation gates."""
-    JUDGE = "judge"          # LLM-as-judge (2026 evaluator-optimizer pattern)
-    MANUAL = "manual"        # Human approval stub
+
+    JUDGE = "judge"  # LLM-as-judge (2026 evaluator-optimizer pattern)
+    MANUAL = "manual"  # Human approval stub
 
 
 @dataclass
 class JudgeConfig:
     """Configuration for LLM-as-judge evaluation."""
+
     evaluator_model: str = "gpt-4"
     criteria: list[str] = field(default_factory=list)
     threshold: float = 0.7  # pass threshold
@@ -228,6 +230,7 @@ Respond with JSON:
 @dataclass
 class EvalGateResult:
     """Result of an evaluation gate check."""
+
     gate_type: EvalGateType
     passed: bool
     score: float = 0.0
@@ -238,10 +241,10 @@ class EvalGateResult:
 class EvalGate:
     """
     Evaluation gate for the evaluator-optimizer pattern.
-    
+
     Uses LLM-as-judge to evaluate outputs against criteria.
     Part of the 2026 agentic workflow evaluator-optimizer pattern.
-    
+
     Example:
         gate = EvalGate(
             gate_type=EvalGateType.JUDGE,
@@ -251,16 +254,16 @@ class EvalGate:
             ),
             judge_fn=my_llm_judge,
         )
-        
+
         result = await gate.evaluate(
             input_text="What is Python?",
             output="Python is a programming language...",
         )
-        
+
         if result.passed:
             print("Output passed evaluation!")
     """
-    
+
     def __init__(
         self,
         gate_type: EvalGateType,
@@ -270,7 +273,7 @@ class EvalGate:
         self.gate_type = gate_type
         self.config = config or JudgeConfig()
         self.judge_fn = judge_fn
-    
+
     async def evaluate(
         self,
         input_text: str,
@@ -279,12 +282,12 @@ class EvalGate:
     ) -> EvalGateResult:
         """
         Evaluate an output against criteria.
-        
+
         Args:
             input_text: The original input/prompt
             output: The output to evaluate
             criteria: Optional override for criteria
-        
+
         Returns:
             EvalGateResult with pass/fail and score
         """
@@ -298,7 +301,7 @@ class EvalGate:
             score=1.0,
             feedback="Manual gate - pending human review",
         )
-    
+
     async def _judge_evaluate(
         self,
         input_text: str,
@@ -309,23 +312,23 @@ class EvalGate:
         if not self.judge_fn:
             # Fallback to simple evaluation
             return self._simple_judge_evaluate(input_text, output, criteria)
-        
+
         criteria_list = criteria or self.config.criteria
         criteria_str = ", ".join(criteria_list) if criteria_list else "general quality"
-        
+
         prompt = self.config.prompt_template.format(
             input=input_text,
             output=output,
             criteria=criteria_str,
         )
-        
+
         try:
             judge_response = await self.judge_fn(prompt)
             data = json.loads(judge_response)
-            
+
             score = float(data.get("score", 0.0))
             passed = score >= self.config.threshold
-            
+
             return EvalGateResult(
                 gate_type=EvalGateType.JUDGE,
                 passed=passed,
@@ -336,7 +339,7 @@ class EvalGate:
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             logger.warning("Judge evaluation failed, using fallback: %s", e)
             return self._simple_judge_evaluate(input_text, output, criteria)
-    
+
     def _simple_judge_evaluate(
         self,
         input_text: str,
@@ -347,12 +350,12 @@ class EvalGate:
         # Basic heuristics
         score = 0.0
         feedback = []
-        
+
         # Check output is not empty
         if output.strip():
             score += 0.3
             feedback.append("Output is non-empty")
-        
+
         # Check output length (prefer concise)
         word_count = len(output.split())
         if 10 <= word_count <= 200:
@@ -361,16 +364,16 @@ class EvalGate:
         elif word_count > 200:
             score += 0.1
             feedback.append(f"Too long ({word_count} words)")
-        
+
         # Check for basic relevance (input words in output)
         input_words = set(input_text.lower().split())
         output_words = set(output.lower().split())
         overlap = len(input_words & output_words) / max(len(input_words), 1)
         score += 0.4 * overlap
         feedback.append(f"Relevance overlap: {overlap:.1%}")
-        
+
         passed = score >= self.config.threshold
-        
+
         return EvalGateResult(
             gate_type=EvalGateType.JUDGE,
             passed=passed,
@@ -383,12 +386,12 @@ class EvalGate:
 class Evaluator:
     """
     Judge-based evaluation framework.
-    
+
     Uses an LLM as a judge to evaluate model outputs against criteria.
-    
+
     Example:
         evaluator = Evaluator(judge_fn=my_llm_judge)
-        
+
         suite = EvalSuite(
             name="math_basic",
             cases=[
@@ -400,7 +403,7 @@ class Evaluator:
                 ),
             ],
         )
-        
+
         report = evaluator.run(suite, model_fn=my_model)
         print(report.summary())
     """
@@ -436,11 +439,11 @@ Respond in JSON:
     ) -> EvalReport:
         """
         Run evaluation suite.
-        
+
         Args:
             suite: The evaluation suite to run
             model_fn: Function to get model output (or use instance default)
-        
+
         Returns:
             EvalReport with all results
         """
@@ -471,7 +474,7 @@ Respond in JSON:
 
         # Use LLM judge
         criteria_str = ", ".join(case.criteria) if case.criteria else "general quality"
-        
+
         prompt = self.JUDGE_PROMPT.format(
             input=case.input_text,
             expected=case.expected_output or "N/A",
@@ -480,13 +483,13 @@ Respond in JSON:
         )
 
         judge_response = await self.judge_fn(prompt)
-        
+
         try:
             # Parse judge response
             data = json.loads(judge_response)
             score = float(data.get("overall_score", 0.0))
             verdict = Verdict(data.get("verdict", "fail"))
-            
+
             return EvalResult(
                 case=case,
                 actual_output=actual_output,

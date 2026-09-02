@@ -90,18 +90,22 @@ class TestSkillRegistry:
     def test_match_skills(self):
         """Test matching skills to task."""
         registry = SkillRegistry()
-        registry.add(Skill(
-            name="ci",
-            description="CI stuff",
-            instructions="Fix CI",
-            triggers=["ci failed", "build broken"],
-        ))
-        registry.add(Skill(
-            name="deploy",
-            description="Deploy stuff",
-            instructions="Deploy",
-            triggers=["deploy", "release"],
-        ))
+        registry.add(
+            Skill(
+                name="ci",
+                description="CI stuff",
+                instructions="Fix CI",
+                triggers=["ci failed", "build broken"],
+            )
+        )
+        registry.add(
+            Skill(
+                name="deploy",
+                description="Deploy stuff",
+                instructions="Deploy",
+                triggers=["deploy", "release"],
+            )
+        )
 
         matched = registry.match("CI workflow failed")
         assert len(matched) >= 1

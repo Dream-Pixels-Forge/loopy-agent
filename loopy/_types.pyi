@@ -90,18 +90,29 @@ class Gateway:
     def __init__(self) -> None: ...
     def add_provider(self, name: str, config: ProviderConfig) -> None: ...
     async def chat(
-        self, message: str, provider: str | None = ...,
-        system: str | None = ..., temperature: float = ...,
-        max_tokens: int = ..., **kwargs: Any,
+        self,
+        message: str,
+        provider: str | None = ...,
+        system: str | None = ...,
+        temperature: float = ...,
+        max_tokens: int = ...,
+        **kwargs: Any,
     ) -> GatewayResponse: ...
     async def chat_batch(
-        self, messages: list[str], provider: str | None = ...,
-        system: str | None = ..., temperature: float = ...,
-        max_tokens: int = ..., max_concurrent: int = ...,
+        self,
+        messages: list[str],
+        provider: str | None = ...,
+        system: str | None = ...,
+        temperature: float = ...,
+        max_tokens: int = ...,
+        max_concurrent: int = ...,
     ) -> list[GatewayResponse]: ...
     async def chat_streaming(
-        self, message: str, provider: str | None = ...,
-        system: str | None = ..., temperature: float = ...,
+        self,
+        message: str,
+        provider: str | None = ...,
+        system: str | None = ...,
+        temperature: float = ...,
         max_tokens: int = ...,
     ) -> AsyncGenerator[str]: ...
     def get_logs(self) -> list[dict[str, Any]]: ...
@@ -225,20 +236,28 @@ class EvalGateResult:
 
 class EvalGate:
     def __init__(
-        self, gate_type: EvalGateType, config: JudgeConfig | None = ...,
+        self,
+        gate_type: EvalGateType,
+        config: JudgeConfig | None = ...,
         judge_fn: Callable[[str], Awaitable[str]] | None = ...,
     ) -> None: ...
     async def evaluate(
-        self, input_text: str, output: str, criteria: list[str] | None = ...,
+        self,
+        input_text: str,
+        output: str,
+        criteria: list[str] | None = ...,
     ) -> EvalGateResult: ...
 
 class Evaluator:
     def __init__(
-        self, judge_fn: Callable[[str], Awaitable[str]] | None = ...,
+        self,
+        judge_fn: Callable[[str], Awaitable[str]] | None = ...,
         model_fn: Callable[[str], Awaitable[str]] | None = ...,
     ) -> None: ...
     async def run(
-        self, suite: EvalSuite, model_fn: Callable[[str], Awaitable[str]] | None = ...,
+        self,
+        suite: EvalSuite,
+        model_fn: Callable[[str], Awaitable[str]] | None = ...,
     ) -> EvalReport: ...
 
 # ============================================================
@@ -268,13 +287,19 @@ class CacheStats:
 
 class LLMCache:
     def __init__(
-        self, ttl: int = ..., max_size: int = ...,
+        self,
+        ttl: int = ...,
+        max_size: int = ...,
         persist_path: str | Path | None = ...,
     ) -> None: ...
     def get(self, prompt: str, model: str, **kwargs: Any) -> str | None: ...
     def set(
-        self, prompt: str, response: str, model: str,
-        tokens: int = ..., **kwargs: Any,
+        self,
+        prompt: str,
+        response: str,
+        model: str,
+        tokens: int = ...,
+        **kwargs: Any,
     ) -> None: ...
     def invalidate(self, prompt: str, model: str, **kwargs: Any) -> bool: ...
     def clear(self) -> None: ...
@@ -370,29 +395,41 @@ class MCPToolResult:
 
 class MCPClient:
     def __init__(
-        self, server_url: str, api_key: str | None = ...,
-        *, allow_private: bool = ...,
+        self,
+        server_url: str,
+        api_key: str | None = ...,
+        *,
+        allow_private: bool = ...,
     ) -> None: ...
     async def list_tools(self) -> list[MCPTool]: ...
     async def call_tool(
-        self, name: str, arguments: dict[str, Any] | None = ...,
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = ...,
     ) -> MCPToolResult: ...
     async def health_check(self) -> bool: ...
     async def close(self) -> None: ...
     async def __aenter__(self) -> MCPClient: ...
     async def __aexit__(
-        self, exc_type: type | None, exc_val: Exception | None, exc_tb: Any,
+        self,
+        exc_type: type | None,
+        exc_val: Exception | None,
+        exc_tb: Any,
     ) -> None: ...
 
 class LocalMCP:
     def __init__(self) -> None: ...
     def tool(
-        self, name: str, description: str = ...,
+        self,
+        name: str,
+        description: str = ...,
         input_schema: dict[str, Any] | None = ...,
     ) -> Callable: ...
     async def list_tools(self) -> list[MCPTool]: ...
     async def call_tool(
-        self, name: str, arguments: dict[str, Any] | None = ...,
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = ...,
     ) -> MCPToolResult: ...
 
 # ============================================================
@@ -442,7 +479,8 @@ class Router:
     rules: list[RoutingRule]
     classify_fn: Callable[[str, list[RoutingRule]], Awaitable[str]] | None
     def __init__(
-        self, classify_fn: Callable[[str, list[RoutingRule]], Awaitable[str]] | None = ...,
+        self,
+        classify_fn: Callable[[str, list[RoutingRule]], Awaitable[str]] | None = ...,
     ) -> None: ...
     def add_rule(self, rule: RoutingRule) -> None: ...
     async def classify(self, task: str) -> str: ...
@@ -460,14 +498,20 @@ class Orchestrator:
     async def route(self, task: str) -> str: ...
     async def decompose(self, task: str) -> list[SubTask]: ...
     async def run(
-        self, task: str, agent_name: str | None = ...,
+        self,
+        task: str,
+        agent_name: str | None = ...,
         context: dict[str, Any] | None = ...,
     ) -> AgentResult: ...
     async def run_all(
-        self, task: str, context: dict[str, Any] | None = ...,
+        self,
+        task: str,
+        context: dict[str, Any] | None = ...,
     ) -> list[AgentResult]: ...
     async def run_decomposed(
-        self, task: str, context: dict[str, Any] | None = ...,
+        self,
+        task: str,
+        context: dict[str, Any] | None = ...,
     ) -> list[AgentResult]: ...
     def get_history(self) -> list[AgentResult]: ...
     def get_summary(self) -> dict[str, Any]: ...
@@ -494,7 +538,8 @@ class Middleware(ABC):
 
 class FunctionMiddleware(Middleware):
     def __init__(
-        self, name: str = ...,
+        self,
+        name: str = ...,
         before_fn: Callable[[MiddlewareContext], Awaitable[MiddlewareContext]] | None = ...,
         after_fn: Callable[[MiddlewareContext, Any], Awaitable[Any]] | None = ...,
         error_fn: Callable[[MiddlewareContext, Exception], Awaitable[Exception]] | None = ...,
@@ -506,8 +551,11 @@ class MiddlewarePipeline:
     def remove(self, name: str) -> bool: ...
     def clear(self) -> None: ...
     async def execute(
-        self, operation: str, handler: Callable[..., Awaitable[Any]],
-        data: dict[str, Any] | None = ..., **kwargs: Any,
+        self,
+        operation: str,
+        handler: Callable[..., Awaitable[Any]],
+        data: dict[str, Any] | None = ...,
+        **kwargs: Any,
     ) -> Any: ...
 
 class LoggingMiddleware(Middleware): ...
@@ -521,25 +569,31 @@ class CacheMiddleware(Middleware):
 
 class ValidationMiddleware(Middleware):
     def __init__(
-        self, required_fields: list[str] | None = ...,
+        self,
+        required_fields: list[str] | None = ...,
         validators: dict[str, Callable[[Any], bool]] | None = ...,
     ) -> None: ...
 
 class RetryMiddleware(Middleware):
     def __init__(
-        self, max_retries: int = ..., base_delay: float = ...,
+        self,
+        max_retries: int = ...,
+        base_delay: float = ...,
         max_delay: float = ...,
         retryable_exceptions: tuple[type[Exception], ...] = ...,
     ) -> None: ...
 
 class CircuitBreakerMiddleware(Middleware):
     def __init__(
-        self, failure_threshold: int = ..., recovery_timeout: float = ...,
+        self,
+        failure_threshold: int = ...,
+        recovery_timeout: float = ...,
     ) -> None: ...
 
 class FallbackMiddleware(Middleware):
     def __init__(
-        self, fallback_fn: Callable[[MiddlewareContext, Any], Awaitable[Any]] | None = ...,
+        self,
+        fallback_fn: Callable[[MiddlewareContext, Any], Awaitable[Any]] | None = ...,
         fallback_data: dict[str, Any] | None = ...,
     ) -> None: ...
 
@@ -571,8 +625,13 @@ class PluginRegistry:
     async def load_package(self, module_path: str) -> None: ...
     async def load_directory(self, directory: str | Path) -> int: ...
     def register_tool(
-        self, name: str, handler: Callable, *, agent_visible: bool = ...,
-        requires_approval: bool = ..., scope: str = ...,
+        self,
+        name: str,
+        handler: Callable,
+        *,
+        agent_visible: bool = ...,
+        requires_approval: bool = ...,
+        scope: str = ...,
         allowed_values: dict[str, set[str]] | None = ...,
     ) -> None: ...
     def get_tool(self, name: str) -> Callable | None: ...
@@ -584,7 +643,10 @@ class PluginRegistry:
     def get_provider(self, name: str) -> Any: ...
     def register_extension(self, hook_name: str, callback: Callable) -> None: ...
     async def trigger_extension(
-        self, hook_name: str, *args: Any, **kwargs: Any,
+        self,
+        hook_name: str,
+        *args: Any,
+        **kwargs: Any,
     ) -> list[Any]: ...
     def get_plugin(self, name: str) -> Plugin | None: ...
     def list_plugins(self) -> list[PluginInfo]: ...
@@ -592,14 +654,19 @@ class PluginRegistry:
     async def unload_all(self) -> None: ...
     def denials(self) -> list[dict[str, Any]]: ...
     async def execute_tool(
-        self, name: str, arguments: dict[str, Any] | None = ...,
-        *, approver: Callable[[str, dict[str, Any]], Awaitable[bool]] | None = ...,
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = ...,
+        *,
+        approver: Callable[[str, dict[str, Any]], Awaitable[bool]] | None = ...,
     ) -> Any: ...
 
 class PluginLoader:
     def __init__(self, registry: PluginRegistry | None = ...) -> None: ...
     async def discover(
-        self, package: str | None = ..., directory: str | Path | None = ...,
+        self,
+        package: str | None = ...,
+        directory: str | Path | None = ...,
     ) -> int: ...
 
 # ============================================================
@@ -608,7 +675,9 @@ class PluginLoader:
 
 def is_private_host(host: str) -> bool: ...
 def validate_outbound_url(
-    url: str, *, allow_private: bool = ...,
+    url: str,
+    *,
+    allow_private: bool = ...,
     allow_schemes: tuple[str, ...] = ...,
 ) -> str: ...
 
@@ -617,11 +686,14 @@ def validate_outbound_url(
 # ============================================================
 
 CANARY_PREFIX: str
+
 def make_canary(prefix: str = ...) -> str: ...
 def check_canary(text: str, canary: str | None) -> bool: ...
 def mark_untrusted(content: str, marker: str = ...) -> str: ...
 def build_prompt(
-    user_message: str, *, system: str | None = ...,
+    user_message: str,
+    *,
+    system: str | None = ...,
     untrusted_docs: list[str] | tuple[str, ...] | None = ...,
     canary: str | None = ...,
 ) -> list[dict[str, Any]]: ...
@@ -691,7 +763,8 @@ class VerifyResult:
 
 class VerificationGate:
     def __init__(
-        self, implementer: Callable[[str], Awaitable[Any]],
+        self,
+        implementer: Callable[[str], Awaitable[Any]],
         verifier: Callable[[Any], Awaitable[VerifyResult]],
         test_fn: Callable[[Any], Awaitable[bool]] | None = ...,
         threshold: float = ...,
@@ -829,15 +902,23 @@ class SafetyResult:
 class SafetyGate:
     DEFAULT_DENYLIST: list[str]
     def __init__(
-        self, denylist_paths: list[str] | None = ...,
-        max_attempts: int = ..., human_gate_threshold: float = ...,
+        self,
+        denylist_paths: list[str] | None = ...,
+        max_attempts: int = ...,
+        human_gate_threshold: float = ...,
     ) -> None: ...
     async def check_path(self, path: str) -> SafetyCheck: ...
     def should_escalate(
-        self, attempts: int, confidence: float, path_safe: bool = ...,
+        self,
+        attempts: int,
+        confidence: float,
+        path_safe: bool = ...,
     ) -> bool: ...
     async def check(
-        self, path: str | None = ..., attempts: int = ..., confidence: float = ...,
+        self,
+        path: str | None = ...,
+        attempts: int = ...,
+        confidence: float = ...,
     ) -> SafetyResult: ...
 
 # ============================================================
@@ -909,11 +990,14 @@ class Streamer:
     chunks: list[StreamChunk]
     index: int
     async def stream(
-        self, generator: Callable[[str], AsyncIterator[str]], prompt: str,
+        self,
+        generator: Callable[[str], AsyncIterator[str]],
+        prompt: str,
     ) -> AsyncIterator[StreamChunk]: ...
     async def collect(self, stream: AsyncIterator[StreamChunk]) -> str: ...
     def to_sse_stream(
-        self, stream: AsyncIterator[StreamChunk],
+        self,
+        stream: AsyncIterator[StreamChunk],
     ) -> AsyncIterator[str]: ...
 
 # ============================================================
@@ -1023,12 +1107,24 @@ class MultiModalMessage:
 class MultiModalBuilder:
     def __init__(self) -> None: ...
     def add_image(
-        self, source: str, *, mime_type: str = ..., filename: str | None = ...,
+        self,
+        source: str,
+        *,
+        mime_type: str = ...,
+        filename: str | None = ...,
     ) -> MultiModalBuilder: ...
     def add_audio(
-        self, source: str, *, mime_type: str = ..., filename: str | None = ...,
+        self,
+        source: str,
+        *,
+        mime_type: str = ...,
+        filename: str | None = ...,
     ) -> MultiModalBuilder: ...
     def add_video(
-        self, source: str, *, mime_type: str = ..., filename: str | None = ...,
+        self,
+        source: str,
+        *,
+        mime_type: str = ...,
+        filename: str | None = ...,
     ) -> MultiModalBuilder: ...
     def build(self, text: str = ..., role: str = ...) -> MultiModalMessage: ...

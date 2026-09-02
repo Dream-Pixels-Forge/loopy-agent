@@ -29,6 +29,7 @@ class BudgetExceeded(Exception):
 @dataclass
 class CostReport:
     """Report of token usage."""
+
     used: int
     limit: int
     remaining: int

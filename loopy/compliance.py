@@ -19,6 +19,7 @@ logger = logging.getLogger("loopy.compliance")
 
 class ComplianceFramework(str, Enum):
     """Supported compliance frameworks."""
+
     SOC2 = "soc2"
     GDPR = "gdpr"
     EU_AI_ACT = "eu_ai_act"
@@ -26,6 +27,7 @@ class ComplianceFramework(str, Enum):
 
 class DataClassification(str, Enum):
     """Data sensitivity levels."""
+
     PUBLIC = "public"
     INTERNAL = "internal"
     CONFIDENTIAL = "confidential"
@@ -35,6 +37,7 @@ class DataClassification(str, Enum):
 @dataclass
 class AuditEntry:
     """Single audit log entry."""
+
     timestamp: str
     action: str
     agent_id: str
@@ -62,6 +65,7 @@ class AuditEntry:
 @dataclass
 class ComplianceReport:
     """Compliance check report."""
+
     framework: ComplianceFramework
     passed: bool
     checks: list[dict[str, Any]]
@@ -135,17 +139,19 @@ class AuditLogger:
                 if end_time and data.get("timestamp", "") > end_time:
                     continue
 
-                entries.append(AuditEntry(
-                    timestamp=data["timestamp"],
-                    action=data["action"],
-                    agent_id=data["agent_id"],
-                    input_summary=data["input_summary"],
-                    output_summary=data["output_summary"],
-                    classification=DataClassification(data["classification"]),
-                    tokens_used=data.get("tokens_used", 0),
-                    model=data.get("model", ""),
-                    metadata=data.get("metadata", {}),
-                ))
+                entries.append(
+                    AuditEntry(
+                        timestamp=data["timestamp"],
+                        action=data["action"],
+                        agent_id=data["agent_id"],
+                        input_summary=data["input_summary"],
+                        output_summary=data["output_summary"],
+                        classification=DataClassification(data["classification"]),
+                        tokens_used=data.get("tokens_used", 0),
+                        model=data.get("model", ""),
+                        metadata=data.get("metadata", {}),
+                    )
+                )
 
         return entries
 

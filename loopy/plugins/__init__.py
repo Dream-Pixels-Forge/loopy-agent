@@ -55,16 +55,16 @@ def redact_arguments(arguments: dict[str, Any]) -> dict[str, Any]:
 @dataclass
 class PluginInfo:
     """Metadata about a plugin."""
-    
+
     name: str
     version: str = "0.1.0"
     description: str = ""
     author: str = ""
     url: str = ""
-    
+
     # Capabilities this plugin provides
     capabilities: list[str] = field(default_factory=list)
-    
+
     # Dependencies
     requires: list[str] = field(default_factory=list)
 
@@ -72,9 +72,9 @@ class PluginInfo:
 class Plugin(ABC):
     """
     Base plugin class.
-    
+
     All plugins must inherit from this and implement `setup()`.
-    
+
     Example:
         class MyPlugin(Plugin):
             @property
@@ -84,39 +84,38 @@ class Plugin(ABC):
                     version="1.0.0",
                     description="My awesome plugin",
                 )
-            
+
             async def setup(self, registry: PluginRegistry) -> None:
                 # Register tools, middleware, etc.
                 registry.register_tool("my_tool", my_tool_handler)
     """
-    
+
     @property
     @abstractmethod
     def info(self) -> PluginInfo:
         """Return plugin metadata."""
         ...
-    
+
     @abstractmethod
     async def setup(self, registry: PluginRegistry) -> None:
         """Initialize the plugin."""
         ...
-    
+
     async def teardown(self) -> None:  # noqa: B027
         """Cleanup when plugin is unloaded."""
-        ...
 
 
 class PluginRegistry:
     """
     Central registry for plugins and their components.
-    
+
     Example:
         registry = PluginRegistry()
-        
+
         # Load plugins
         await registry.load(MyPlugin())
         await registry.load_package("loopy.plugins.anthropic")
-        
+
         # Use registered components
         tool = registry.get_tool("my_tool")
         middleware = registry.get_middleware("cache")
@@ -134,45 +133,43 @@ class PluginRegistry:
     async def load(self, plugin: Plugin) -> None:
         """Load a plugin instance."""
         info = plugin.info
-        
+
         if info.name in self._plugins:
             logger.warning("Plugin %s already loaded, skipping", info.name)
             return
-        
+
         # Check dependencies
         for dep in info.requires:
             if dep not in self._plugins:
-                raise RuntimeError(
-                    f"Plugin {info.name} requires {dep}, which is not loaded"
-                )
-        
+                raise RuntimeError(f"Plugin {info.name} requires {dep}, which is not loaded")
+
         # Load the plugin
         await plugin.setup(self)
         self._plugins[info.name] = plugin
-        
+
         logger.info("Loaded plugin: %s v%s", info.name, info.version)
 
     async def load_package(self, module_path: str) -> None:
         """
         Load a plugin from a Python module path.
-        
+
         The module must have a `plugin` attribute that is a Plugin instance.
-        
+
         Example:
             await registry.load_package("my_package.my_plugin")
         """
         try:
             module = importlib.import_module(module_path)
             plugin_instance = getattr(module, "plugin", None)
-            
+
             if plugin_instance is None:
                 raise ValueError(f"No 'plugin' attribute in {module_path}")
-            
+
             if not isinstance(plugin_instance, Plugin):
                 raise TypeError(f"'plugin' in {module_path} is not a Plugin instance")
-            
+
             await self.load(plugin_instance)
-            
+
         except ImportError as e:
             logger.error("Failed to import %s: %s", module_path, e)
             raise
@@ -180,23 +177,23 @@ class PluginRegistry:
     async def load_directory(self, directory: str | Path) -> int:
         """
         Load all plugins from a directory.
-        
+
         Looks for Python files with a `plugin` attribute.
-        
+
         Returns:
             Number of plugins loaded
         """
         directory = Path(directory)
         loaded = 0
-        
+
         if not directory.exists():
             logger.warning("Plugin directory not found: %s", directory)
             return 0
-        
+
         for py_file in directory.glob("*.py"):
             if py_file.name.startswith("_"):
                 continue
-            
+
             module_name = py_file.stem
             try:
                 spec = importlib.util.spec_from_file_location(
@@ -206,14 +203,14 @@ class PluginRegistry:
                 if spec and spec.loader:
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
-                    
+
                     plugin_instance = getattr(module, "plugin", None)
                     if plugin_instance and isinstance(plugin_instance, Plugin):
                         await self.load(plugin_instance)
                         loaded += 1
             except Exception as e:
                 logger.error("Failed to load plugin from %s: %s", py_file, e)
-        
+
         return loaded
 
     def register_tool(
@@ -259,9 +256,7 @@ class PluginRegistry:
 
     def list_tools(self) -> list[str]:
         """List agent-visible tool names (hidden/operator tools excluded)."""
-        return [
-            name for name, spec in self._tool_specs.items() if spec["agent_visible"]
-        ]
+        return [name for name, spec in self._tool_specs.items() if spec["agent_visible"]]
 
     def list_all_tools(self) -> list[str]:
         """List every registered tool name, visible or not."""
@@ -335,9 +330,7 @@ class PluginRegistry:
         for param, values in allowed.items():
             value = arguments.get(param)
             if value is not None and value not in values:
-                self._denials.append(
-                    {"tool": name, "reason": f"parameter '{param}' out of range"}
-                )
+                self._denials.append({"tool": name, "reason": f"parameter '{param}' out of range"})
                 raise ValueError(f"Parameter '{param}' outside allowed values")
 
         return await handler(**arguments)
@@ -393,11 +386,11 @@ class PluginRegistry:
         """Unload a plugin."""
         if name not in self._plugins:
             return False
-        
+
         plugin = self._plugins[name]
         await plugin.teardown()
         del self._plugins[name]
-        
+
         logger.info("Unloaded plugin: %s", name)
         return True
 
@@ -411,16 +404,17 @@ class PluginRegistry:
 # Plugin Loader - discovers and loads plugins automatically
 # ============================================================
 
+
 class PluginLoader:
     """
     Automatic plugin discovery and loading.
-    
+
     Example:
         loader = PluginLoader()
-        
+
         # Discover plugins from entry points
         await loader.discover()
-        
+
         # Or from specific locations
         await loader.discover(
             package="my_package.plugins",
@@ -438,7 +432,7 @@ class PluginLoader:
     ) -> int:
         """
         Discover and load plugins.
-        
+
         Returns:
             Number of plugins loaded
         """
@@ -467,24 +461,34 @@ class PluginLoader:
 # First-party plugins
 # ============================================================
 
+
 def lazy_import_rag():
     from loopy.plugins.rag import Document, RAGPlugin, Retriever
+
     return RAGPlugin, Document, Retriever
+
 
 def lazy_import_tools():
     from loopy.plugins.tools import Tool, ToolResult, ToolsPlugin
+
     return ToolsPlugin, Tool, ToolResult
+
 
 def lazy_import_memory():
     from loopy.plugins.memory import Memory, MemoryPlugin, MemoryStore
+
     return MemoryPlugin, Memory, MemoryStore
+
 
 def lazy_import_audio():
     from loopy.plugins.audio import AudioPlugin, SpeechToText, TextToSpeech
+
     return AudioPlugin, SpeechToText, TextToSpeech
+
 
 def lazy_import_marketplace():
     from loopy.plugins.marketplace import MarketplacePlugin, PluginMarketplace
+
     return MarketplacePlugin, PluginMarketplace
 
 

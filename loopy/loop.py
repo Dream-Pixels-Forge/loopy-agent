@@ -148,8 +148,14 @@ class AgentLoop:
                     logger.warning("Stop condition check failed: %s", e)
 
             # Default stop: all callbacks are None (no-op loop)
-            if not any([self.config.planner, self.config.actor,
-                        self.config.observer, self.config.reflector]):
+            if not any(
+                [
+                    self.config.planner,
+                    self.config.actor,
+                    self.config.observer,
+                    self.config.reflector,
+                ]
+            ):
                 logger.info("No callbacks configured, stopping loop")
                 break
 
@@ -175,9 +181,7 @@ class AgentLoop:
             state.attempts = result.step
 
             outcome = (
-                RunOutcome.SUCCESS
-                if result.status == StepStatus.COMPLETE
-                else RunOutcome.FAILURE
+                RunOutcome.SUCCESS if result.status == StepStatus.COMPLETE else RunOutcome.FAILURE
             )
             state.add_record(
                 RunRecord(

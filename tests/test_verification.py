@@ -39,6 +39,7 @@ class TestVerifyResult:
 class TestVerificationGate:
     def test_gate_creation(self):
         """Test gate creation."""
+
         async def impl(task):
             return "implemented"
 
@@ -50,6 +51,7 @@ class TestVerificationGate:
 
     def test_gate_success(self):
         """Test gate with successful implementation and verification."""
+
         async def impl(task):
             return f"Code for: {task}"
 
@@ -69,11 +71,14 @@ class TestVerificationGate:
 
     def test_gate_verifier_rejects(self):
         """Test gate when verifier rejects implementation."""
+
         async def impl(task):
             return "bad code"
 
         async def verifier(result):
-            return VerifyResult(status=VerificationStatus.FAILED, score=0.2, feedback="Poor quality")
+            return VerifyResult(
+                status=VerificationStatus.FAILED, score=0.2, feedback="Poor quality"
+            )
 
         gate = VerificationGate(implementer=impl, verifier=verifier)
 
@@ -87,6 +92,7 @@ class TestVerificationGate:
 
     def test_gate_with_test_fn(self):
         """Test gate with test function."""
+
         async def impl(task):
             return "implemented"
 
@@ -106,6 +112,7 @@ class TestVerificationGate:
 
     def test_gate_test_fn_fails(self):
         """Test gate when test function fails."""
+
         async def impl(task):
             return "broken"
 
@@ -120,12 +127,16 @@ class TestVerificationGate:
         async def run_test():
             result = await gate.run("Fix bug")
             assert result.passed is False
-            assert "tests_failed" in result.feedback.lower() or result.status == VerificationStatus.FAILED
+            assert (
+                "tests_failed" in result.feedback.lower()
+                or result.status == VerificationStatus.FAILED
+            )
 
         asyncio.run(run_test())
 
     def test_gate_implementer_error(self):
         """Test gate when implementer raises error."""
+
         async def impl(task):
             raise ValueError("Implementation failed")
 
@@ -143,6 +154,7 @@ class TestVerificationGate:
 
     def test_gate_with_threshold(self):
         """Test gate with score threshold."""
+
         async def impl(task):
             return "implemented"
 

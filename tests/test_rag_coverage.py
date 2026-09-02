@@ -8,6 +8,7 @@ from loopy.plugins.rag import Document, Retriever
 
 # ── Document ─────────────────────────────────────────────────
 
+
 class TestDocument:
     def test_from_text(self):
         doc = Document.from_text("Hello world")
@@ -21,6 +22,7 @@ class TestDocument:
 
 
 # ── Retriever CRUD ──────────────────────────────────────────
+
 
 class TestRetrieverCRUD:
     def test_add_and_get(self):
@@ -62,6 +64,7 @@ class TestRetrieverCRUD:
 
 # ── Keyword search ───────────────────────────────────────────
 
+
 class TestKeywordSearch:
     @pytest.mark.asyncio
     async def test_keyword_search_basic(self):
@@ -90,13 +93,14 @@ class TestKeywordSearch:
 
 # ── Vector search ────────────────────────────────────────────
 
+
 class TestVectorSearch:
     @pytest.mark.asyncio
     async def test_vector_search_with_embed_fn(self):
         async def fake_embed(text: str) -> list[float]:
             if "python" in text.lower():
                 return [1.0, 0.0, 0.0]
-            elif "web" in text.lower():
+            if "web" in text.lower():
                 return [0.0, 1.0, 0.0]
             return [0.0, 0.0, 1.0]
 
@@ -130,6 +134,7 @@ class TestVectorSearch:
 
 
 # ── RAGPlugin ────────────────────────────────────────────────
+
 
 class TestRAGPlugin:
     @pytest.mark.asyncio

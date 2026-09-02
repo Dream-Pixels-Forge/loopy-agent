@@ -63,16 +63,11 @@ class TestMultiModalMessage:
 
 class TestMultiModalBuilder:
     def test_builder_text(self):
-        msg = (MultiModalBuilder()
-            .text("What's this?")
-            .build())
+        msg = MultiModalBuilder().text("What's this?").build()
         assert msg.text == "What's this?"
         assert msg.has_media is False
 
     def test_builder_with_url_image(self):
-        msg = (MultiModalBuilder()
-            .text("Describe")
-            .image("https://example.com/img.png")
-            .build())
+        msg = MultiModalBuilder().text("Describe").image("https://example.com/img.png").build()
         assert msg.has_media is True
         assert len(msg.images) == 1

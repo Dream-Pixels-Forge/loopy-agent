@@ -33,7 +33,7 @@ class SpanStatus(str, Enum):
 class Span:
     """
     A single trace span representing an operation.
-    
+
     Example:
         span = Tracer.start_span("llm_call", model="gpt-4")
         # ... do work ...
@@ -41,46 +41,49 @@ class Span:
         span.set_status(SpanStatus.OK)
         span.end()
     """
+
     name: str
     trace_id: str
     span_id: str
     parent_id: str | None = None
-    
+
     start_time: float = field(default_factory=time.time)
     end_time: float | None = None
-    
+
     status: SpanStatus = SpanStatus.UNSET
     attributes: dict[str, Any] = field(default_factory=dict)
     events: list[dict[str, Any]] = field(default_factory=list)
-    
+
     @property
     def duration_ms(self) -> float | None:
         if self.end_time is None:
             return None
         return (self.end_time - self.start_time) * 1000
-    
+
     def set_attribute(self, key: str, value: Any) -> None:
         """Set a span attribute."""
         self.attributes[key] = value
-    
+
     def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """Add an event to the span."""
-        self.events.append({
-            "name": name,
-            "timestamp": time.time(),
-            "attributes": attributes or {},
-        })
-    
+        self.events.append(
+            {
+                "name": name,
+                "timestamp": time.time(),
+                "attributes": attributes or {},
+            }
+        )
+
     def set_status(self, status: SpanStatus, message: str = "") -> None:
         """Set span status."""
         self.status = status
         if message:
             self.attributes["status_message"] = message
-    
+
     def end(self) -> None:
         """End the span."""
         self.end_time = time.time()
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -100,10 +103,10 @@ class Span:
 class Tracer:
     """
     Distributed tracer for LLM operations.
-    
+
     Example:
         tracer = Tracer(service="my_app")
-        
+
         with tracer.start("llm_call") as span:
             span.set_attribute("model", "gpt-4")
             response = await llm.complete(prompt)
@@ -127,18 +130,18 @@ class Tracer:
     ) -> Span:
         """
         Start a new span.
-        
+
         Args:
             name: Span name (e.g., "llm_call", "tool_use")
             parent_id: Optional parent span ID
             **attributes: Initial attributes
-        
+
         Returns:
             New Span instance
         """
         trace_id = self._current_trace_id or self._generate_id()
         span_id = self._generate_id()
-        
+
         span = Span(
             name=name,
             trace_id=trace_id,
@@ -146,16 +149,16 @@ class Tracer:
             parent_id=parent_id,
             attributes={"service": self.service, **attributes},
         )
-        
+
         self._spans.append(span)
         logger.debug("Started span: %s (%s)", name, span_id)
-        
+
         return span
 
     def start(self, name: str, **attributes: Any) -> SpanContext:
         """
         Start a span with context manager support.
-        
+
         Example:
             with tracer.start("llm_call") as span:
                 span.set_attribute("model", "gpt-4")
@@ -195,7 +198,7 @@ class Tracer:
     def export_opentelemetry(self) -> dict[str, Any]:
         """
         Export spans in OpenTelemetry-compatible format.
-        
+
         Returns a dict with resource info and spans ready for OTLP export.
         """
         return {
@@ -233,23 +236,23 @@ class Tracer:
 class TraceExporter:
     """
     Export traces to various backends.
-    
+
     Example:
         exporter = TraceExporter(tracer)
-        
+
         # Export to Jaeger
         exporter.export_jaeger("http://localhost:14268/api/traces")
-        
+
         # Export to file
         exporter.export_file("traces.json")
-        
+
         # Export to stdout
         exporter.export_stdout()
     """
-    
+
     def __init__(self, tracer: Tracer):
         self.tracer = tracer
-    
+
     def export_file(self, path: str) -> None:
         """Export traces to a JSON file.
 
@@ -303,16 +306,20 @@ class TraceExporter:
             except Exception as e:
                 last_error = e
                 if attempt < max_retries - 1:
-                    delay = 2 ** attempt  # 1s, 2s, 4s
+                    delay = 2**attempt  # 1s, 2s, 4s
                     logger.warning(
                         "Trace export attempt %d/%d failed, retrying in %ds: %s",
-                        attempt + 1, max_retries, delay, e,
+                        attempt + 1,
+                        max_retries,
+                        delay,
+                        e,
                     )
                     await asyncio.sleep(delay)
 
         logger.error(
             "Failed to export traces after %d attempts: %s",
-            max_retries, last_error,
+            max_retries,
+            last_error,
         )
         return False
 
@@ -337,7 +344,7 @@ class SpanContext:
 @dataclass
 class MetricPoint:
     """A single metric data point."""
-    
+
     name: str
     value: float
     timestamp: float = field(default_factory=time.time)
@@ -401,7 +408,7 @@ class MetricsCollector:
             if m.name not in by_name:
                 by_name[m.name] = []
             by_name[m.name].append(m.value)
-        
+
         return {
             name: {
                 "count": len(values),

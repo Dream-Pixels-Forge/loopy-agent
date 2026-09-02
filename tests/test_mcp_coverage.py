@@ -10,6 +10,7 @@ from loopy.mcp import LocalMCP, MCPClient, MCPToolResult, Tool
 
 # ── MCPClient ────────────────────────────────────────────────
 
+
 class TestMCPClientHTTP:
     @pytest.mark.asyncio
     async def test_list_tools(self):
@@ -19,8 +20,12 @@ class TestMCPClientHTTP:
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json.return_value = {
             "tools": [
-                {"name": "get_weather", "description": "Weather",
-                 "input_schema": {}, "annotations": {}},
+                {
+                    "name": "get_weather",
+                    "description": "Weather",
+                    "input_schema": {},
+                    "annotations": {},
+                },
             ]
         }
 
@@ -64,9 +69,8 @@ class TestMCPClientHTTP:
     async def test_health_check_failure(self):
         client = MCPClient("http://localhost:3000")
         with patch.object(
-            client._client, "get",
-            new_callable=AsyncMock,
-            side_effect=ConnectionError("refused")):
+            client._client, "get", new_callable=AsyncMock, side_effect=ConnectionError("refused")
+        ):
             ok = await client.health_check()
         assert ok is False
 
@@ -77,6 +81,7 @@ class TestMCPClientHTTP:
 
 
 # ── LocalMCP ─────────────────────────────────────────────────
+
 
 class TestLocalMCP:
     @pytest.mark.asyncio

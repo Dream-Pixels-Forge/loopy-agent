@@ -19,6 +19,7 @@ logger = logging.getLogger("loopy.streaming")
 
 class StreamEvent(str, Enum):
     """Types of stream events."""
+
     TOKEN = "token"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
@@ -30,6 +31,7 @@ class StreamEvent(str, Enum):
 @dataclass
 class StreamChunk:
     """A single chunk in a stream."""
+
     event: StreamEvent
     data: Any
     index: int = 0

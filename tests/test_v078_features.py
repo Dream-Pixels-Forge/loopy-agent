@@ -44,14 +44,16 @@ class TestLoopResume:
         async def reflector(history):
             return "ref"
 
-        loop = AgentLoop(LoopConfig(
-            planner=planner,
-            actor=actor,
-            observer=observer,
-            reflector=reflector,
-            max_steps=5,
-            resume_from=3,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=planner,
+                actor=actor,
+                observer=observer,
+                reflector=reflector,
+                max_steps=5,
+                resume_from=3,
+            )
+        )
 
         history = await loop.run()
 
@@ -65,10 +67,15 @@ class TestLoopResume:
         async def noop(_=None):
             return ""
 
-        loop = AgentLoop(LoopConfig(
-            planner=noop, actor=noop, observer=noop, reflector=noop,
-            max_steps=3,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=noop,
+                actor=noop,
+                observer=noop,
+                reflector=noop,
+                max_steps=3,
+            )
+        )
         history = await loop.run()
         assert [r.step for r in history] == [1, 2, 3]
 
@@ -80,12 +87,17 @@ class TestLoopResume:
             return ""
 
         sm = StateManager(str(tmp_path / "state.json"))
-        loop = AgentLoop(LoopConfig(
-            planner=noop, actor=noop, observer=noop, reflector=noop,
-            max_steps=3,
-            state_manager=sm,
-            task="unit-test",
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=noop,
+                actor=noop,
+                observer=noop,
+                reflector=noop,
+                max_steps=3,
+                state_manager=sm,
+                task="unit-test",
+            )
+        )
 
         await loop.run()
 
@@ -106,12 +118,17 @@ class TestLoopResume:
             raise RuntimeError("nope")
 
         sm = StateManager(str(tmp_path / "state.json"))
-        loop = AgentLoop(LoopConfig(
-            planner=ok, actor=boom, observer=ok, reflector=ok,
-            max_steps=2,
-            stop_on_error=False,  # keep checkpointing after the failure
-            state_manager=sm,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=ok,
+                actor=boom,
+                observer=ok,
+                reflector=ok,
+                max_steps=2,
+                stop_on_error=False,  # keep checkpointing after the failure
+                state_manager=sm,
+            )
+        )
 
         await loop.run()
 
@@ -131,11 +148,16 @@ class TestLoopResume:
             return ""
 
         sm = StateManager(str(tmp_path / "state.json"))
-        loop = AgentLoop(LoopConfig(
-            planner=noop, actor=noop, observer=noop, reflector=noop,
-            max_steps=120,  # > 100 so we exceed the cap
-            state_manager=sm,
-        ))
+        loop = AgentLoop(
+            LoopConfig(
+                planner=noop,
+                actor=noop,
+                observer=noop,
+                reflector=noop,
+                max_steps=120,  # > 100 so we exceed the cap
+                state_manager=sm,
+            )
+        )
 
         await loop.run()
 
@@ -200,8 +222,9 @@ class TestSkillRanking:
     def test_match_one_returns_best(self):
         reg = SkillRegistry()
         reg.add(Skill(name="other", description="x", instructions="x", triggers=["car"]))
-        reg.add(Skill(name="python", description="x", instructions="x",
-                       triggers=["python", "snake"]))
+        reg.add(
+            Skill(name="python", description="x", instructions="x", triggers=["python", "snake"])
+        )
 
         best = reg.match_one("python snake")
         assert best is not None
@@ -214,8 +237,7 @@ class TestSkillRanking:
 
     def test_matches_uses_score_for_backward_compat(self):
         """`matches` must remain a boolean API."""
-        skill = Skill(name="x", description="x", instructions="x",
-                       triggers=["hello"])
+        skill = Skill(name="x", description="x", instructions="x", triggers=["hello"])
         assert skill.matches("say hello world") is True
         assert skill.matches("nothing here") is False
 

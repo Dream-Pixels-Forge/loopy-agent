@@ -21,7 +21,7 @@ logger = logging.getLogger("loopy.cache")
 @dataclass
 class CacheEntry:
     """A cached response."""
-    
+
     key: str
     response: str
     model: str
@@ -35,16 +35,16 @@ class CacheEntry:
 @dataclass
 class CacheStats:
     """Cache statistics."""
-    
+
     hits: int = 0
     misses: int = 0
     total_saved_tokens: int = 0
-    
+
     @property
     def hit_rate(self) -> float:
         total = self.hits + self.misses
         return self.hits / total if total > 0 else 0.0
-    
+
     @property
     def estimated_savings(self) -> float:
         """Rough cost estimate assuming $0.03 per 1K tokens."""
@@ -54,13 +54,13 @@ class CacheStats:
 class LLMCache:
     """
     Semantic cache for LLM responses.
-    
+
     Caches responses by hashing the prompt + model combination.
     Supports TTL, size limits, and persistence.
-    
+
     Example:
         cache = LLMCache(ttl=3600, max_size=1000)
-        
+
         # Check cache before calling LLM
         cached = cache.get("What is Python?", model="gpt-4")
         if cached:
@@ -68,7 +68,7 @@ class LLMCache:
         else:
             response = await call_llm("What is Python?")
             cache.set("What is Python?", response, model="gpt-4")
-        
+
         stats = cache.stats()
         print(f"Cache hit rate: {stats.hit_rate:.1%}")
     """
@@ -88,10 +88,10 @@ class LLMCache:
         self.ttl = ttl
         self.max_size = max_size
         self.persist_path = Path(persist_path) if persist_path else None
-        
+
         self._cache: dict[str, CacheEntry] = {}
         self._stats = CacheStats()
-        
+
         # Load persisted cache
         if self.persist_path and self.persist_path.exists():
             self._load()
@@ -109,29 +109,29 @@ class LLMCache:
     def get(self, prompt: str, model: str, **kwargs: Any) -> str | None:
         """
         Get cached response if available.
-        
+
         Returns:
             Cached response string or None
         """
         key = self._make_key(prompt, model, **kwargs)
-        
+
         entry = self._cache.get(key)
         if not entry:
             self._stats.misses += 1
             return None
-        
+
         # Check TTL
         if time.time() - entry.created_at > self.ttl:
             del self._cache[key]
             self._stats.misses += 1
             return None
-        
+
         # Update access stats
         entry.last_accessed = time.time()
         entry.access_count += 1
         self._stats.hits += 1
         self._stats.total_saved_tokens += entry.tokens_saved
-        
+
         logger.debug("Cache hit: %s... (accessed %dx)", key[:8], entry.access_count)
         return entry.response
 
@@ -145,7 +145,7 @@ class LLMCache:
     ) -> None:
         """
         Cache a response.
-        
+
         Args:
             prompt: The input prompt
             response: The model's response
@@ -153,20 +153,20 @@ class LLMCache:
             tokens: Number of tokens in the response (for savings tracking)
         """
         key = self._make_key(prompt, model, **kwargs)
-        
+
         # Evict if at capacity
         if len(self._cache) >= self.max_size and key not in self._cache:
             self._evict()
-        
+
         self._cache[key] = CacheEntry(
             key=key,
             response=response,
             model=model,
             tokens_saved=tokens,
         )
-        
+
         logger.debug("Cached response: %s... (%d tokens)", key[:8], tokens)
-        
+
         # Persist if configured
         if self.persist_path:
             self._save()

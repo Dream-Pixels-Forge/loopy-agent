@@ -84,8 +84,12 @@ class TestLoopState:
     def test_state_total_tokens(self):
         """Test total token calculation."""
         state = LoopState()
-        state.add_record(RunRecord(task="a", outcome=RunOutcome.SUCCESS, tokens_used=100, duration_ms=100))
-        state.add_record(RunRecord(task="b", outcome=RunOutcome.FAILURE, tokens_used=200, duration_ms=100))
+        state.add_record(
+            RunRecord(task="a", outcome=RunOutcome.SUCCESS, tokens_used=100, duration_ms=100)
+        )
+        state.add_record(
+            RunRecord(task="b", outcome=RunOutcome.FAILURE, tokens_used=200, duration_ms=100)
+        )
         assert state.total_tokens == 300
 
     def test_state_to_dict(self):
@@ -151,11 +155,15 @@ class TestStateManager:
             state = LoopState()
 
             # Add records with old timestamps
-            old_record = RunRecord(task="old", outcome=RunOutcome.SUCCESS, tokens_used=10, duration_ms=100)
+            old_record = RunRecord(
+                task="old", outcome=RunOutcome.SUCCESS, tokens_used=10, duration_ms=100
+            )
             old_record.timestamp = "2020-01-01T00:00:00"
             state.add_record(old_record)
 
-            new_record = RunRecord(task="new", outcome=RunOutcome.SUCCESS, tokens_used=10, duration_ms=100)
+            new_record = RunRecord(
+                task="new", outcome=RunOutcome.SUCCESS, tokens_used=10, duration_ms=100
+            )
             state.add_record(new_record)
 
             manager.save(state)

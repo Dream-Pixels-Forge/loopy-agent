@@ -80,7 +80,7 @@ class ProviderConfig:
 @dataclass
 class GatewayResponse:
     """Unified response from the gateway."""
-    
+
     content: str
     model: str
     provider: ModelProvider
@@ -93,22 +93,22 @@ class GatewayResponse:
 class ConnectionPool:
     """
     HTTP connection pool for reusing connections to providers.
-    
+
     Reduces latency by reusing TCP connections and SSL handshakes.
     Evicts the least-recently-used connection when at capacity.
-    
+
     Example:
         pool = ConnectionPool(max_size=10)
         async with pool.get_connection("openai") as client:
             response = await client.post(...)
     """
-    
+
     def __init__(self, max_size: int = 10):
         self.max_size = max_size
         self._connections: dict[str, httpx.AsyncClient] = {}
         self._last_used: dict[str, float] = {}
         self._lock = asyncio.Lock()
-    
+
     async def get_connection(self, provider: str) -> httpx.AsyncClient:
         """Get or create a connection for a provider."""
         async with self._lock:
@@ -132,14 +132,14 @@ class ConnectionPool:
             )
             self._last_used[provider] = time.time()
             return self._connections[provider]
-    
+
     async def close(self) -> None:
         """Close all connections in the pool."""
         for client in self._connections.values():
             await client.aclose()
         self._connections.clear()
         self._last_used.clear()
-    
+
     def stats(self) -> dict[str, Any]:
         """Get pool statistics."""
         return {
@@ -152,21 +152,21 @@ class ConnectionPool:
 class Gateway:
     """
     AI Gateway for routing LLM requests across providers.
-    
+
     Supports both standalone and async context manager usage.
-    
+
     Example (async context manager):
         async with Gateway() as gateway:
             gateway.add_provider("openai", ProviderConfig(...))
             response = await gateway.chat("What is 2+2?")
-    
+
     Example (standalone):
         gateway = Gateway()
         gateway.add_provider("openai", ProviderConfig(...))
         response = await gateway.chat("What is 2+2?", provider="openai")
         await gateway.close()
     """
-    
+
     async def __aenter__(self):
         """Async context manager entry."""
         return self
@@ -186,9 +186,7 @@ class Gateway:
         self.providers[name] = config
         logger.info("Added provider: %s (%s)", name, config.provider.value)
 
-    def _resolve_provider(
-        self, provider: str | None = None
-    ) -> tuple[str, ProviderConfig]:
+    def _resolve_provider(self, provider: str | None = None) -> tuple[str, ProviderConfig]:
         """Resolve a provider name to a (name, config) pair.
 
         Args:
@@ -280,8 +278,12 @@ class Gateway:
         return response
 
     async def _call_openai(
-        self, config: ProviderConfig, message: str, system: str | None,
-        temperature: float, max_tokens: int
+        self,
+        config: ProviderConfig,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
     ) -> GatewayResponse:
         """Route a chat request to the OpenAI API.
 
@@ -322,8 +324,12 @@ class Gateway:
         )
 
     async def _call_anthropic(
-        self, config: ProviderConfig, message: str, system: str | None,
-        temperature: float, max_tokens: int
+        self,
+        config: ProviderConfig,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
     ) -> GatewayResponse:
         """Route a chat request to the Anthropic API.
 
@@ -363,12 +369,16 @@ class Gateway:
             model=config.model,
             provider=ModelProvider.ANTHROPIC,
             tokens_used=data.get("usage", {}).get("input_tokens", 0)
-                      + data.get("usage", {}).get("output_tokens", 0),
+            + data.get("usage", {}).get("output_tokens", 0),
         )
 
     async def _call_ollama(
-        self, config: ProviderConfig, message: str, system: str | None,
-        temperature: float, max_tokens: int
+        self,
+        config: ProviderConfig,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
     ) -> GatewayResponse:
         """Route a chat request to a local Ollama instance.
 
@@ -405,8 +415,6 @@ class Gateway:
             provider=ModelProvider.OLLAMA,
             tokens_used=data.get("eval_count", 0),
         )
-
-
 
     async def chat_batch(
         self,

@@ -20,6 +20,7 @@ logger = logging.getLogger("loopy.multimodal")
 
 class MediaType(str, Enum):
     """Supported media types."""
+
     IMAGE = "image"
     AUDIO = "audio"
     VIDEO = "video"
@@ -28,6 +29,7 @@ class MediaType(str, Enum):
 
 class ImageFormat(str, Enum):
     """Image formats."""
+
     PNG = "png"
     JPEG = "jpeg"
     WEBP = "webp"
@@ -37,6 +39,7 @@ class ImageFormat(str, Enum):
 @dataclass
 class MediaContent:
     """A piece of media content."""
+
     type: MediaType
     data: str  # base64 or URL
     mime_type: str = ""
@@ -63,10 +66,15 @@ class MediaContent:
         }
 
         mime_type = mime_map.get(suffix, "application/octet-stream")
-        media_type = MediaType.IMAGE if mime_type.startswith("image/") else \
-                     MediaType.AUDIO if mime_type.startswith("audio/") else \
-                     MediaType.VIDEO if mime_type.startswith("video/") else \
-                     MediaType.DOCUMENT
+        media_type = (
+            MediaType.IMAGE
+            if mime_type.startswith("image/")
+            else MediaType.AUDIO
+            if mime_type.startswith("audio/")
+            else MediaType.VIDEO
+            if mime_type.startswith("video/")
+            else MediaType.DOCUMENT
+        )
 
         data = base64.b64encode(file_path.read_bytes()).decode()
         return cls(
@@ -131,6 +139,7 @@ class MediaContent:
 @dataclass
 class MultiModalMessage:
     """A message with text and media content."""
+
     text: str
     media: list[MediaContent] = field(default_factory=list)
 

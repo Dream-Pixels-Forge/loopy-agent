@@ -17,6 +17,7 @@ logger = logging.getLogger("loopy.safety")
 
 class EscalationReason(str, Enum):
     """Why escalation is needed."""
+
     MAX_ATTEMPTS = "max_attempts"
     DENYLIST_PATH = "denylist_path"
     LOW_CONFIDENCE = "low_confidence"
@@ -26,6 +27,7 @@ class EscalationReason(str, Enum):
 @dataclass
 class SafetyCheck:
     """Result of a single safety check."""
+
     name: str
     passed: bool
     reason: str = ""
@@ -35,6 +37,7 @@ class SafetyCheck:
 @dataclass
 class SafetyResult:
     """Overall safety check result."""
+
     safe: bool
     checks: list[SafetyCheck]
     should_escalate: bool = False
@@ -122,19 +125,23 @@ class SafetyGate:
 
         # Attempt check
         attempts_ok = attempts < self.max_attempts
-        checks.append(SafetyCheck(
-            name="attempts_check",
-            passed=attempts_ok,
-            reason=f"Attempts: {attempts}/{self.max_attempts}",
-        ))
+        checks.append(
+            SafetyCheck(
+                name="attempts_check",
+                passed=attempts_ok,
+                reason=f"Attempts: {attempts}/{self.max_attempts}",
+            )
+        )
 
         # Confidence check
         confidence_ok = confidence >= self.human_gate_threshold
-        checks.append(SafetyCheck(
-            name="confidence_check",
-            passed=confidence_ok,
-            reason=f"Confidence: {confidence:.2f} (threshold: {self.human_gate_threshold})",
-        ))
+        checks.append(
+            SafetyCheck(
+                name="confidence_check",
+                passed=confidence_ok,
+                reason=f"Confidence: {confidence:.2f} (threshold: {self.human_gate_threshold})",
+            )
+        )
 
         path_safe = all(c.passed for c in checks if c.name == "path_check")
         safe = all(c.passed for c in checks)

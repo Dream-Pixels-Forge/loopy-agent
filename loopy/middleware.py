@@ -23,13 +23,13 @@ T = TypeVar("T")
 @dataclass
 class MiddlewareContext:
     """Context passed through the middleware chain."""
-    
+
     operation: str
     data: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     cancelled: bool = False
     cancel_reason: str = ""
-    
+
     def cancel(self, reason: str = "Cancelled by middleware") -> None:
         """Cancel the operation."""
         self.cancelled = True
@@ -39,22 +39,22 @@ class MiddlewareContext:
 class Middleware:
     """
     Base middleware class.
-    
+
     Override `before` for pre-processing and `after` for post-processing.
     """
-    
+
     @property
     def name(self) -> str:
         return self.__class__.__name__
-    
+
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         """
         Pre-processing hook.
-        
+
         Called before the main operation. Can modify context or cancel.
         """
         return ctx
-    
+
     async def after(
         self,
         ctx: MiddlewareContext,
@@ -62,11 +62,11 @@ class Middleware:
     ) -> Any:
         """
         Post-processing hook.
-        
+
         Called after the main operation. Can modify the result.
         """
         return result
-    
+
     async def on_error(
         self,
         ctx: MiddlewareContext,
@@ -74,7 +74,7 @@ class Middleware:
     ) -> Exception:
         """
         Error handling hook.
-        
+
         Called when the operation raises an exception.
         """
         return error
@@ -82,7 +82,7 @@ class Middleware:
 
 class FunctionMiddleware(Middleware):
     """Middleware created from functions."""
-    
+
     def __init__(
         self,
         name: str = "FunctionMiddleware",
@@ -94,21 +94,21 @@ class FunctionMiddleware(Middleware):
         self._before_fn = before_fn
         self._after_fn = after_fn
         self._error_fn = error_fn
-    
+
     @property
     def name(self) -> str:
         return self._name
-    
+
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         if self._before_fn:
             return await self._before_fn(ctx)
         return ctx
-    
+
     async def after(self, ctx: MiddlewareContext, result: Any) -> Any:
         if self._after_fn:
             return await self._after_fn(ctx, result)
         return result
-    
+
     async def on_error(self, ctx: MiddlewareContext, error: Exception) -> Exception:
         if self._error_fn:
             return await self._error_fn(ctx, error)
@@ -118,21 +118,21 @@ class FunctionMiddleware(Middleware):
 class MiddlewarePipeline:
     """
     Composable middleware pipeline.
-    
+
     Example:
         pipeline = MiddlewarePipeline()
-        
+
         # Add built-in middleware
         pipeline.add(LoggingMiddleware())
         pipeline.add(TimingMiddleware())
         pipeline.add(RateLimitMiddleware(max_per_second=10))
-        
+
         # Add custom middleware
         pipeline.add(FunctionMiddleware(
             name="auth",
             before_fn=lambda ctx: ctx.data.update({"auth": True}) or ctx,
         ))
-        
+
         # Execute through pipeline
         result = await pipeline.execute(
             operation="llm.chat",
@@ -170,13 +170,13 @@ class MiddlewarePipeline:
     ) -> Any:
         """
         Execute a handler through the middleware pipeline.
-        
+
         Args:
             operation: Operation name (e.g., "llm.chat")
             handler: The actual handler to execute
             data: Initial data/context
             **kwargs: Additional arguments passed to handler
-        
+
         Returns:
             The handler result after middleware processing
         """
@@ -200,7 +200,7 @@ class MiddlewarePipeline:
         result = None
         error = None
         max_attempts = 4  # 1 initial + 3 retries
-        
+
         for _attempt in range(max_attempts):
             try:
                 result = await handler(ctx.data, **kwargs)
@@ -209,22 +209,22 @@ class MiddlewarePipeline:
             except Exception as e:
                 error = e
                 ctx.metadata["last_error"] = e
-                
+
                 # Run error hooks
                 for m in reversed(self._middleware):
                     try:
                         error = await m.on_error(ctx, error)
                     except Exception as me:
                         logger.error("Middleware %s error hook failed: %s", m.name, me)
-                
+
                 # Check if we should retry
                 if ctx.metadata.get("should_retry"):
                     ctx.metadata["should_retry"] = False
                     continue
-                
+
                 # No retry - raise the error
                 raise error from None
-        
+
         # If we exhausted retries, raise the last error
         if error is not None:
             raise error from None
@@ -244,17 +244,18 @@ class MiddlewarePipeline:
 # Built-in Middleware
 # ============================================================
 
+
 class LoggingMiddleware(Middleware):
     """Logs all operations."""
-    
+
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         logger.info("[%s] Starting with %d data fields", ctx.operation, len(ctx.data))
         return ctx
-    
+
     async def after(self, ctx: MiddlewareContext, result: Any) -> Any:
         logger.info("[%s] Completed", ctx.operation)
         return result
-    
+
     async def on_error(self, ctx: MiddlewareContext, error: Exception) -> Exception:
         logger.error("[%s] Failed: %s", ctx.operation, error)
         return error
@@ -262,11 +263,11 @@ class LoggingMiddleware(Middleware):
 
 class TimingMiddleware(Middleware):
     """Tracks operation timing."""
-    
+
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         ctx.metadata["start_time"] = time.time()
         return ctx
-    
+
     async def after(self, ctx: MiddlewareContext, result: Any) -> Any:
         start = ctx.metadata.get("start_time")
         if start:
@@ -278,22 +279,22 @@ class TimingMiddleware(Middleware):
 
 class RateLimitMiddleware(Middleware):
     """Simple rate limiter."""
-    
+
     def __init__(self, max_per_second: int = 10):
         self.max_per_second = max_per_second
         self._timestamps: list[float] = []
-    
+
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         now = time.time()
-        
+
         # Remove old timestamps
         self._timestamps = [t for t in self._timestamps if now - t < 1.0]
-        
+
         if len(self._timestamps) >= self.max_per_second:
             ctx.cancel(f"Rate limit exceeded: {self.max_per_second}/sec")
         else:
             self._timestamps.append(now)
-        
+
         return ctx
 
 
@@ -341,7 +342,7 @@ class CacheMiddleware(Middleware):
 
 class ValidationMiddleware(Middleware):
     """Validates data before processing."""
-    
+
     def __init__(
         self,
         required_fields: list[str] | None = None,
@@ -349,20 +350,20 @@ class ValidationMiddleware(Middleware):
     ):
         self.required_fields = required_fields or []
         self.validators = validators or {}
-    
+
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         # Check required fields
         for field_name in self.required_fields:
             if field_name not in ctx.data:
                 ctx.cancel(f"Missing required field: {field_name}")
                 return ctx
-        
+
         # Run validators
         for field_name, validator in self.validators.items():
             if field_name in ctx.data and not validator(ctx.data[field_name]):
-                    ctx.cancel(f"Validation failed for field: {field_name}")
-                    return ctx
-        
+                ctx.cancel(f"Validation failed for field: {field_name}")
+                return ctx
+
         return ctx
 
 
@@ -406,7 +407,7 @@ class RetryMiddleware(Middleware):
         """
         retry_count = ctx.metadata.get("_retry_count", 0)
         if isinstance(error, self.retryable_exceptions) and retry_count < self.max_retries:
-            delay = min(self.base_delay * (2 ** retry_count), self.max_delay)
+            delay = min(self.base_delay * (2**retry_count), self.max_delay)
             ctx.metadata["_retry_count"] = retry_count + 1
             logger.warning(
                 "Retry %d/%d after %.1fs: %s",
@@ -419,8 +420,7 @@ class RetryMiddleware(Middleware):
             ctx.metadata["retry_count"] = retry_count + 1
             ctx.metadata["should_retry"] = True
             return error
-        else:
-            raise
+        raise
 
 
 class CircuitBreakerMiddleware(Middleware):

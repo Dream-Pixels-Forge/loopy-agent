@@ -16,6 +16,7 @@ logger = logging.getLogger("loopy.patterns")
 
 class PatternCadence(str, Enum):
     """How often the pattern runs."""
+
     MINUTES_5 = "5m"
     MINUTES_15 = "15m"
     HOURS_1 = "1h"
@@ -25,6 +26,7 @@ class PatternCadence(str, Enum):
 
 class RiskLevel(str, Enum):
     """Risk level of the pattern."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -33,6 +35,7 @@ class RiskLevel(str, Enum):
 @dataclass
 class LoopPattern:
     """A reusable loop pattern template."""
+
     name: str
     description: str
     cadence: PatternCadence

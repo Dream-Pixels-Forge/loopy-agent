@@ -23,7 +23,7 @@ class FilterAction(str, Enum):
 @dataclass
 class FilterResult:
     """Result of a guardrail filter."""
-    
+
     action: FilterAction
     original: str
     filtered: str
@@ -34,22 +34,22 @@ class FilterResult:
 @dataclass
 class GuardrailConfig:
     """Configuration for guardrails."""
-    
+
     # PII patterns
     detect_ssn: bool = True
     detect_email: bool = True
     detect_phone: bool = True
     detect_credit_card: bool = True
     detect_ip_address: bool = True
-    
+
     # Jailbreak patterns
     detect_jailbreak: bool = True
     jailbreak_sensitivity: float = 0.7
-    
+
     # Custom patterns
     blocked_patterns: list[str] = field(default_factory=list)
     blocked_keywords: list[str] = field(default_factory=list)
-    
+
     # Custom filters
     custom_filters: list[Callable[[str], Awaitable[FilterResult]]] = field(default_factory=list)
 
@@ -57,7 +57,7 @@ class GuardrailConfig:
 class InputFilter:
     """
     Filters user input for PII, jailbreak attempts, and harmful content.
-    
+
     Example:
         filter = InputFilter()
         result = filter.check("My SSN is 123-45-6789")
@@ -165,7 +165,7 @@ class InputFilter:
 class OutputFilter:
     """
     Filters model output for harmful content, data leaks, etc.
-    
+
     Example:
         filter = OutputFilter()
         result = filter.check("The user's email is john@example.com")
@@ -185,15 +185,15 @@ class OutputFilter:
 class GuardrailPipeline:
     """
     Full guardrail pipeline with input and output filters.
-    
+
     Example:
         pipeline = GuardrailPipeline()
-        
+
         # Check user input
         input_result = pipeline.filter_input("Tell me about 123-45-6789")
-        
+
         # ... process with LLM ...
-        
+
         # Check model output
         output_result = pipeline.filter_output("Here's the info...")
     """
@@ -207,19 +207,23 @@ class GuardrailPipeline:
     def filter_input(self, text: str) -> FilterResult:
         """Filter user input."""
         result = self.input_filter.check(text)
-        self._history.append({
-            "direction": "input",
-            "result": result,
-        })
+        self._history.append(
+            {
+                "direction": "input",
+                "result": result,
+            }
+        )
         return result
 
     def filter_output(self, text: str) -> FilterResult:
         """Filter model output."""
         result = self.output_filter.check(text)
-        self._history.append({
-            "direction": "output",
-            "result": result,
-        })
+        self._history.append(
+            {
+                "direction": "output",
+                "result": result,
+            }
+        )
         return result
 
     def get_history(self) -> list[dict[str, Any]]:

@@ -22,6 +22,7 @@ logger = logging.getLogger("loopy.a2a")
 
 class AgentCapability(str, Enum):
     """Agent capabilities for discovery."""
+
     TEXT_GENERATION = "text_generation"
     CODE_GENERATION = "code_generation"
     DATA_ANALYSIS = "data_analysis"
@@ -35,6 +36,7 @@ class AgentCapability(str, Enum):
 @dataclass
 class AgentCard:
     """Agent identity card for discovery."""
+
     name: str
     description: str
     version: str
@@ -75,6 +77,7 @@ class AgentCard:
 @dataclass
 class AgentRequest:
     """Request from one agent to another."""
+
     task: str
     context: dict[str, Any] = field(default_factory=dict)
     sender: str = ""
@@ -97,6 +100,7 @@ class AgentRequest:
 @dataclass
 class AgentResponse:
     """Response from an agent."""
+
     result: str
     success: bool = True
     error: str = ""
@@ -145,17 +149,11 @@ class AgentRegistry:
 
     def find_by_capability(self, capability: AgentCapability) -> list[AgentCard]:
         """Find agents with a specific capability."""
-        return [
-            card for card in self._agents.values()
-            if capability in card.capabilities
-        ]
+        return [card for card in self._agents.values() if capability in card.capabilities]
 
     def find_by_pricing(self, pricing: str) -> list[AgentCard]:
         """Find agents by pricing model."""
-        return [
-            card for card in self._agents.values()
-            if card.pricing == pricing
-        ]
+        return [card for card in self._agents.values() if card.pricing == pricing]
 
     def to_dict(self) -> dict[str, Any]:
         """Export registry."""
@@ -185,12 +183,12 @@ class A2AClient:
         allow_private: bool = True,
     ):
         """Args:
-            registry: The agent registry to route through.
-            allow_private: Permit loopback/private/link-local agent
-                endpoints. Keep True for operator-registered endpoints (local
-                A2A meshes are normal). Set False when endpoints can be
-                influenced by untrusted content — the SSRF guard then
-                rejects internal destinations.
+        registry: The agent registry to route through.
+        allow_private: Permit loopback/private/link-local agent
+            endpoints. Keep True for operator-registered endpoints (local
+            A2A meshes are normal). Set False when endpoints can be
+            influenced by untrusted content — the SSRF guard then
+            rejects internal destinations.
         """
         self.registry = registry
         self._allow_private = allow_private

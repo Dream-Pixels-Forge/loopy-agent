@@ -109,5 +109,4 @@ def strip_md_media(text: str) -> str:
     classifier for those.
     """
     text = _IMAGE_RE.sub("[image removed]", text)
-    text = _LINK_RE.sub(r"\1", text)
-    return text
+    return _LINK_RE.sub(r"\1", text)

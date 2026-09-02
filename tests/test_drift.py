@@ -80,7 +80,10 @@ class TestDriftDetector:
         async def run_test():
             report = await detector.check(config, state)
             # Should not have critical drift
-            assert report.drifted is False or len([i for i in report.issues if i.severity == "error"]) == 0
+            assert (
+                report.drifted is False
+                or len([i for i in report.issues if i.severity == "error"]) == 0
+            )
 
         asyncio.run(run_test())
 

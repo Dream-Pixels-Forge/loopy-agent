@@ -16,6 +16,7 @@ from loopy.gateway import (
 
 # ── Helpers ──────────────────────────────────────────────────
 
+
 def _openai_config(**overrides) -> ProviderConfig:
     return ProviderConfig(
         provider=ModelProvider.OPENAI,
@@ -80,6 +81,7 @@ def _mock_ollama_response(content="Hello!", eval_count=8):
 
 # ── ProviderConfig rate limiting ─────────────────────────────
 
+
 class TestProviderConfigRateLimit:
     def test_check_rate_limit_ok(self):
         config = _openai_config(rpm=10)
@@ -94,6 +96,7 @@ class TestProviderConfigRateLimit:
 
     def test_window_reset(self):
         import time
+
         config = _openai_config(rpm=1)
         config.record_request()
         # Force window reset
@@ -102,6 +105,7 @@ class TestProviderConfigRateLimit:
 
 
 # ── Gateway resolve_provider ─────────────────────────────────
+
 
 class TestGatewayResolve:
     def test_resolve_specific_provider(self):
@@ -126,6 +130,7 @@ class TestGatewayResolve:
 
 # ── Gateway async context manager ────────────────────────────
 
+
 class TestGatewayContextManager:
     @pytest.mark.asyncio
     async def test_async_context_manager(self):
@@ -137,6 +142,7 @@ class TestGatewayContextManager:
 
 
 # ── ConnectionPool ───────────────────────────────────────────
+
 
 class TestConnectionPool:
     @pytest.mark.asyncio
@@ -171,6 +177,7 @@ class TestConnectionPool:
 
 
 # ── Gateway chat with mocked HTTP ────────────────────────────
+
 
 class TestGatewayChat:
     @pytest.mark.asyncio
@@ -225,7 +232,7 @@ class TestGatewayChat:
         mock_resp = _mock_openai_response("OK")
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_resp)
-        with patch.object(gw._pool, "get_connection", return_value=mock_client) as mock_pool:
+        with patch.object(gw._pool, "get_connection", return_value=mock_client):
             await gw.chat("Hello", provider="openai", system="Be helpful")
 
         call_args = mock_client.post.call_args
@@ -255,6 +262,7 @@ class TestGatewayChat:
 
 # ── Gateway chat_batch ───────────────────────────────────────
 
+
 class TestGatewayBatch:
     @pytest.mark.asyncio
     async def test_chat_batch(self):
@@ -269,6 +277,7 @@ class TestGatewayBatch:
 
 
 # ── Gateway chat_streaming ───────────────────────────────────
+
 
 class TestGatewayStreaming:
     @pytest.mark.asyncio
@@ -320,6 +329,7 @@ class TestGatewayStreaming:
 
 
 # ── Gateway get_logs / close ─────────────────────────────────
+
 
 class TestGatewayMisc:
     def test_get_logs_returns_copy(self):

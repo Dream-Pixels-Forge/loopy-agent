@@ -32,6 +32,7 @@ class TestCachePersistence:
 class TestCacheEviction:
     def test_lru_eviction(self):
         import time as _time
+
         cache = LLMCache(ttl=3600, max_size=2)
         cache.set("a", "response_a", model="m", tokens=10)
         _time.sleep(0.05)

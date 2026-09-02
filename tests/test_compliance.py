@@ -3,8 +3,6 @@
 import os
 import tempfile
 
-import pytest
-
 from loopy.compliance import (
     AuditEntry,
     AuditLogger,

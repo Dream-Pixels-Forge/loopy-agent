@@ -19,6 +19,7 @@ logger = logging.getLogger("loopy.verification")
 
 class VerificationStatus(str, Enum):
     """Status of verification."""
+
     PASSED = "passed"
     FAILED = "failed"
     ERROR = "error"
@@ -27,6 +28,7 @@ class VerificationStatus(str, Enum):
 @dataclass
 class VerifyResult:
     """Result of verification gate."""
+
     status: VerificationStatus
     feedback: str = ""
     score: float = 0.0

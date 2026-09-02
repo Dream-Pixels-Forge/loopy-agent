@@ -75,21 +75,12 @@ class TestMultiModalBuilder:
         assert msg.media == []
 
     def test_add_image_url(self):
-        msg = (
-            MultiModalBuilder()
-            .text("Describe")
-            .image("https://example.com/img.png")
-            .build()
-        )
+        msg = MultiModalBuilder().text("Describe").image("https://example.com/img.png").build()
         assert len(msg.media) == 1
         assert msg.media[0].type == MediaType.IMAGE
 
     def test_add_audio_url(self):
-        msg = (
-            MultiModalBuilder()
-            .audio("https://example.com/audio.mp3")
-            .build()
-        )
+        msg = MultiModalBuilder().audio("https://example.com/audio.mp3").build()
         assert msg.media[0].type == MediaType.AUDIO
 
     def test_add_image_local_file(self, tmp_path):
@@ -99,6 +90,7 @@ class TestMultiModalBuilder:
         assert msg.media[0].mime_type == "image/png"
         # from_file stores raw base64; to_openai() wraps it
         import base64
+
         assert base64.b64decode(msg.media[0].data) == b"\x89PNG\r\n"
 
     def test_add_audio_local_file(self, tmp_path):

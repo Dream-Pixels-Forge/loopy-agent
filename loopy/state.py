@@ -28,6 +28,7 @@ def _parse_timestamp(ts: str) -> datetime:
 
 class RunOutcome(str, Enum):
     """Outcome of a loop run."""
+
     SUCCESS = "success"
     FAILURE = "failure"
     ESCALATED = "escalated"
@@ -36,6 +37,7 @@ class RunOutcome(str, Enum):
 @dataclass
 class RunRecord:
     """Record of a single loop run."""
+
     task: str
     outcome: RunOutcome
     tokens_used: int = 0
@@ -68,6 +70,7 @@ class RunRecord:
 @dataclass
 class LoopState:
     """Durable state for an agent loop."""
+
     current_task: str | None = None
     attempts: int = 0
     max_attempts: int = 5
@@ -147,10 +150,7 @@ class StateManager:
         cutoff = datetime.now() - timedelta(days=max_age_days)
 
         original_count = len(state.history)
-        state.history = [
-            r for r in state.history
-            if _parse_timestamp(r.timestamp) >= cutoff
-        ]
+        state.history = [r for r in state.history if _parse_timestamp(r.timestamp) >= cutoff]
         pruned = original_count - len(state.history)
 
         if pruned > 0:

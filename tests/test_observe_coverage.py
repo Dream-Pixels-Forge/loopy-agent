@@ -17,33 +17,54 @@ from loopy.observe import (
 
 # ── Span ─────────────────────────────────────────────────────
 
+
 class TestSpan:
     def test_duration_ms(self):
         span = Span(
-            name="test", trace_id="t1", span_id="s1", parent_id=None,
-            start_time=100.0, end_time=100.5, status=SpanStatus.OK,
+            name="test",
+            trace_id="t1",
+            span_id="s1",
+            parent_id=None,
+            start_time=100.0,
+            end_time=100.5,
+            status=SpanStatus.OK,
         )
         assert span.duration_ms == 500.0
 
     def test_duration_ms_none_when_open(self):
         span = Span(
-            name="test", trace_id="t1", span_id="s1", parent_id=None,
-            start_time=100.0, end_time=None, status=SpanStatus.OK,
+            name="test",
+            trace_id="t1",
+            span_id="s1",
+            parent_id=None,
+            start_time=100.0,
+            end_time=None,
+            status=SpanStatus.OK,
         )
         assert span.duration_ms is None
 
     def test_set_attribute(self):
         span = Span(
-            name="test", trace_id="t1", span_id="s1", parent_id=None,
-            start_time=100.0, end_time=None, status=SpanStatus.OK,
+            name="test",
+            trace_id="t1",
+            span_id="s1",
+            parent_id=None,
+            start_time=100.0,
+            end_time=None,
+            status=SpanStatus.OK,
         )
         span.set_attribute("model", "gpt-4")
         assert span.attributes["model"] == "gpt-4"
 
     def test_add_event(self):
         span = Span(
-            name="test", trace_id="t1", span_id="s1", parent_id=None,
-            start_time=100.0, end_time=None, status=SpanStatus.OK,
+            name="test",
+            trace_id="t1",
+            span_id="s1",
+            parent_id=None,
+            start_time=100.0,
+            end_time=None,
+            status=SpanStatus.OK,
         )
         span.add_event("retry", {"attempt": 1})
         assert len(span.events) == 1
@@ -51,8 +72,13 @@ class TestSpan:
 
     def test_set_status_with_message(self):
         span = Span(
-            name="test", trace_id="t1", span_id="s1", parent_id=None,
-            start_time=100.0, end_time=None, status=SpanStatus.OK,
+            name="test",
+            trace_id="t1",
+            span_id="s1",
+            parent_id=None,
+            start_time=100.0,
+            end_time=None,
+            status=SpanStatus.OK,
         )
         span.set_status(SpanStatus.ERROR, "timeout")
         assert span.status == SpanStatus.ERROR
@@ -60,6 +86,7 @@ class TestSpan:
 
 
 # ── Tracer ───────────────────────────────────────────────────
+
 
 class TestTracer:
     def test_start_span(self):
@@ -111,6 +138,7 @@ class TestTracer:
 
 
 # ── TraceExporter ────────────────────────────────────────────
+
 
 class TestTraceExporter:
     def test_export_file(self, tmp_path):
@@ -168,6 +196,7 @@ class TestTraceExporter:
 
 
 # ── MetricsCollector ─────────────────────────────────────────
+
 
 class TestMetricsCollector:
     def test_summary_with_data(self):

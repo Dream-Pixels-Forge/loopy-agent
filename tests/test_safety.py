@@ -56,7 +56,12 @@ class TestSafetyResult:
     def test_result_unsafe(self):
         """Test unsafe result with escalation."""
         checks = [
-            SafetyCheck(name="path", passed=False, reason="Denylist", escalation=EscalationReason.DENYLIST_PATH),
+            SafetyCheck(
+                name="path",
+                passed=False,
+                reason="Denylist",
+                escalation=EscalationReason.DENYLIST_PATH,
+            ),
         ]
         result = SafetyResult(
             safe=False,

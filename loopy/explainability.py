@@ -19,6 +19,7 @@ logger = logging.getLogger("loopy.explainability")
 
 class DecisionType(str, Enum):
     """Types of agent decisions."""
+
     PLAN = "plan"
     ACTION = "action"
     TOOL_USE = "tool_use"
@@ -31,6 +32,7 @@ class DecisionType(str, Enum):
 @dataclass
 class DecisionStep:
     """A single decision in the reasoning chain."""
+
     type: DecisionType
     reasoning: str
     input_summary: str
@@ -56,6 +58,7 @@ class DecisionStep:
 @dataclass
 class DecisionTrace:
     """Full trace of agent decision-making."""
+
     task: str
     steps: list[DecisionStep] = field(default_factory=list)
     final_output: str = ""
@@ -160,16 +163,18 @@ class DecisionTracker:
                 lines.append(f"- Alternatives considered: {', '.join(step.alternatives)}")
             lines.append(f"- Confidence: {step.confidence:.0%}")
 
-        lines.extend([
-            "",
-            "### Final Output:",
-            trace.final_output[:500],
-            "",
-            "### Stats:",
-            f"- Steps: {len(trace.steps)}",
-            f"- Time: {trace.total_time_ms:.0f}ms",
-            f"- Success: {'✅' if trace.success else '❌'}",
-        ])
+        lines.extend(
+            [
+                "",
+                "### Final Output:",
+                trace.final_output[:500],
+                "",
+                "### Stats:",
+                f"- Steps: {len(trace.steps)}",
+                f"- Time: {trace.total_time_ms:.0f}ms",
+                f"- Success: {'✅' if trace.success else '❌'}",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -181,4 +186,5 @@ class DecisionTracker:
             path: Destination file path.
         """
         from pathlib import Path
+
         Path(path).write_text(trace.to_json())

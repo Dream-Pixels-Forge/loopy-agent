@@ -34,7 +34,7 @@ KNOWN_PLUGINS = {
 @dataclass
 class PluginPackage:
     """Information about an installable plugin package."""
-    
+
     name: str
     version: str = ""
     description: str = ""
@@ -42,7 +42,7 @@ class PluginPackage:
     installed: bool = False
     latest_version: str = ""
     dependencies: list[str] = field(default_factory=list)
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
@@ -57,40 +57,40 @@ class PluginPackage:
 class PluginMarketplace:
     """
     Marketplace for discovering and installing loopy plugins.
-    
+
     Example:
         marketplace = PluginMarketplace()
-        
+
         # Search for plugins
         plugins = await marketplace.search("rag")
-        
+
         # Install a plugin
         success = await marketplace.install("loopy-rag")
-        
+
         # List installed plugins
         installed = marketplace.list_installed()
     """
-    
+
     def __init__(self, registry: PluginRegistry | None = None):
         self.registry = registry or PluginRegistry()
         self._cache_path = Path.home() / ".loopy" / "marketplace_cache.json"
         self._cache: dict[str, PluginPackage] = {}
         self._load_cache()
-    
+
     async def search(self, query: str) -> list[PluginPackage]:
         """
         Search for plugins matching the query.
-        
+
         Args:
             query: Search query
-        
+
         Returns:
             List of matching PluginPackage objects
         """
         # Check known plugins first
         results = []
         query_lower = query.lower()
-        
+
         for name, module_path in KNOWN_PLUGINS.items():
             if query_lower in name.lower():
                 package = PluginPackage(
@@ -99,11 +99,11 @@ class PluginMarketplace:
                     installed=self._is_installed(module_path),
                 )
                 results.append(package)
-        
+
         # Could also search PyPI API here
         # For now, return known plugins
         return results
-    
+
     async def install(self, package_name: str, upgrade: bool = False) -> bool:
         """
         Install a plugin from PyPI (operator action).
@@ -121,30 +121,27 @@ class PluginMarketplace:
             True if successful
         """
         if not self._validate_package_name(package_name):
-            logger.error(
-                "Refusing to install invalid package name: %r", package_name
-            )
+            logger.error("Refusing to install invalid package name: %r", package_name)
             return False
 
         try:
             cmd = [sys.executable, "-m", "pip", "install", package_name]
             if upgrade:
                 cmd.append("--upgrade")
-            
+
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=120,
             )
-            
+
             if result.returncode == 0:
                 logger.info("Installed %s", package_name)
                 self._update_cache(package_name, installed=True)
                 return True
-            else:
-                logger.error("Failed to install %s: %s", package_name, result.stderr)
-                return False
+            logger.error("Failed to install %s: %s", package_name, result.stderr)
+            return False
         except Exception as e:
             logger.error("Installation error: %s", e)
             return False
@@ -163,10 +160,9 @@ class PluginMarketplace:
         # Extra belt-and-suspenders: no scheme, path separators, dot-dot,
         # leading dashes, or option-looking prefixes.
         return not any(
-            marker in package_name
-            for marker in ("://", "git+", "hg+", "svn+", "\\", "/", "..")
+            marker in package_name for marker in ("://", "git+", "hg+", "svn+", "\\", "/", "..")
         ) and not package_name.startswith("-")
-    
+
     async def uninstall(self, package_name: str) -> bool:
         """
         Uninstall a plugin (operator action).
@@ -182,9 +178,7 @@ class PluginMarketplace:
             True if successful
         """
         if not self._validate_package_name(package_name):
-            logger.error(
-                "Refusing to uninstall invalid package name: %r", package_name
-            )
+            logger.error("Refusing to uninstall invalid package name: %r", package_name)
             return False
 
         try:
@@ -194,22 +188,21 @@ class PluginMarketplace:
                 text=True,
                 timeout=60,
             )
-            
+
             if result.returncode == 0:
                 logger.info("Uninstalled %s", package_name)
                 self._update_cache(package_name, installed=False)
                 return True
-            else:
-                logger.error("Failed to uninstall %s: %s", package_name, result.stderr)
-                return False
+            logger.error("Failed to uninstall %s: %s", package_name, result.stderr)
+            return False
         except Exception as e:
             logger.error("Uninstallation error: %s", e)
             return False
-    
+
     def list_installed(self) -> list[PluginPackage]:
         """List all installed plugins."""
         installed = []
-        
+
         for name, module_path in KNOWN_PLUGINS.items():
             if self._is_installed(module_path):
                 package = PluginPackage(
@@ -217,13 +210,13 @@ class PluginMarketplace:
                     installed=True,
                 )
                 installed.append(package)
-        
+
         return installed
-    
+
     def list_available(self) -> list[PluginPackage]:
         """List all available plugins."""
         available = []
-        
+
         for name, module_path in KNOWN_PLUGINS.items():
             package = PluginPackage(
                 name=name,
@@ -231,9 +224,9 @@ class PluginMarketplace:
                 installed=self._is_installed(module_path),
             )
             available.append(package)
-        
+
         return available
-    
+
     def _is_installed(self, module_path: str) -> bool:
         """Check if a plugin module is importable."""
         try:
@@ -241,7 +234,7 @@ class PluginMarketplace:
             return True
         except ImportError:
             return False
-    
+
     def _load_cache(self) -> None:
         """Load marketplace cache."""
         if self._cache_path.exists():
@@ -252,17 +245,14 @@ class PluginMarketplace:
                     self._cache[name] = PluginPackage(**info)
             except Exception:
                 pass
-    
+
     def _save_cache(self) -> None:
         """Save marketplace cache."""
         self._cache_path.parent.mkdir(parents=True, exist_ok=True)
-        data = {
-            name: pkg.to_dict()
-            for name, pkg in self._cache.items()
-        }
+        data = {name: pkg.to_dict() for name, pkg in self._cache.items()}
         with open(self._cache_path, "w") as f:
             json.dump(data, f, indent=2)
-    
+
     def _update_cache(self, name: str, installed: bool) -> None:
         """Update cache for a package."""
         if name in self._cache:
@@ -275,14 +265,14 @@ class PluginMarketplace:
 class MarketplacePlugin(Plugin):
     """
     Marketplace plugin for discovering and installing other plugins.
-    
+
     Example:
         plugin = MarketplacePlugin()
         await registry.load(plugin)
         marketplace = plugin.marketplace
         plugins = await marketplace.search("rag")
     """
-    
+
     @property
     def info(self) -> PluginInfo:
         return PluginInfo(
@@ -293,11 +283,11 @@ class MarketplacePlugin(Plugin):
             capabilities=["tool", "marketplace"],
             requires=[],
         )
-    
+
     async def setup(self, registry: PluginRegistry) -> None:
         """Initialize the Marketplace plugin."""
         self.marketplace = PluginMarketplace(registry)
-        
+
         # Register read-only, discovery tools only (agent-visible).
         # NOTE: 'install_plugin' is deliberately NOT registered as an agent
         # tool — installing packages executes arbitrary code (setup.py/build
@@ -305,14 +295,14 @@ class MarketplacePlugin(Plugin):
         # Operators can call marketplace.install() directly.
         registry.register_tool("search_plugins", self._search_plugins, scope="read_only")
         registry.register_tool("list_plugins", self._list_plugins, scope="read_only")
-        
+
         logger.info("Marketplace plugin initialized")
-    
+
     async def _search_plugins(self, query: str) -> list[dict[str, Any]]:
         """Search for plugins."""
         plugins = await self.marketplace.search(query)
         return [p.to_dict() for p in plugins]
-    
+
     async def _install_plugin(self, package_name: str) -> dict[str, Any]:
         """Install a plugin."""
         success = await self.marketplace.install(package_name)
@@ -321,7 +311,7 @@ class MarketplacePlugin(Plugin):
             "success": success,
             "message": f"{'Installed' if success else 'Failed to install'} {package_name}",
         }
-    
+
     async def _list_plugins(self, installed_only: bool = False) -> list[dict[str, Any]]:
         """List plugins."""
         if installed_only:

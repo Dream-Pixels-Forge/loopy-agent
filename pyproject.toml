@@ -74,7 +74,23 @@ target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "PIE", "RET"]
+# Test scaffolding noise: pytest fixtures, handler shims, intentional
+# unused callbacks. Per-file ignores keep the strict rules enforced
+# on production code without drowning tests in false positives.
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ARG", "E501", "W293"]
+"**/__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "error",
+    # Third-party noise we don't control
+    "ignore::DeprecationWarning:pkg_resources",
+    "ignore::DeprecationWarning:diskcache.*",
+    "ignore::DeprecationWarning:dateutil.*",
+]

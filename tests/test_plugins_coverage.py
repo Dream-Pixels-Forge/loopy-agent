@@ -16,9 +16,12 @@ from loopy.plugins import (
 
 # ── Test plugin ──────────────────────────────────────────────
 
+
 class FakePlugin(Plugin):
     def __init__(
-        self, name: str = "fake", version: str = "1.0.0",
+        self,
+        name: str = "fake",
+        version: str = "1.0.0",
         requires: list[str] | None = None,
     ):
         self._name = name
@@ -41,6 +44,7 @@ class FakePlugin(Plugin):
     async def setup(self, registry: PluginRegistry) -> None:
         async def handler(**kwargs: Any) -> str:
             return "fake result"
+
         registry.register_tool("fake_tool", handler)
 
     async def teardown(self) -> None:
@@ -48,6 +52,7 @@ class FakePlugin(Plugin):
 
 
 # ── PluginRegistry.load ──────────────────────────────────────
+
 
 class TestPluginRegistryLoad:
     @pytest.mark.asyncio
@@ -84,6 +89,7 @@ class TestPluginRegistryLoad:
 
 
 # ── PluginRegistry.execute_tool approval paths ───────────────
+
 
 class TestPluginRegistryExecuteTool:
     @pytest.mark.asyncio
@@ -182,6 +188,7 @@ class TestPluginRegistryExecuteTool:
 
 # ── PluginRegistry extensions ────────────────────────────────
 
+
 class TestPluginRegistryExtensions:
     @pytest.mark.asyncio
     async def test_register_and_trigger_extension(self):
@@ -217,6 +224,7 @@ class TestPluginRegistryExtensions:
 
 # ── PluginRegistry unload ────────────────────────────────────
 
+
 class TestPluginRegistryUnload:
     @pytest.mark.asyncio
     async def test_unload_plugin(self):
@@ -247,6 +255,7 @@ class TestPluginRegistryUnload:
 
 # ── PluginRegistry load_package ──────────────────────────────
 
+
 class TestPluginRegistryLoadPackage:
     @pytest.mark.asyncio
     async def test_load_package_not_found(self):
@@ -273,6 +282,7 @@ class TestPluginRegistryLoadPackage:
 
 
 # ── PluginRegistry load_directory ────────────────────────────
+
 
 class TestPluginRegistryLoadDirectory:
     @pytest.mark.asyncio
@@ -318,6 +328,7 @@ class TestPluginRegistryLoadDirectory:
 
 # ── PluginLoader.discover ────────────────────────────────────
 
+
 class TestPluginLoaderDiscover:
     @pytest.mark.asyncio
     async def test_discover_no_package_no_dir(self):
@@ -350,6 +361,7 @@ class TestPluginLoaderDiscover:
 
 
 # ── redact_arguments ─────────────────────────────────────────
+
 
 class TestRedactArguments:
     def test_redacts_api_key(self):
