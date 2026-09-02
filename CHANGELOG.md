@@ -38,6 +38,20 @@ so loopy is production-deployable as a runtime, not just a library.
 - **`RunOutcome.INTERRUPTED`** — new enum value giving `RunRecord`
   a typed outcome for HITL-paused steps.
 
+- **OpenTelemetry auto-instrumentation (T1.3)** — `Tracer` gains a
+  `disabled: bool` flag and a one-way `shutdown()` latch. New
+  public surface: `@observe(name=..., attributes=..., tracer=...)`
+  decorator (sync + async, idempotent, exception-safe), and
+  `auto_instrument_gateway()` / `auto_instrument_mcp()` monkey-patch
+  `Gateway.chat` and `MCPClient.call_tool` so every call is wrapped
+  in a span with one import. `build_otlp_envelope(spans, service=...)`
+  returns the OTLP `ExportTraceServiceRequest` JSON shape, ready
+  for `POST /v1/traces`. `get_default_tracer()` / `set_default_tracer()`
+  drive the process-wide tracer the @observe() decorator resolves
+  to. 10 new tests in `tests/test_observe_coverage.py`. Closes the
+  OTel-native observability row of the 2026 capability matrix
+  (now ✅✅).
+
 ---
 
 ## [0.7.10] - 2026-09-02

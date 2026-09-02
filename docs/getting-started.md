@@ -161,6 +161,49 @@ review twice per iteration (e.g. `interrupt_before=["actor"]` and
 configured, pending interrupts persist as
 `RunRecord(outcome=INTERRUPTED)` so a crashed run can be replayed.
 
+## OTel auto-instrumentation (v0.8.0)
+
+Zero-config tracing: decorate any function, or one-shot auto-patch
+the Gateway and MCPClient surfaces:
+
+```python
+import asyncio
+from loopy import (
+    Tracer,
+    observe,
+    auto_instrument_gateway,
+    auto_instrument_mcp,
+    build_otlp_envelope,
+)
+
+# (1) Decorate any sync or async function with one line.
+@observe(name="search", attributes={"kind": "web"})
+async def search(q: str) -> str:
+    return f"<results for {q}>"
+
+# (2) Auto-patch Gateway.chat and MCPClient.call_tool. Both helpers
+# are idempotent. The redactor argument scrubs PII/secrets from
+# every recorded span attribute.
+from loopy.observe import Redactor
+
+tracer = Tracer(service="my-app", redactor=Redactor())
+auto_instrument_gateway(tracer=tracer)
+auto_instrument_mcp(tracer=tracer)
+
+async def main():
+    await search("loopy")
+    # Spans land on ``tracer``. Export in OTLP JSON for any collector:
+    envelope = build_otlp_envelope(tracer.get_spans(), service="my-app")
+    # POST envelope to /v1/traces (the OTel collector HTTP intake).
+
+asyncio.run(main())
+```
+
+`Tracer.disabled` is a runtime flag — set it to `True` to suppress
+span recording without touching call sites. `Tracer.shutdown()` is a
+one-way latch: after shutdown, every public entry point is a
+graceful no-op so decorated functions never raise.
+
 ## What's next?
 
 - [Concepts](concepts.md) — the 21 modules at a glance

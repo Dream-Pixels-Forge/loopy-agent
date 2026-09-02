@@ -1,6 +1,6 @@
 # Competitive Analysis & Roadmap — 2026
 
-> **Status:** Living document. Last updated 2026-09-02 alongside v0.8.0 release planning.
+> **Status:** Living document. Last updated 2026-09-02 alongside v0.8.0 release (T1.1 graph flow, T1.2 HITL, T1.3 OTel all shipped).
 > **Owner:** Dream Pixels Forge
 > **Purpose:** Capture the strategic landscape so future contributors don't repeat the survey.
 
@@ -16,9 +16,10 @@ budgets, drift detection, plugin marketplace with PEP-508 validation,
 skill registry with ranked matching, safety + decision audit trail, and
 a **pure-Python zero-deps core** (httpx + pydantic only).
 
-Its **structural gaps** versus the leaders are: graph control flow,
-HITL interrupts, A2A handoff (vs. broadcast-only), code-execution
-sandbox, voice/realtime, and OTel auto-instrumentation.
+Its **structural gaps** versus the leaders are: A2A handoff
+(vs. broadcast-only), code-execution sandbox, voice/realtime, and
+durable Temporal-grade workflows. v0.8.0 closed graph control flow,
+HITL interrupts, and OTel auto-instrumentation.
 
 The recommended **3-release path** is:
 
@@ -276,7 +277,7 @@ Google ADK.
 | Voice / Realtime | ✅ (Realtime) | ❌ | ❌ | ❌ | ✅✅ (WebSocket) | ❌ | ❌ | ❌ | MEDIUM |
 | Code-execution sandbox | partial (Harness) | ❌ | ❌ | ✅ (Magentic-One) | ✅✅ (SandboxAgent) | ❌ | ❌ | ❌ (SafetyGate for paths only) | MEDIUM |
 | MCP as first-class capability | ✅✅ (Capability) | partial | partial | ✅ (McpWorkbench) | ✅✅ (native SDK dep) | partial | ❌ | ✅ (`MCPClient` exists) | — |
-| OTel-native observability | ✅ (Logfire) | partial (LangSmith) | partial (AMP SaaS) | ❌ | partial (built-in trace, viz extra) | partial (OpenLLMetry) | partial (hooks) | ✅ (Tracer + OTLP exporter) | — |
+| OTel-native observability | ✅ (Logfire) | partial (LangSmith) | partial (AMP SaaS) | ❌ | partial (built-in trace, viz extra) | partial (OpenLLMetry) | partial (hooks) | ✅✅ (T1.3 — Tracer + @observe() + auto_instrument_gateway/mcp + OTLP envelope) | — |
 | **Eval as a first-class primitive** | ✅ (Pydantic Evals) | ❌ | partial (AMP) | partial (Bench) | ❌ | ✅ (RAGAS + built-in) | ❌ | ✅ (EvalSuite, EvalGate, EvalReport) | — |
 | **Compliance (audit + readiness)** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅✅ (audit.py + compliance.py — UNIQUE) | — |
 | **Skill registry with ranked matching** | partial (Capability) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅✅ (skills.py — UNIQUE) | — |
@@ -285,9 +286,9 @@ Google ADK.
 | **Built-in safety + decision audit trail** | partial (guardrails) | ❌ | ❌ | ❌ | partial (guardrails) | ❌ | ❌ | ✅✅ (safety.py + DecisionTracker — UNIQUE) | — |
 | **Pure-Python, zero-deps core** | partial | ❌ (LangChain heavy) | ❌ | ❌ | partial | ❌ | ❌ | ✅✅ (httpx + pydantic only) | — |
 | **AI-coding-assistant discovery** (llms-full.txt) | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅✅ | ❌ | MEDIUM |
-| Total primary capabilities | 14 | 8 | 8 | 7 | 12 | 9 | 6 | **14** | |
+| Total primary capabilities | 14 | 8 | 8 | 7 | 12 | 9 | 6 | **15** | |
 
-**Score (v0.8.0):** Loopy wins on **8 unique axes** no competitor covers; ties on **6** axes (up from 4 in 0.7.9 — picked up graph control flow + HITL interrupts); loses on **5** axes (Durable workflows HIGH; Multi-agent A2A HIGH; Voice/Realtime MEDIUM; Code-exec sandbox MEDIUM; AI-coding-assistant discovery MEDIUM).
+**Score (v0.8.0):** Loopy wins on **8 unique axes** no competitor covers; ties on **7** axes (up from 4 in 0.7.9 — picked up graph control flow + HITL interrupts + OTel auto-instrumentation ✅✅); loses on **5** axes (Durable workflows HIGH; Multi-agent A2A HIGH; Voice/Realtime MEDIUM; Code-exec sandbox MEDIUM; AI-coding-assistant discovery MEDIUM).
 
 ---
 
@@ -351,7 +352,9 @@ Already has `SafetyGate` for paths. Add `ShellSandbox`, `DockerSandbox`, `Subpro
 - Auto-instrument `Gateway.chat` and `MCPClient.call_tool`
 - Export to any OTel collector (`OTEL_EXPORTER_OTLP_ENDPOINT`)
 - **Wins:** matches Langfuse, OpenLLMetry, Logfire — but zero-config
-- **Effort:** ~2 days, ~10 tests
+- **Effort:** ~2 days, ~10 tests — **DONE** (T1.3, see `loopy.observe.observe` /
+  `auto_instrument_gateway` / `auto_instrument_mcp` / `build_otlp_envelope`,
+  10 new tests in `tests/test_observe_coverage.py`).
 
 #### F7. AI-coding-assistant discovery — `llms-full.txt`
 

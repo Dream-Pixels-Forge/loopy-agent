@@ -66,6 +66,28 @@
 
 ## 🚀 What's New
 
+### v0.8.0 — Agent Control Plane (graph control flow, HITL, OTel)
+
+- **`AgentLoop` human-in-the-loop interrupts** — `LoopConfig.interrupt_before`
+  / `interrupt_after` pause any of `plan / actor / observer / reflector`
+  before or after it runs. `run()` returns an `Interrupt` carrying the
+  proposed action and a `when` context. Resume with
+  `Interrupt(decision="approve")` or raise `AgentLoopRejected` on
+  `"reject"`. Approved before-gates re-enter the same step so the
+  after-gate still fires. Pending interrupts persist via `StateManager`
+  as `RunRecord(outcome=INTERRUPTED)` for crash+resume replay.
+- **`loopy.flow` graph control flow** — typed, persistent,
+  checkpointable `Node` / `Edge` / `StateGraph` / `Workflow`
+  primitives that integrate with `StateManager`, `Tracer`, `Redactor`,
+  and `SkillRegistry`. A uniquely scrub-aware, skill-aware graph.
+- **OpenTelemetry auto-instrumentation** — `@observe()` decorator
+  (sync + async) wraps any function in a span; `auto_instrument_gateway()`
+  and `auto_instrument_mcp()` monkey-patch `Gateway.chat` and
+  `MCPClient.call_tool` with one import. `build_otlp_envelope(spans)`
+  returns the OTLP `ExportTraceServiceRequest` JSON shape. `Tracer.disabled`
+  and `Tracer.shutdown()` give a clean no-op for tests and tear-down.
+- **`RunOutcome.INTERRUPTED`** — new enum value for HITL-paused runs.
+
 ### v0.7.7 — Async I/O & Broadcast Safety
 
 - **`MemoryStore` non-blocking I/O** — `add()`, `delete()`, `clear()` now run file writes in a worker thread via `asyncio.to_thread`
