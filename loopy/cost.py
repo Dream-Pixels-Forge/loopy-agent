@@ -28,12 +28,18 @@ class BudgetExceeded(Exception):
 
 @dataclass
 class CostReport:
-    """Report of token usage."""
+    """Report of token usage and (v0.9.0) USD cost."""
 
     used: int
     limit: int
     remaining: int
     usage_percent: float
+    # v0.9.0 — Cost-Aware Routing. All four USD fields are 0.0 by
+    # default for the v0.7.x token-only callers; callers that
+    # opt in to USD tracking see them populated.
+    estimated_usd: float = 0.0
+    actual_usd: float = 0.0
+    savings_usd: float = 0.0
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -41,6 +47,9 @@ class CostReport:
             "limit": self.limit,
             "remaining": self.remaining,
             "usage_percent": self.usage_percent,
+            "estimated_usd": self.estimated_usd,
+            "actual_usd": self.actual_usd,
+            "savings_usd": self.savings_usd,
         }
 
 
@@ -63,6 +72,12 @@ class CostTracker:
         self.daily_limit = daily_limit
         self.persist_path = Path(persist_path) if persist_path else None
         self._usage: dict[str, int] = {}
+        # v0.9.0 — USD totals across the run (not persisted; resets
+        # on process restart). The token ``_usage`` dict is keyed by
+        # day; the USD totals are session-scoped.
+        self._estimated_usd: float = 0.0
+        self._actual_usd: float = 0.0
+        self._savings_usd: float = 0.0
 
         if self.persist_path and self.persist_path.exists():
             self._load()
@@ -94,6 +109,27 @@ class CostTracker:
         if self.should_stop:
             logger.warning("Budget exceeded: %s/%s", self.used_today, self.daily_limit)
 
+    # ── v0.9.0 — Cost-Aware Routing ───────────────────────────
+
+    def record_estimated(self, usd: float) -> None:
+        """Record the estimated USD cost of a planned call."""
+        self._estimated_usd += float(usd)
+
+    def record_actual(
+        self,
+        usd: float,
+        *,
+        savings_from_fallback: float = 0.0,
+    ) -> None:
+        """Record the actual USD cost of a completed call.
+
+        ``savings_from_fallback`` is the dollar amount the routing
+        decision saved vs. the originally-requested provider (when
+        the gateway fell back to a cheaper option).
+        """
+        self._actual_usd += float(usd)
+        self._savings_usd += float(savings_from_fallback)
+
     def report(self) -> CostReport:
         """Generate cost report."""
         used = self.used_today
@@ -102,11 +138,17 @@ class CostTracker:
             limit=self.daily_limit,
             remaining=max(0, self.daily_limit - used),
             usage_percent=(used / self.daily_limit * 100) if self.daily_limit > 0 else 0,
+            estimated_usd=self._estimated_usd,
+            actual_usd=self._actual_usd,
+            savings_usd=self._savings_usd,
         )
 
     def reset(self) -> None:
         """Reset daily usage."""
         self._usage.clear()
+        self._estimated_usd = 0.0
+        self._actual_usd = 0.0
+        self._savings_usd = 0.0
         if self.persist_path:
             self._save()
 

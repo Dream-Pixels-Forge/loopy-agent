@@ -54,9 +54,33 @@ class ProviderConfig:
     rpm: int = 60  # requests per minute
     tpm: int = 100_000  # tokens per minute
 
+    # v0.9.0 — Cost-Aware Routing
+    # USD per 1k tokens. ``0.0`` for local providers (Ollama, etc.).
+    cost_per_1k_tokens: float = 0.0
+
     # Internal tracking
     _request_count: int = field(default=0, repr=False)
     _window_start: float = field(default_factory=time.time, repr=False)
+
+    def estimate_cost_usd(
+        self,
+        max_tokens: int,
+        expected_tokens: int | None = None,
+    ) -> float:
+        """Estimate the USD cost of a request.
+
+        Args:
+            max_tokens: Upper bound on tokens the provider will
+                charge for (the cap configured for this call).
+            expected_tokens: Optional override — the caller's
+                better estimate of actual token count. Defaults
+                to ``max_tokens`` (conservative).
+
+        Returns:
+            The estimated cost in USD.
+        """
+        billable = expected_tokens if expected_tokens is not None else max_tokens
+        return (billable / 1000.0) * self.cost_per_1k_tokens
 
     def check_rate_limit(self) -> None:
         """Check whether the rate limit has been reached.
@@ -216,6 +240,63 @@ class Gateway:
             return name, config
         raise ValueError("No providers configured. Call add_provider() first.")
 
+    def _resolve_provider_with_cap(
+        self,
+        requested: str | None,
+        max_tokens: int,
+        max_cost_usd: float | None,
+    ) -> tuple[str, ProviderConfig]:
+        """v0.9.0 — Cost-Aware Routing.
+
+        Resolve the provider (using :meth:`_resolve_provider` for
+        the no-cap case) and then enforce ``max_cost_usd``. If the
+        resolved provider's estimated cost fits inside the cap,
+        return it as-is. Otherwise, find the cheapest configured
+        provider that fits, and log the fallback. If no provider
+        fits, raise :class:`BudgetExceeded`.
+
+        When ``max_cost_usd is None`` the cap is a no-op and this
+        method is a thin wrapper around :meth:`_resolve_provider`.
+        """
+        name, config = self._resolve_provider(requested)
+
+        if max_cost_usd is None:
+            return name, config
+
+        from loopy.cost import BudgetExceeded
+
+        estimated = config.estimate_cost_usd(max_tokens=max_tokens)
+        if estimated <= max_cost_usd:
+            return name, config
+
+        # Look for a cheaper provider that fits inside the cap.
+        candidates: list[tuple[str, ProviderConfig, float]] = []
+        for candidate_name, candidate_cfg in self.providers.items():
+            cost = candidate_cfg.estimate_cost_usd(max_tokens=max_tokens)
+            if cost <= max_cost_usd:
+                candidates.append((candidate_name, candidate_cfg, cost))
+        if not candidates:
+            raise BudgetExceeded(
+                limit=int(max_cost_usd * 1000),
+                used=int(estimated * 1000),
+            )
+
+        # Pick the cheapest candidate.
+        candidates.sort(key=lambda c: c[2])
+        chosen_name, chosen_cfg, chosen_cost = candidates[0]
+        if chosen_name != name:
+            self._logs.append(
+                {
+                    "event": "cost_fallback",
+                    "from_provider": name,
+                    "to_provider": chosen_name,
+                    "estimated_usd": estimated,
+                    "chosen_usd": chosen_cost,
+                    "cap_usd": max_cost_usd,
+                }
+            )
+        return chosen_name, chosen_cfg
+
     # Dispatch table for provider-specific API calls
     _PROVIDER_HANDLERS: dict[ModelProvider, str] = {
         ModelProvider.OPENAI: "_call_openai",
@@ -233,6 +314,7 @@ class Gateway:
         *,
         model: TestModel | str | None = None,
         response_format: type[BaseModel] | None = None,
+        max_cost_usd: float | None = None,
         **kwargs,
     ) -> GatewayResponse:
         """
@@ -278,6 +360,16 @@ class Gateway:
                 context.setdefault("provider", "test")
                 context.setdefault("max_tokens", max_tokens)
                 self.policy_engine.gate(context)
+            # v0.9.0 — Cost cap: the test-model path also enforces the
+            # cap so unit tests can exercise the guard end-to-end.
+            # When no providers are configured, the cap is a no-op
+            # (cost is unknown).
+            if max_cost_usd is not None and self.providers:
+                _, _ = self._resolve_provider_with_cap(
+                    provider,
+                    max_tokens,
+                    max_cost_usd,
+                )
             return await self._call_test(
                 test_model,
                 message,
@@ -287,7 +379,7 @@ class Gateway:
                 response_format,
             )
 
-        provider, config = self._resolve_provider(provider)
+        provider, config = self._resolve_provider_with_cap(provider, max_tokens, max_cost_usd)
 
         # v0.9.0 — Compliance-as-Code: evaluate policies before any
         # provider I/O. ``gate()`` raises ``PolicyViolation`` on a
