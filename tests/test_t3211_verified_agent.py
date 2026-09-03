@@ -21,13 +21,12 @@ from loopy.loop import AgentLoop, LoopConfig
 from loopy.verifier import (
     Invariant,
     Property,
-    VerifiedAgent,
     VerificationReport,
     VerificationSpec,
-    output_must_contain,
+    VerifiedAgent,
     output_length_at_most,
+    output_must_contain,
 )
-
 
 # ── Test helpers ────────────────────────────────────────────
 
@@ -199,7 +198,8 @@ class TestHypothesisOptional:
         Hypothesis ``given`` strategy. The agent must not crash on
         any of the generated inputs."""
         try:
-            from hypothesis import given, strategies as st
+            from hypothesis import given
+            from hypothesis import strategies as st
         except ImportError:
             pytest.skip("hypothesis not installed")
 
@@ -261,8 +261,6 @@ class TestNegativeControls:
         agent = make_text_agent("ok")
         spec = VerificationSpec(invariants=[output_must_contain("ok")])
         verifier = VerifiedAgent(agent=agent, spec=spec)
-
-        seen: list[str] = []
 
         def gen(n: int) -> list[str]:
             return [f"custom-{i}" for i in range(n)]

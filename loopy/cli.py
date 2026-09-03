@@ -16,6 +16,7 @@ import argparse
 import asyncio
 import json
 import sys
+import threading
 
 from loopy import __version__
 
@@ -68,6 +69,28 @@ def create_parser() -> argparse.ArgumentParser:
     agent_parser = subparsers.add_parser("agent", help="Multi-agent operations")
     agent_sub = agent_parser.add_subparsers(dest="agent_action")
     agent_sub.add_parser("list", help="List registered agents")
+
+    # --- serve command (v1.0.0) ---
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Start a federated HTTP server exposing the agent",
+    )
+    serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Port to bind (default 8080; use 0 for OS-assigned)",
+    )
+    serve_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind (default 127.0.0.1)",
+    )
+    serve_parser.add_argument(
+        "--agent",
+        default=None,
+        help="Optional path to a Python module exposing CARD / agent_card",
+    )
 
     # --- info command ---
     subparsers.add_parser("info", help="Show loopy info")
@@ -298,10 +321,49 @@ Modules:
   - agents      Multi-Agent Orchestration
 
 Version: {__version__}
-
-Docs: https://github.com/dream-pixels-forge/loopy
-{"=" * 60}
 """)
+
+
+def cmd_serve(args: argparse.Namespace) -> None:
+    """v1.0.0 — start a federated HTTP server exposing an Agent Card
+    and ``POST /tasks`` endpoint.
+
+    If ``--agent`` is provided, the matching Python module is
+    loaded and its ``CARD`` (or ``card`` / ``AGENT_CARD`` /
+    ``agent_card``) attribute is used as the Agent Card. Otherwise
+    a default placeholder card is served.
+    """
+    # Local imports keep the CLI fast and avoid pulling
+    # ``loopy.federate`` when users run other subcommands.
+    from loopy.a2a import AgentCapability, AgentCard
+    from loopy.federate import FederatedServer, build_agent_card_from_module
+
+    if args.agent:
+        card = build_agent_card_from_module(args.agent)
+    else:
+        card = AgentCard(
+            name="loopy-default",
+            description="Default loopy agent (no --agent module supplied)",
+            version="1.0.0",
+            capabilities=[AgentCapability.TEXT_GENERATION],
+            endpoint="local",
+        )
+
+    server = FederatedServer(agent_card=card, host=args.host, port=args.port)
+    server.start()
+    bound = server.port
+    print(
+        f"loopy federated server listening on http://{args.host}:{bound}\n"
+        f"  Agent Card:  http://{args.host}:{bound}/.well-known/agent-card.json\n"
+        f"  POST /tasks: http://{args.host}:{bound}/tasks\n"
+    )
+    try:
+        # Block forever; Ctrl+C kills the thread.
+        threading.Event().wait()
+    except KeyboardInterrupt:
+        print("\nshutting down...")
+    finally:
+        server.shutdown()
 
 
 def main() -> None:
@@ -323,6 +385,7 @@ def main() -> None:
         "trace": cmd_trace,
         "eval": cmd_eval,
         "agent": cmd_agent,
+        "serve": cmd_serve,  # v1.0.0
         "info": cmd_info,
     }
 
