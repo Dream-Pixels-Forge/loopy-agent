@@ -43,13 +43,21 @@ jobs:
       # ``cosign verify-blob sbom.cdx.json --certificate-identity ...``.
       # Runs BEFORE the GitHub Release step so the signed
       # artifacts (.sig + .pem) are part of the release.
+      # The sigstore/cosign-installer action handles the arch
+      # detection + install path correctly across amd64 / arm64
+      # runners. ``continue-on-error: true`` ensures a Cosign
+      # problem never blocks the PyPI publish — the unsigned
+      # SBOM is still attached to the GitHub Release.
+      - name: Install Cosign
+        if: success()
+        uses: sigstore/cosign-installer@v3.7.0
+
       - name: Sign SBOM with Cosign (keyless, OIDC)
+        if: success()
+        continue-on-error: true
         env:
           COSIGN_EXPERIMENTAL: "1"
         run: |
-          curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
-            -o /usr/local/bin/cosign
-          chmod +x /usr/local/bin/cosign
           cosign sign-blob --yes \
             --output-signature sbom.cdx.json.sig \
             --output-certificate sbom.cdx.json.pem \
