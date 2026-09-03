@@ -122,6 +122,8 @@ except ImportError:
 from loopy._version import __version__
 from loopy.a2a import (
     A2AClient,
+    A2AError,
+    A2ATask,
     AgentCapability,
     AgentCard,
     AgentRegistry,
@@ -151,6 +153,13 @@ from loopy.multimodal import (
 )
 from loopy.observe import TraceExporter
 from loopy.patterns import LoopPattern, PatternCadence, PatternRegistry, RiskLevel
+from loopy.policies import (
+    Condition,
+    Policy,
+    PolicyDecision,
+    PolicyEngine,
+    PolicyViolation,
+)
 from loopy.safety import EscalationReason, SafetyCheck, SafetyGate, SafetyResult
 from loopy.skills import Skill, SkillRegistry
 from loopy.state import LoopState, RunOutcome, RunRecord, StateManager
@@ -302,6 +311,12 @@ __all__ = [
     "LoopPattern",
     "PatternCadence",
     "RiskLevel",
+    # Policies (v0.9.0)
+    "Policy",
+    "PolicyEngine",
+    "PolicyDecision",
+    "PolicyViolation",
+    "Condition",
     # Safety
     "SafetyGate",
     "SafetyCheck",
@@ -311,6 +326,8 @@ __all__ = [
     "AgentCard",
     "AgentRegistry",
     "A2AClient",
+    "A2AError",  # v0.9.0
+    "A2ATask",  # v0.9.0
     "AgentRequest",
     "AgentResponse",
     "AgentCapability",

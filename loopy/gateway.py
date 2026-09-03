@@ -180,10 +180,16 @@ class Gateway:
         await self.close()
         return False
 
-    def __init__(self):
+    def __init__(self, *, policy_engine: Any = None):
         self.providers: dict[str, ProviderConfig] = {}
         self._pool: ConnectionPool = ConnectionPool()
         self._logs: list[dict[str, Any]] = []
+        # v0.9.0 — optional Compliance-as-Code policy engine. When
+        # set, every chat() call evaluates the policies and raises
+        # ``PolicyViolation`` on a ``block`` decision *before* any
+        # provider I/O. ``warn`` / ``info`` decisions are recorded
+        # but do not abort the call.
+        self.policy_engine = policy_engine
 
     def add_provider(self, name: str, config: ProviderConfig) -> None:
         """Register a provider."""
@@ -265,6 +271,13 @@ class Gateway:
         # v0.7.9 - Test model routing: short-circuit to local handler.
         test_model = self._resolve_test_model(model)
         if test_model is not None:
+            # v0.9.0 — Compliance-as-Code: policies still apply on
+            # the test-model path so unit tests can exercise the gate.
+            if self.policy_engine is not None:
+                context = dict(kwargs.get("policy_context") or {})
+                context.setdefault("provider", "test")
+                context.setdefault("max_tokens", max_tokens)
+                self.policy_engine.gate(context)
             return await self._call_test(
                 test_model,
                 message,
@@ -275,6 +288,17 @@ class Gateway:
             )
 
         provider, config = self._resolve_provider(provider)
+
+        # v0.9.0 — Compliance-as-Code: evaluate policies before any
+        # provider I/O. ``gate()`` raises ``PolicyViolation`` on a
+        # ``block`` decision; the caller may also pass
+        # ``policy_context={...}`` to feed runtime data into the
+        # evaluation (cost estimates, PII flags, etc.).
+        if self.policy_engine is not None:
+            context = dict(kwargs.get("policy_context") or {})
+            context.setdefault("provider", provider)
+            context.setdefault("max_tokens", max_tokens)
+            self.policy_engine.gate(context)
 
         # Check rate limits
         config.check_rate_limit()

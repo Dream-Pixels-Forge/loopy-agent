@@ -70,6 +70,14 @@ class LoopConfig:
     state_manager: StateManager | None = None
     task: str = ""  # Label for RunRecord metadata
 
+    # v0.9.0 — Compliance-as-Code policy engine. When set, the loop
+    # evaluates the policies before each step and raises
+    # ``PolicyViolation`` on a ``block`` decision. ``warn`` / ``info``
+    # decisions are recorded but do not abort the loop. When
+    # ``state_manager`` is configured, the per-step decisions are
+    # persisted as ``metadata["policies"]`` on the saved LoopState.
+    policy_engine: Any = None
+
     # v0.8.0 — Human-in-the-loop interrupts
     # Each list is a set of phase names that should pause BEFORE / AFTER
     # running, returning an :class:`Interrupt` to the caller for review.
@@ -235,6 +243,25 @@ class AgentLoop:
 
         try:
             for step_num in range(start_step, self.config.max_steps + 1):
+                # v0.9.0 — Compliance-as-Code: evaluate policies before
+                # the step runs. ``gate()`` raises on ``block`` and
+                # returns the full list of decisions otherwise. We
+                # record the raw context (audit fidelity) so
+                # post-hoc scrubbing is the storage layer's job.
+                if self.config.policy_engine is not None:
+                    step_decisions = self.config.policy_engine.gate(
+                        {"step": step_num, "retries": step_num - 1}
+                    )
+                    if step_decisions and self.config.state_manager is not None:
+                        try:
+                            self._record_policy_decisions(step_num, step_decisions)
+                        except Exception as e:  # noqa: BLE001
+                            logger.warning(
+                                "Failed to record policy decisions at step %d: %s",
+                                step_num,
+                                e,
+                            )
+
                 result = await self._run_step(step_num)
                 self.history.append(result)
 
@@ -273,6 +300,55 @@ class AgentLoop:
             return ir.interrupt
 
         return self.history
+
+    def _record_policy_decisions(self, step_num: int, decisions: list[Any]) -> None:
+        """v0.9.0 — Append raw policy decisions to LoopState.metadata
+        so a crash+resume can replay the audit trail.
+
+        The decisions are stored verbatim (no redaction) so the
+        audit log has the raw facts; storage-side scrubbing is the
+        caller's responsibility when reading the LoopState back out.
+        """
+        if not self.config.state_manager:
+            return
+
+        from loopy.state import RunOutcome, RunRecord
+
+        sm = self.config.state_manager
+        state = sm.load()
+        existing = list(state.metadata.get("policies", []))
+        existing.append(
+            {
+                "step": step_num,
+                "decisions": [d.to_dict() for d in decisions],
+            }
+        )
+        state.metadata["policies"] = existing
+
+        # Also surface one RunRecord per decision so compliance
+        # dashboards that read RunRecords (without parsing metadata)
+        # see the audit trail.
+        for d in decisions:
+            state.add_record(
+                RunRecord(
+                    task=self.config.task or f"policy_step_{step_num}",
+                    outcome=RunOutcome.SUCCESS,
+                    tokens_used=0,
+                    duration_ms=0,
+                    timestamp=datetime.now().isoformat(),
+                    metadata={
+                        "kind": "policy_decision",
+                        "step": step_num,
+                        "policy_name": d.policy_name,
+                        "verdict": d.verdict,
+                    },
+                )
+            )
+
+        if len(state.history) > 100:
+            state.history = state.history[-100:]
+
+        sm.save(state)
 
     def _checkpoint(self, result: StepResult) -> None:
         """v0.7.8 — Persist a step result to the configured StateManager.
