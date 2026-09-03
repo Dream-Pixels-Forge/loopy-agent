@@ -1,6 +1,6 @@
 # Competitive Analysis & Roadmap — 2026
 
-> **Status:** Living document. Last updated 2026-09-03 alongside v0.9.0 release (T1.1 graph flow, T1.2 HITL, T1.3 OTel, T2.1 A2A handoff, T2.2 policies, T2.3 cost-aware routing all shipped).
+> **Status:** Living document. Last updated 2026-09-03 alongside v1.0.0 release (T1.1 graph flow, T1.2 HITL, T1.3 OTel, T2.1 A2A handoff, T2.2 policies, T2.3 cost-aware routing, T3.1 durable runtime, T3.2 verified agents, T3.3 federated runtime, T3.4 release-gate all shipped).
 > **Owner:** Dream Pixels Forge
 > **Purpose:** Capture the strategic landscape so future contributors don't repeat the survey.
 
@@ -16,13 +16,14 @@ budgets, drift detection, plugin marketplace with PEP-508 validation,
 skill registry with ranked matching, safety + decision audit trail, and
 a **pure-Python zero-deps core** (httpx + pydantic only).
 
-Its **structural gaps** versus the leaders are: A2A handoff
-(downgraded from HIGH to MEDIUM with the v0.9.0 work — Agent Card
-discovery and task lifecycle are in), code-execution sandbox,
-voice/realtime, and durable Temporal-grade workflows. v0.8.0 closed
+Its **structural gaps** versus the leaders are: code-execution
+sandbox, voice/realtime, and durable Temporal-grade workflows
+in the cluster sense (T3.1's DAG/Step/Workflow is process-local;
+the next step is external task-queue support). v0.8.0 closed
 graph control flow, HITL interrupts, and OTel auto-instrumentation;
 v0.9.0 closed A2A handoff, Compliance-as-Code, and cost-aware
-adaptive routing.
+adaptive routing; v1.0.0 closed durable workflow + verified
+agents + federated HTTP.
 
 The recommended **3-release path** is:
 
@@ -274,7 +275,7 @@ Google ADK.
 | Zero-network TestModel | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** (v0.7.9) | — |
 | PII redaction in traces | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** (v0.7.9) | — |
 | Graph control flow (vs flat loop) | ✅ (Pydantic Graph) | ✅✅ (Pregel core) | partial (Flows) | ❌ (loop-based) | ❌ | ✅✅ (event-step Workflows) | partial | **✅** (T1.1 — flow.py: Node, Edge, StateGraph, Workflow) | — |
-| Durable workflows (Temporal-grade) | ✅ (capability) | ❌ (host) | ❌ | ❌ | ✅ (plugin preview) | ❌ | ❌ | ❌ | **HIGH** |
+| Durable workflows (Temporal-grade) | ✅ (capability) | ❌ (host) | ❌ | ❌ | ✅ (plugin preview) | ❌ | ❌ | **✅** (T3.1 — DAG + Step + Saga + Workflow.run/resume + journal + ResumeToken) | — |
 | Human-in-the-loop interrupts | ✅ (deferred tools) | ✅✅ (interrupt primitive) | ✅ (Flows @router) | ✅ (UserProxy) | ✅ (concept) | ✅ (wait_for_event) | ❌ | **✅** (T1.2 — Interrupt + interrupt_before/after + AgentLoopRejected) | — |
 | Multi-agent handoffs + A2A | partial | partial (subgraphs) | ✅✅ (Crews) | ✅ (group chat) | ✅✅ (handoffs) | partial | ❌ | **✅** (T2.1 — A2A v1.0 Agent Card + task lifecycle + SSE streaming + HMAC webhooks) | — |
 | Voice / Realtime | ✅ (Realtime) | ❌ | ❌ | ❌ | ✅✅ (WebSocket) | ❌ | ❌ | ❌ | MEDIUM |
@@ -289,9 +290,9 @@ Google ADK.
 | **Built-in safety + decision audit trail** | partial (guardrails) | ❌ | ❌ | ❌ | partial (guardrails) | ❌ | ❌ | ✅✅ (safety.py + DecisionTracker — UNIQUE) | — |
 | **Pure-Python, zero-deps core** | partial | ❌ (LangChain heavy) | ❌ | ❌ | partial | ❌ | ❌ | ✅✅ (httpx + pydantic only) | — |
 | **AI-coding-assistant discovery** (llms-full.txt) | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅✅ | ❌ | MEDIUM |
-| Total primary capabilities | 14 | 8 | 8 | 7 | 12 | 9 | 6 | **16** | |
+| Total primary capabilities | 14 | 8 | 8 | 7 | 12 | 9 | 6 | **17** | |
 
-**Score (v0.9.0):** Loopy wins on **8 unique axes** no competitor covers; ties on **8** axes (up from 4 in 0.7.9 — picked up graph control flow, HITL interrupts, OTel auto-instrumentation ✅✅, and A2A handoff); loses on **5** axes (Durable workflows HIGH; Multi-agent A2A downgraded from HIGH to MEDIUM with the T2.1 work; Voice/Realtime MEDIUM; Code-exec sandbox MEDIUM; AI-coding-assistant discovery MEDIUM).
+**Score (v1.0.0):** Loopy wins on **8 unique axes** no competitor covers; ties on **9** axes (up from 4 in 0.7.9 — picked up graph control flow, HITL interrupts, OTel auto-instrumentation ✅✅, A2A handoff, and durable workflows); loses on **4** axes (Voice/Realtime MEDIUM; Code-exec sandbox MEDIUM; AI-coding-assistant discovery MEDIUM; Multi-agent A2A downgraded from HIGH to MEDIUM with the T2.1 work). The only HIGH gap remaining is durable workflows in the Temporal-grade sense — T3.1's DAG/Step/Workflow is process-local; the next step is external task-queue support.
 
 ---
 

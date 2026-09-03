@@ -140,7 +140,11 @@ from loopy.compliance import (
 )
 from loopy.cost import BudgetExceeded, CostReport, CostTracker
 from loopy.drift import DriftDetector, DriftIssue, DriftReport
+from loopy.durable import DAG, ResumeToken, Step, TestEnv
+from loopy.durable import State as _DurableState
+from loopy.durable import Workflow as _DurableWorkflow
 from loopy.explainability import DecisionStep, DecisionTrace, DecisionTracker, DecisionType
+from loopy.federate import AgentCluster, FederatedServer
 from loopy.multimodal import (
     MediaContent,
     MediaType,
@@ -165,6 +169,15 @@ from loopy.skills import Skill, SkillRegistry
 from loopy.state import LoopState, RunOutcome, RunRecord, StateManager
 from loopy.streaming import StreamBuffer, StreamChunk, Streamer, StreamEvent
 from loopy.verification import VerificationGate, VerificationStatus, VerifyResult
+from loopy.verifier import (
+    Invariant,
+    Property,
+    VerificationReport,
+    VerificationSpec,
+    VerifiedAgent,
+    output_length_at_most,
+    output_must_contain,
+)
 
 __all__ = [
     # Version
@@ -331,6 +344,23 @@ __all__ = [
     "AgentRequest",
     "AgentResponse",
     "AgentCapability",
+    # v1.0.0 — durable runtime
+    "DAG",
+    "Step",
+    "State",
+    "Workflow",
+    "ResumeToken",
+    "TestEnv",
+    "AgentCluster",
+    "FederatedServer",
+    # v1.0.0 — verified agents
+    "VerifiedAgent",
+    "VerificationSpec",
+    "VerificationReport",
+    "Invariant",
+    "Property",
+    "output_must_contain",
+    "output_length_at_most",
     # Compliance
     "ComplianceFramework",
     "DataClassification",

@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2026-09-03
+
+**v1.0.0 — Production-Grade by Default.** loopy ships the three
+remaining 2026 production primitives so it can be deployed as a
+runtime, not just a library: a durable workflow engine with
+crash-safe journaling, property-based verification for agent
+programs, and a federated HTTP runtime that lets multiple
+agents discover and hand off tasks peer-to-peer.
+
+### Added
+
+- **Durable Agent Runtime (T3.1)** — new ``loopy.durable`` module.
+  - ``DAG`` + ``Step`` + Saga compensation: when a step raises,
+    every earlier step's ``compensation`` callable runs in
+    reverse order so partial side effects can be rolled back.
+  - ``Workflow.run`` / ``Workflow.resume(token, dag, state)``:
+    a crash-safe on-disk journal lets a crashed run resume
+    from the last completed step on a different process.
+  - ``ResumeToken`` round-trips through pickle + JSON.
+  - ``Workflow.test_env()`` returns a :class:`TestEnv` with a
+    virtual clock: ``await env.sleep(days=7)`` advances the
+    clock 604800s in well under 1s of real time, and the two
+    envs are independent.
+  - 27 new tests (DAG construction, 3-step happy path, journal
+    persistence, Saga compensation, crash + resume,
+    ResumeToken round-trip, in-memory mode, TestEnv).
+- **Verified Agent Programs (T3.2)** — new ``loopy.verifier``
+  module.
+  - ``VerifiedAgent(agent, spec).verify(n_cases=100)`` drives
+    the agent on a batch of inputs and returns a
+    ``VerificationReport``.
+  - ``VerificationSpec(invariants, properties)`` bundles
+    rules; built-in ``output_must_contain`` and
+    ``output_length_at_most`` factories.
+  - 15 new tests covering spec construction, helper
+    factories, the passing / failing invariant paths,
+    multi-invariant evaluation, properties across N cases,
+    and a Hypothesis integration (skipped when the
+    ``[hypothesis]`` extra is not installed).
+- **Federated Runtime (T3.3)** — new ``loopy.federate`` module.
+  - ``FederatedServer`` exposes a minimal HTTP server
+    (``GET /.well-known/agent-card.json``, ``POST /tasks``,
+    ``GET /tasks/{id}``) on the stdlib ``ThreadingHTTPServer``
+    so core stays zero-deps.
+  - ``AgentCluster(peers)`` discovers and hands off tasks
+    peer-to-peer; unreachable peers are silently skipped.
+  - ``python -m loopy serve --port N --agent path.py`` new
+    subcommand: loads the optional agent module, binds the
+    federated server, prints the endpoints, and blocks on
+    Ctrl+C. 10 new tests.
+- **Optional extras** (T3.2.3 / T3.4.2):
+  - ``pip install loopy-agent[hypothesis,voice]`` adds
+    ``hypothesis>=6.0`` and ``websockets>=12.0``.
+- **T3.4.1** — ``Development Status :: 3 - Alpha`` promoted to
+  ``Development Status :: 5 - Production/Stable``.
+- **T3.4.2** — release pipeline now generates a CycloneDX SBOM
+  and Cosign-signs it keylessly (OIDC / Sigstore Fulcio).
+  Artifacts (wheel, sdist, SBOM, signature, certificate) are
+  all attached to the GitHub Release.
+- **New public types**: ``DAG``, ``Step``, ``State``,
+  ``Workflow``, ``ResumeToken``, ``TestEnv``, ``AgentCluster``,
+  ``FederatedServer``, ``VerifiedAgent``, ``VerificationSpec``,
+  ``VerificationReport``, ``Invariant``, ``Property``,
+  ``output_must_contain``, ``output_length_at_most``.
+
 ## [0.9.0] - 2026-09-03
 
 The **Trust Layer** release — ships A2A handoff (Agent Card discovery

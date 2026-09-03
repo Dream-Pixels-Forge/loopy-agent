@@ -176,6 +176,33 @@ class TestAgentCluster:
         cards = await cluster.discover()
         assert cards == []
 
+    @pytest.mark.asyncio
+    async def test_unreachable_peer_is_silently_skipped(self):
+        """A peer that can't be reached is logged + skipped, not
+        raised — so a partial network does not break the cluster."""
+        cluster = AgentCluster(
+            peers=[
+                "http://127.0.0.1:1",  # nothing listens on port 1
+                "http://127.0.0.1:2",  # nothing on port 2 either
+            ]
+        )
+        cards = await cluster.discover()
+        assert cards == []
+
+    @pytest.mark.asyncio
+    async def test_handoff_raises_on_http_error(self):
+        """``handoff`` propagates HTTPError when the peer returns
+        a non-2xx status or the connection fails."""
+        import httpx as _httpx
+
+        cluster = AgentCluster(peers=[])
+        with pytest.raises(_httpx.HTTPError):
+            await cluster.handoff(
+                peer_url="http://127.0.0.1:1",  # no listener
+                skill_id="text",
+                inputs={"q": "x"},
+            )
+
 
 # ── CLI: `loopy serve` ───────────────────────────────────────
 

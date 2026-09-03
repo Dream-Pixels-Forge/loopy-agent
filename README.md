@@ -66,6 +66,40 @@
 
 ## 🚀 What's New
 
+### v1.0.0 — Production-Grade by Default (durable runtime + verified agents + federated HTTP)
+
+- **`loopy.durable.DAG` / `Step` / `Workflow`** — declarative
+  workflow graph with Saga compensation. When a step raises,
+  every earlier step's `compensation` callable runs in reverse
+  order so partial side effects can be rolled back. `Workflow.run`
+  writes a crash-safe on-disk journal; `Workflow.resume(token)`
+  picks up at the last completed step on a different process.
+  `ResumeToken` round-trips through pickle + JSON.
+- **`Workflow.test_env()`** returns a `TestEnv` with a virtual
+  clock — `await env.sleep(days=7)` advances the clock
+  604800s in well under 1s of real time. Two envs are
+  independent; the clock persists to disk.
+- **`VerifiedAgent(agent, spec).verify(n_cases=100)`** — drive
+  the agent on a batch of inputs (default deterministic;
+  Hypothesis-driven with `pip install loopy-agent[hypothesis]`)
+  and return a `VerificationReport`. Built-in invariant
+  factories: `output_must_contain`, `output_length_at_most`.
+  Empty specs are rejected at construction.
+- **`FederatedServer` + `AgentCluster`** — minimal HTTP server
+  (`GET /.well-known/agent-card.json`, `POST /tasks`, `GET
+  /tasks/{id}`) on the stdlib `ThreadingHTTPServer` so the core
+  stays zero-deps. `AgentCluster(peers)` discovers and hands
+  off tasks peer-to-peer; unreachable peers are silently
+  skipped.
+- **`python -m loopy serve --port N --agent path.py`** — start
+  the federated server from a single Python agent module.
+- **T3.4.1** — `Development Status :: 3 - Alpha` promoted to
+  `Development Status :: 5 - Production/Stable`.
+- **T3.4.2** — release pipeline now produces a CycloneDX SBOM
+  and Cosign-signs it keylessly (OIDC / Sigstore Fulcio). SBOM,
+  signature, and certificate are all attached to the GitHub
+  Release so downstream consumers can audit + verify.
+
 ### v0.9.0 — Trust Layer (A2A handoff, Compliance-as-Code, cost-aware routing)
 
 - **`A2AClient.fetch_agent_card(url)`** — parse an A2A v1.0
