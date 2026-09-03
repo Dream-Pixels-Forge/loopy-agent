@@ -48,12 +48,17 @@ observe = ["rich>=13.0.0"]
 # but the WebSocket transport itself is pluggable; this extra provides
 # the most common concrete implementation.
 voice = ["websockets>=12.0"]
+# v1.0.0 — property-based testing for ``VerifiedAgent``. Optional so
+# the core install stays tiny; install with
+# ``pip install loopy-agent[hypothesis]``.
+hypothesis = ["hypothesis>=6.0"]
 all = [
     "tenacity>=8.0.0",
     "diskcache>=5.0.0",
     "regex>=2023.0.0",
     "rich>=13.0.0",
     "websockets>=12.0",
+    "hypothesis>=6.0",
 ]
 dev = [
     "pytest>=7.0.0",
