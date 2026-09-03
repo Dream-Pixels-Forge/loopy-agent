@@ -17,11 +17,14 @@
 
 ## Tier summary
 
-| Tier | Release | Theme | Headline features | # new tests | Source |
-|---|---|---|---|---|---|
-| **Tier 1** | **v0.8.0** "Agent Control Plane" | Ship the missing 2026 primitives | graph control flow, HITL interrupts, OTel auto-instrumentation | ≥70 | [GOAL.md §T1](../GOAL.md#tier-1--v080-agent-control-plane) |
-| **Tier 2** | **v0.9.0** "Trust Layer" | A2A handoff + Compliance-as-Code + cost routing | A2A handoff protocol, Policy DSL, adaptive routing | ≥100 | [GOAL.md §T2](../GOAL.md#tier-2--v090-trust-layer) |
-| **Tier 3** | **v1.0.0** "Production-Grade by Default" | The moonshot | durable runtime, verified agents, federated topology | ≥150 | [GOAL.md §T3](../GOAL.md#tier-3--v100-production-grade-by-default) |
+| Tier       | Release                                  | Theme                                           | Headline features                                              | # new tests | Source                                                             |
+| ---------- | ---------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | ----------- | ------------------------------------------------------------------ |
+| **Tier 1** | **v0.8.0** "Agent Control Plane"         | Ship the missing 2026 primitives                | graph control flow, HITL interrupts, OTel auto-instrumentation | ≥70         | [GOAL.md §T1](../GOAL.md#tier-1--v080-agent-control-plane)         |
+| **Tier 2** | **v0.9.0** "Trust Layer"                 | A2A handoff + Compliance-as-Code + cost routing | A2A handoff protocol, Policy DSL, adaptive routing             | ≥100        | [GOAL.md §T2](../GOAL.md#tier-2--v090-trust-layer)                 |
+| **Tier 3** | **v1.0.0** "Production-Grade by Default" | The moonshot                                    | durable runtime, verified agents, federated topology           | ≥150        | [GOAL.md §T3](../GOAL.md#tier-3--v100-production-grade-by-default) |
+| **Tier 4** | **v1.1** "Try It Now"                    | Adoptability                                    | Playground UI, 10 recipes, `loopy init`, error-message audit  | (planned)   | [`V1.1_PLAYGROUND_AND_ROADMAP.md`](./V1.1_PLAYGROUND_AND_ROADMAP.md) |
+| **Tier 5** | **v1.2** "Bring Your Team"               | Federation                                     | multi-tenant gateway, LSP, dev server, adaptive retry         | (planned)   | [`V1.1_PLAYGROUND_AND_ROADMAP.md`](./V1.1_PLAYGROUND_AND_ROADMAP.md) |
+| **Tier 6** | **v1.3** "A Mesh of Agents"               | Platform                                        | marketplace, cross-agent memory, learning, formal verification | (planned)   | [`V1.1_PLAYGROUND_AND_ROADMAP.md`](./V1.1_PLAYGROUND_AND_ROADMAP.md) |
 
 ## How to use this when you start work
 
@@ -73,4 +76,5 @@ git commit -m "feat(scope): what changed and why"
 - **Quick-start**: [`docs/getting-started.md`](../getting-started.md)
 - **CI workflows**: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml), [`.github/workflows/release.yml`](../../.github/workflows/release.yml)
 - **AI-coding-assistant context**: [`../AGENTS.md`](../../AGENTS.md)
+- **AI-coding-assistant context**: [`../QWEN.md`](../../QWEN.md)
 - **Skill for Claude Code/Copilot**: [`../skills/loopy-router.md`](../../skills/loopy-router.md)
