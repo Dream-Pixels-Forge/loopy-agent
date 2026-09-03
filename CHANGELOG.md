@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.0] - 2026-09-03
+
+The **Trust Layer** release — ships A2A handoff (Agent Card discovery
++ task lifecycle), Compliance-as-Code policies, and cost-aware
+adaptive routing so loopy is deployable in multi-tenant production.
+
+### Added
+
+- **A2A handoff (T2.1)** — `A2AClient.fetch_agent_card(url)` parses
+  A2A v1.0 `/.well-known/agent-card.json` documents with SSRF
+  protection and a TTL cache (`card_ttl=3600` default).
+  `A2AClient.from_agent_card(card)` builds a client from a single
+  card, rejecting unsupported authentication methods
+  (`none` / `api_key` / `oauth2` / `openIdConnect`).
+  `A2ATask` carries the 7-state lifecycle
+  (`submitted` / `working` / `input-required` / `completed` /
+  `failed` / `canceled` / `rejected`); `create_task`, `get_task`,
+  `cancel_task`, and SSE `stream_task` round out the surface.
+  Inbound webhooks are verified with HMAC-SHA256
+  (`verify_webhook`).
+- **Compliance-as-Code (T2.2)** — new `loopy.policies` module
+  ships `Policy`, `Condition`, `PolicyEngine`, `PolicyDecision`,
+  and `PolicyViolation`. Policies evaluate against a context
+  dict and emit decisions with `info` / `warn` / `block`
+  verdicts. `Gateway(policy_engine=...)` and
+  `LoopConfig(policy_engine=...)` gate every chat and step
+  *before* any side effect; the audit log keeps the raw context
+  so violations are provable. 5 policies evaluate in <1ms.
+- **Cost-Aware Adaptive Routing (T2.3)** — new
+  `ProviderConfig.cost_per_1k_tokens` field ranks providers by
+  cost. `Gateway.chat(..., max_cost_usd=X)` raises
+  `BudgetExceeded` *before* any HTTP when the estimate exceeds
+  the cap, and falls back to the cheapest configured provider
+  that fits. `CostTracker.record_estimated(usd)` and
+  `record_actual(usd, savings_from_fallback=...)` track the
+  routing decisions; `CostReport` exposes `estimated_usd`,
+  `actual_usd`, and `savings_usd` fields.
+- **New public types**: `A2AError`, `A2ATask`, `Policy`,
+  `PolicyEngine`, `PolicyDecision`, `PolicyViolation`, `Condition`.
+- **T1.0.2 characterization flip** — `Tracer.disabled` is now
+  a public flag (was a negative contract pin).
+
 ## [0.8.0] - 2026-09-02
 
 The **Agent Control Plane** release — ships the missing 2026 primitives

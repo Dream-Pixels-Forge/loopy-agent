@@ -66,6 +66,33 @@
 
 ## 🚀 What's New
 
+### v0.9.0 — Trust Layer (A2A handoff, Compliance-as-Code, cost-aware routing)
+
+- **`A2AClient.fetch_agent_card(url)`** — parse an A2A v1.0
+  `/.well-known/agent-card.json` document with SSRF protection
+  and a TTL cache. `A2AClient.from_agent_card(card)` builds a
+  client from a single card; rejects unsupported authentication
+  methods. **`A2ATask`** carries the 7-state lifecycle
+  (`submitted` → `working` → `input-required` / `completed` /
+  `failed` / `canceled` / `rejected`); `create_task`, `get_task`,
+  `cancel_task`, SSE `stream_task`, and HMAC-verified
+  `verify_webhook` round out the surface.
+- **`loopy.policies` Compliance-as-Code** — `Policy`,
+  `Condition` (`max_retries` / `max_cost_usd` / `pii_in_input` /
+  `rate_limit`), `PolicyEngine`, `PolicyDecision`, `PolicyViolation`.
+  Wire the engine into `Gateway(policy_engine=...)` or
+  `LoopConfig(policy_engine=...)` and every chat / step is gated
+  *before* any side effect. The audit log keeps the raw context so
+  violations are provable.
+- **`Gateway.chat(..., max_cost_usd=X)` cost-aware routing** —
+  every `ProviderConfig` carries a `cost_per_1k_tokens` field so
+  the gateway can rank providers by cost. When the requested
+  provider would exceed the cap, the gateway falls back to the
+  cheapest configured provider that fits; if none fit,
+  `BudgetExceeded` fires *before* any HTTP. `CostTracker` records
+  the estimated / actual USD and the savings from the fallback
+  (`estimated_usd` / `actual_usd` / `savings_usd` on `CostReport`).
+
 ### v0.8.0 — Agent Control Plane (graph control flow, HITL, OTel)
 
 - **`AgentLoop` human-in-the-loop interrupts** — `LoopConfig.interrupt_before`
