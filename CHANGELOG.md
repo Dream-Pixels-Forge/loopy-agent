@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.1] - 2026-09-03
+
+Patch release fixing a public-import collision in v1.0.0.
+
+### Fixed
+
+- **Public `Workflow` / `State` import collision** — v1.0.0
+  exported `Workflow` from `loopy.durable` (the new
+  durable runtime) and `loopy.flow` (the v0.8.0 graph-flow
+  primitive) at the same public name. Because `loopy.flow`
+  was imported first in `__init__.py`, a top-level
+  `from loopy import Workflow` returned the wrong class —
+  `Workflow.run(dag, ...)` looked up `dag.state_manager` and
+  raised `AttributeError`. The fix: re-bind `Workflow` and
+  `State` to the durable versions **after** every other
+  import in `loopy/__init__.py`. The flow primitives remain
+  reachable at `loopy.flow.Workflow` / `loopy.flow.State`
+  for backwards compatibility.
+
+### Verified
+
+- New functional smoke test against the installed wheel
+  exercises every v1.0.0 public surface (DAG, ResumeToken,
+  TestEnv, VerifiedAgent, FederatedServer) end-to-end.
+
 ## [1.0.0] - 2026-09-03
 
 **v1.0.0 — Production-Grade by Default.** loopy ships the three

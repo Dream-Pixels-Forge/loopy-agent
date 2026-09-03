@@ -24,6 +24,12 @@ Modules:
     explainability  - Decision audit trail
 """
 
+# v1.0.0 — the durable runtime's ``Workflow`` (T3.1) shadows the
+# graph-flow ``Workflow`` (T1.1) so end-users get the right
+# symbol. The flow Workflow is still reachable as
+# ``loopy.flow.Workflow``.
+import loopy.durable
+import loopy.durable as _durable
 from loopy.agents import (
     AgentResult,
     AgentStatus,
@@ -47,7 +53,7 @@ from loopy.evals import (
     JudgeConfig,
     Verdict,
 )
-from loopy.flow import Context, Edge, Node, State, StateGraph, Workflow
+from loopy.flow import Context, Edge, Node, StateGraph
 from loopy.gateway import (
     TEST_MODEL_SENTINEL,
     ConnectionPool,
@@ -141,8 +147,6 @@ from loopy.compliance import (
 from loopy.cost import BudgetExceeded, CostReport, CostTracker
 from loopy.drift import DriftDetector, DriftIssue, DriftReport
 from loopy.durable import DAG, ResumeToken, Step, TestEnv
-from loopy.durable import State as _DurableState
-from loopy.durable import Workflow as _DurableWorkflow
 from loopy.explainability import DecisionStep, DecisionTrace, DecisionTracker, DecisionType
 from loopy.federate import AgentCluster, FederatedServer
 from loopy.multimodal import (
@@ -387,3 +391,13 @@ __all__ = [
     "StreamBuffer",
     "Streamer",
 ]
+
+
+# v1.0.0 — the durable runtime's ``Workflow`` / ``State`` (T3.1)
+# shadow the graph-flow ``Workflow`` / ``State`` (T1.1) so
+# end-users get the right symbol from a top-level import. The
+# flow ones remain reachable as ``loopy.flow.Workflow`` /
+# ``loopy.flow.State`` for backwards compatibility.
+
+Workflow = _durable.Workflow
+State = _durable.State
