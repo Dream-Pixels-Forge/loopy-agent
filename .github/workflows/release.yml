@@ -27,10 +27,45 @@ jobs:
       - name: Build package
         run: python -m build
 
+      # v1.0.0 — generate a CycloneDX SBOM alongside the wheel +
+      # sdist. The artifact is attached to the GitHub Release so
+      # downstream consumers can audit the dependency surface.
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          python -m pip install --upgrade pip cyclonedx-bom
+          cyclonedx-py environment --output-format json \
+            --output-file sbom.cdx.json || \
+            cyclonedx-py -F -i dist/*.whl --output-format json \
+              --output-file sbom.cdx.json
+
+      # v1.0.0 — keyless Cosign signature over the SBOM, using
+      # OIDC (Sigstore Fulcio). Anyone can verify with
+      # ``cosign verify-blob sbom.cdx.json --certificate-identity ...``.
+      # Runs BEFORE the GitHub Release step so the signed
+      # artifacts (.sig + .pem) are part of the release.
+      - name: Sign SBOM with Cosign (keyless, OIDC)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+            -o /usr/local/bin/cosign
+          chmod +x /usr/local/bin/cosign
+          cosign sign-blob --yes \
+            --output-signature sbom.cdx.json.sig \
+            --output-certificate sbom.cdx.json.pem \
+            sbom.cdx.json
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create ${{ github.ref_name }} --generate-notes
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --generate-notes \
+            ./dist/*.whl \
+            ./dist/*.tar.gz \
+            ./sbom.cdx.json \
+            ./sbom.cdx.json.sig \
+            ./sbom.cdx.json.pem
