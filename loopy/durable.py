@@ -72,9 +72,16 @@ class Step:
 
     def __post_init__(self) -> None:
         if not self.name:
-            raise ValueError("Step.name must be a non-empty string")
+            raise ValueError(
+                "Step.name must be a non-empty string "
+                "(see https://loopy.dev/docs/durable#step-construction)"
+            )
         if "/" in self.name:
-            raise ValueError(f"Step.name {self.name!r} must not contain '/' (path-traversal guard)")
+            raise ValueError(
+                f"Step.name {self.name!r} must not contain '/' (path-traversal guard); "
+                "use a flat name like 'my_step' "
+                "(see https://loopy.dev/docs/durable#step-construction)"
+            )
 
 
 @dataclass
@@ -91,12 +98,17 @@ class DAG:
     def __post_init__(self) -> None:
         if not self.steps:
             raise ValueError(
-                f"DAG {self.name!r} must declare at least one Step (got {len(self.steps)} steps)"
+                f"DAG {self.name!r} must declare at least one Step (got {len(self.steps)} steps; "
+                "see https://loopy.dev/docs/durable#dag-construction)"
             )
         seen: set[str] = set()
         for step in self.steps:
             if step.name in seen:
-                raise ValueError(f"DAG {self.name!r} has duplicate step name {step.name!r}")
+                raise ValueError(
+                    f"DAG {self.name!r} has duplicate step name {step.name!r}; "
+                    "step names must be unique within a DAG "
+                    "(see https://loopy.dev/docs/durable#dag-construction)"
+                )
             seen.add(step.name)
 
 
@@ -175,7 +187,11 @@ class ResumeToken:
                 journal_path=str(data["journal_path"]),
             )
         except (KeyError, TypeError, ValueError) as exc:
-            raise ValueError(f"Malformed ResumeToken payload: {exc}") from exc
+            raise ValueError(
+                f"Malformed ResumeToken payload: {exc}; "
+                "expected keys workflow_id, last_completed_step, journal_path "
+                "(see https://loopy.dev/docs/durable#resume-token)"
+            ) from exc
 
 
 # ── Workflow ──────────────────────────────────────────────────
@@ -218,7 +234,12 @@ class Workflow:
         Returns a coroutine; awaiting it runs the workflow.
         """
         if not isinstance(token, ResumeToken):
-            raise ValueError(f"resume() requires a ResumeToken, got {type(token).__name__}")
+            raise ValueError(
+                f"resume() requires a ResumeToken, got {type(token).__name__}; "
+                "construct one via ResumeToken.from_dict(...) or pass a "
+                "deserialized token.workflow_id string. "
+                "(see https://loopy.dev/docs/durable#resume-token)"
+            )
         return Workflow._resume(token, dag, initial_state)
 
     @staticmethod

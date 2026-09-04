@@ -131,6 +131,19 @@ class FederatedServer:
         host: str = "127.0.0.1",
         port: int = 0,
     ) -> None:
+        # v1.1 -- fail fast on a malformed port rather than letting
+        # ThreadingHTTPServer raise a confusing socket error later.
+        if not isinstance(port, int):
+            raise TypeError(
+                f"port must be an int, got {type(port).__name__} "
+                "(use 0 for OS-assigned; see "
+                "https://loopy.dev/docs/federate#federated-server)"
+            )
+        if not (0 <= port <= 65535):
+            raise ValueError(
+                f"port must be in [0, 65535], got {port} "
+                "(see https://loopy.dev/docs/federate#federated-server)"
+            )
         self.agent_card = agent_card
         self.host = host
         self.port = port

@@ -87,19 +87,32 @@ class LoopConfig:
 
     def __post_init__(self) -> None:
         # Negative control: cannot configure interrupts on a zero-step loop.
+        if self.max_steps < 1:
+            raise ValueError(
+                f"max_steps must be >= 1, got {self.max_steps}; "
+                "set max_steps to at least 1 (or use Workflow.run directly) "
+                "(see https://loopy.dev/docs/agent-loop#max-steps)"
+            )
+        # Negative control: cannot configure interrupts on a zero-step loop.
         if (self.interrupt_before or self.interrupt_after) and self.max_steps <= 0:
-            raise ValueError("interrupt_before / interrupt_after require max_steps >= 1")
+            raise ValueError(
+                "interrupt_before / interrupt_after require max_steps >= 1; "
+                "set max_steps to at least 1 or remove the interrupt config "
+                "(see https://loopy.dev/docs/agent-loop#interrupts)"
+            )
         for phase in self.interrupt_before or []:
             if phase not in {"plan", "actor", "observer", "reflector"}:
                 raise ValueError(
                     f"interrupt_before: unknown phase {phase!r}; "
-                    "must be one of plan/actor/observer/reflector"
+                    "must be one of plan/actor/observer/reflector "
+                    "(see https://loopy.dev/docs/agent-loop#interrupts)"
                 )
         for phase in self.interrupt_after or []:
             if phase not in {"plan", "actor", "observer", "reflector"}:
                 raise ValueError(
                     f"interrupt_after: unknown phase {phase!r}; "
-                    "must be one of plan/actor/observer/reflector"
+                    "must be one of plan/actor/observer/reflector "
+                    "(see https://loopy.dev/docs/agent-loop#interrupts)"
                 )
 
 

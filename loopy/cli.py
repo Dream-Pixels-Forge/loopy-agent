@@ -70,6 +70,18 @@ def create_parser() -> argparse.ArgumentParser:
     agent_sub = agent_parser.add_subparsers(dest="agent_action")
     agent_sub.add_parser("list", help="List registered agents")
 
+    # --- init command (v1.1) ---
+    init_parser = subparsers.add_parser(
+        "init",
+        help="Scaffold a new loopy-agent project in ./<name>",
+    )
+    init_parser.add_argument("project_name", help="Project directory name")
+    init_parser.add_argument(
+        "--no-test",
+        action="store_true",
+        help="Skip generating tests/test_agent.py",
+    )
+
     # --- serve command (v1.0.0) ---
     serve_parser = subparsers.add_parser(
         "serve",
@@ -303,6 +315,234 @@ def cmd_agent(args: argparse.Namespace) -> None:
             print("    from loopy.agents import Orchestrator, SubAgent")
 
 
+def cmd_init(args: argparse.Namespace) -> None:
+    """v1.1 — scaffold a new loopy-agent project.
+
+    Generates a self-contained directory with a ``pyproject.toml``
+    pinning ``loopy-agent[all]``, an ``agent.py`` that uses
+    ``TestModel`` (so no API key is required to run it), a
+    ``loopy.yml`` config, a ``.gitignore``, a ``README.md``
+    pointing at loopy.dev, and a single ``tests/test_agent.py``
+    that runs without any network or credentials.
+
+    Negative controls:
+      * Refuses to overwrite an existing non-empty directory.
+      * Refuses project names containing ``/`` or ``..`` (path
+        traversal guard).
+      * Refuses absolute path names.
+    """
+    from pathlib import Path
+
+    name = args.project_name
+    if not name:
+        raise ValueError("project name must be non-empty (see https://loopy.dev/docs/init#usage)")
+    if "/" in name or "\\" in name or ".." in name:
+        raise ValueError(
+            f"project name {name!r} must not contain '/' or '..' "
+            "(see https://loopy.dev/docs/init#path-traversal)"
+        )
+    if Path(name).is_absolute():
+        raise ValueError(
+            f"project name {name!r} must be relative, not absolute "
+            "(see https://loopy.dev/docs/init#path-traversal)"
+        )
+
+    project_dir = Path(name)
+    if project_dir.exists() and any(project_dir.iterdir()):
+        raise FileExistsError(
+            f"directory {name!r} already exists and is not empty; "
+            "refusing to overwrite (see https://loopy.dev/docs/init#refuse-overwrite)"
+        )
+    project_dir.mkdir(parents=True, exist_ok=True)
+
+    _write_pyproject(project_dir)
+    _write_agent_py(project_dir)
+    _write_loopy_yml(project_dir)
+    _write_gitignore(project_dir)
+    _write_readme(project_dir)
+    if not args.no_test:
+        (project_dir / "tests").mkdir(exist_ok=True)
+        _write_test_agent(project_dir)
+
+    print(
+        f"Created {name}/ with:\n"
+        f"  - pyproject.toml  (uses loopy-agent[all])\n"
+        f"  - agent.py        (TestModel-backed AgentLoop)\n"
+        f"  - loopy.yml       (provider: test, max_steps: 3)\n"
+        f"  - .gitignore\n"
+        f"  - README.md\n"
+        + ("  - tests/test_agent.py\n" if not args.no_test else "")
+        + f"\nNext:\n  cd {name}\n  pip install -e .[all]\n  python agent.py\n"
+        + ("  pytest\n" if not args.no_test else "")
+    )
+
+
+_PYPROJECT_TEMPLATE = """\
+[project]
+name = "{name}"
+version = "0.1.0"
+description = "A loopy-agent project scaffolded by `loopy init`."
+requires-python = ">=3.10"
+dependencies = [
+    "loopy-agent[all]>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+"""
+
+
+_AGENT_PY_TEMPLATE = '''\
+"""Minimal loopy-agent entry point.
+
+Run with::
+
+    python agent.py
+
+No API key required — uses TestModel under the hood.
+"""
+
+import asyncio
+
+from loopy import AgentLoop, LoopConfig
+from loopy.gateway import TestModel
+
+
+async def main() -> None:
+    config = LoopConfig(
+        model=TestModel(),
+        max_steps=3,
+    )
+    loop = AgentLoop(config)
+    result = await loop.run("Hello from loopy-agent!")
+    if isinstance(result, list):
+        last = result[-1]
+        print(f"agent output: {last.action}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+'''
+
+
+_LOOPY_YML_TEMPLATE = """\
+# v1.1 — minimal loopy-agent config.
+# See https://loopy.dev/docs/init#loopy-yml
+
+provider: test
+model: TestModel
+max_steps: 3
+interrupt_before: []
+interrupt_after: []
+"""
+
+
+_GITIGNORE_TEMPLATE = """\
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Test + coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+"""
+
+
+_README_TEMPLATE = """\
+# {name}
+
+A loopy-agent project scaffolded by `loopy init`.
+
+## Quick start
+
+```bash
+pip install -e .[all]
+python agent.py
+```
+
+## Configure
+
+Edit `loopy.yml` to switch providers or add interrupt gates.
+See https://loopy.dev/docs/init for the full reference.
+
+## Test
+
+```bash
+pytest
+```
+"""
+
+
+_TEST_AGENT_TEMPLATE = '''\
+"""Smoke test: the scaffolded agent runs without an API key."""
+
+from __future__ import annotations
+
+import asyncio
+
+import pytest
+
+from agent import main
+
+
+@pytest.mark.asyncio
+async def test_agent_main_runs(capsys: pytest.CaptureFixture[str]) -> None:
+    await main()
+    captured = capsys.readouterr()
+    assert "agent output:" in captured.out
+'''
+
+
+def _write_pyproject(project_dir) -> None:
+    (project_dir / "pyproject.toml").write_text(
+        _PYPROJECT_TEMPLATE.format(name=project_dir.name),
+        encoding="utf-8",
+    )
+
+
+def _write_agent_py(project_dir) -> None:
+    (project_dir / "agent.py").write_text(_AGENT_PY_TEMPLATE, encoding="utf-8")
+
+
+def _write_loopy_yml(project_dir) -> None:
+    (project_dir / "loopy.yml").write_text(_LOOPY_YML_TEMPLATE, encoding="utf-8")
+
+
+def _write_gitignore(project_dir) -> None:
+    (project_dir / ".gitignore").write_text(_GITIGNORE_TEMPLATE, encoding="utf-8")
+
+
+def _write_readme(project_dir) -> None:
+    (project_dir / "README.md").write_text(
+        _README_TEMPLATE.format(name=project_dir.name),
+        encoding="utf-8",
+    )
+
+
+def _write_test_agent(project_dir) -> None:
+    (project_dir / "tests" / "test_agent.py").write_text(_TEST_AGENT_TEMPLATE, encoding="utf-8")
+
+
 def cmd_info(args: argparse.Namespace) -> None:
     """Show loopy info."""
     print(f"""
@@ -385,6 +625,7 @@ def main() -> None:
         "trace": cmd_trace,
         "eval": cmd_eval,
         "agent": cmd_agent,
+        "init": cmd_init,  # v1.1
         "serve": cmd_serve,  # v1.0.0
         "info": cmd_info,
     }
