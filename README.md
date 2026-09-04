@@ -66,6 +66,22 @@
 
 ## 🚀 What's New
 
+### v1.1.1 — "Try It More" (every error has a docs link)
+
+- **100% error-message audit pass rate** — every public
+  `raise` site in `loopy/` now carries a
+  `loopy.dev/docs/...#anchor` URL with what-went-wrong and
+  how-to-fix guidance. v1.1.0 shipped 12 hand-pinned exception
+  messages at ~27% pass rate; v1.1.1 closes the gap to 100%
+  via the new `scripts/patch_bulk.py` helper.
+- **`scripts/patch_bulk.py`** — a small Python helper that
+  reads `dev-notes/ERROR_AUDIT.json`, finds each `needs_work`
+  raise site, and appends the docs URL while preserving the
+  existing source layout (handles single-line, multi-line,
+  and docstring-adjacent raise messages without corrupting them).
+- `tests/test_error_messages.py::TestErrorAuditThreshold` is
+  no longer `xfail`; it now passes.
+
 ### v1.1.0 — "Try It Now" (adoptability)
 
 - **`loopy init <name>`** — one-command project bootstrap.

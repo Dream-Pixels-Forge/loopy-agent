@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-09-04
+
+**v1.1.1 — "Try It More"** is a patch release that takes the
+error-message audit pass rate from ~27% to 100%. Every public
+``raise`` site in ``loopy/`` now carries a
+``loopy.dev/docs/...#anchor`` URL with what-went-wrong and
+how-to-fix guidance.
+
+### Added
+
+- **`scripts/patch_bulk.py`** — a small Python helper that
+  reads ``dev-notes/ERROR_AUDIT.json``, finds each
+  ``needs_work`` raise site, and appends the docs URL while
+  preserving the existing source layout (handles single-line,
+  multi-line, and docstring-adjacent raise messages without
+  corrupting them).
+
+### Changed
+
+- **Every ``raise`` site in ``loopy/`` is now docs-linked**.
+  Audit pass rate: 100% (71/71 non-exempt raise sites).
+  The audit script (``scripts/audit_errors.py``) has an
+  ``EXEMPT_LINES`` table for re-raises, internal sentinels,
+  and AST-unparse false positives (e.g. ``Interrupt(...)``
+  instantiation sites).
+
+### Tests
+
+- ``tests/test_error_messages.py::TestErrorAuditThreshold::
+  test_audit_at_least_95_percent_pass_rate`` is no longer
+  marked ``xfail``; it now passes.
+
 ## [1.1.0] - 2026-09-04
 
 **v1.1.0 — "Try It Now"** ships the three adoptability
