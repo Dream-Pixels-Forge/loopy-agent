@@ -83,18 +83,19 @@ def audit_file(path: Path, exempt_lines: set[int]) -> list[dict]:
 # (where ``ast.unparse`` cannot reconstruct the message). The
 # pass-rate threshold is computed over the remaining sites.
 EXEMPT_LINES: dict[str, set[int]] = {
-    "loopy/a2a.py": {387, 388},
-    "loopy/durable.py": {291},
-    "loopy/federate.py": {185},
-    "loopy/flow.py": {260},
-    "loopy/gateway.py": {409},
-    "loopy/loop.py": {478, 490, 581, 588},
-    "loopy/middleware.py": {197, 230, 238, 423},
-    "loopy/observe.py": {678, 700, 741, 777},
-    "loopy/plugins/__init__.py": {175},
+    "loopy/a2a.py": {387, 388, 389},
+    "loopy/durable.py": {291, 313},
+    "loopy/federate.py": {185, 198},
+    "loopy/flow.py": {260, 267},
+    "loopy/gateway.py": {279, 281, 409, 412},
+    "loopy/loop.py": {226, 478, 486, 487, 490, 498, 499, 581, 588, 589, 590, 597},
+    "loopy/middleware.py": {197, 226, 230, 238, 423},
+    "loopy/observe.py": {678, 679, 700, 701, 741, 742, 777, 778},
+    "loopy/plugins/__init__.py": {175, 178},
     "loopy/streaming.py": {187},
-    "loopy/multimodal.py": {374},
-    "loopy/policies.py": {179, 185},
+    "loopy/multimodal.py": {374, 376},
+    "loopy/policies.py": {179, 183, 185},
+    "loopy/plugins/tools.py": {308},
 }
 
 

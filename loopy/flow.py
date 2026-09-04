@@ -118,18 +118,36 @@ class StateGraph:
         for name in self.nodes:
             if not name or "/" in name or "\\" in name or name.startswith("."):
                 raise ValueError(
-                    f"Invalid node name {name!r}: must be non-empty, no slashes, no leading dot"
+                    f"Invalid node name {name!r}: must be non-empty, "
+                    "no slashes, no leading dot "
+                    "(see https://loopy.dev/docs/flow#errors)"
                 )
         if self.entry not in self.nodes:
-            raise ValueError(f"Entry node {self.entry!r} not in graph nodes {sorted(self.nodes)}")
+            raise ValueError(
+                f"Entry node {self.entry!r} not in graph nodes {sorted(self.nodes)} "
+                "(see https://loopy.dev/docs/flow#errors)"
+            )
+
         for t in self.terminal:
             if t not in self.nodes:
-                raise ValueError(f"Terminal node {t!r} not in graph nodes {sorted(self.nodes)}")
+                raise ValueError(
+                    f"Terminal node {t!r} not in graph nodes {sorted(self.nodes)} "
+                    "(see https://loopy.dev/docs/flow#errors)"
+                )
+
         for edge in self.edges:
             if edge.from_node not in self.nodes:
-                raise ValueError(f"Edge.from_node {edge.from_node!r} not in graph")
+                raise ValueError(
+                    f"Edge.from_node {edge.from_node!r} not in graph "
+                    "(see https://loopy.dev/docs/flow#errors)"
+                )
+
             if edge.to_node not in self.nodes:
-                raise ValueError(f"Edge.to_node {edge.to_node!r} not in graph")
+                raise ValueError(
+                    f"Edge.to_node {edge.to_node!r} not in graph "
+                    "(see https://loopy.dev/docs/flow#errors)"
+                )
+
         # Cycle detection: every cycle must include a terminating node.
         self._validate_no_open_cycles()
 
@@ -154,7 +172,7 @@ class StateGraph:
             if self._can_reach_terminal(start, outgoing):
                 continue
             raise ValueError(
-                f"Graph has open cycle not reaching any terminal node starting from {start!r}"
+                f"Graph has open cycle not reaching any terminal node starting from {start!r} (see https://loopy.dev/docs/flow#errors)"
             )
 
     def _can_reach_terminal(self, start: str, outgoing: dict[str, list[str]]) -> bool:
@@ -217,7 +235,10 @@ class Workflow:
         runs from ``entry``.
         """
         if not isinstance(initial_state, dict):
-            raise TypeError(f"initial_state must be a dict, got {type(initial_state).__name__}")
+            raise TypeError(
+                f"initial_state must be a dict, got {type(initial_state).__name__} (see https://loopy.dev/docs/flow#errors)"
+            )
+
         # Initialize tracking state.
         self._completed_nodes = set(resume_from or set())
         if self.state_manager is not None and resume_from:
@@ -286,7 +307,9 @@ class Workflow:
             if edge.condition is None or edge.condition(state):
                 return edge.to_node
         # No outgoing edge matched; treat as terminal.
-        raise _CycleError(f"No outgoing edge from {current!r}; not in terminal set")
+        raise _CycleError(
+            f"No outgoing edge from {current!r}; not in terminal set (see https://loopy.dev/docs/flow#errors)"
+        )
 
     def _persist_state(
         self,

@@ -159,7 +159,9 @@ class Router:
         if self.rules:
             return self.rules[0].agent_name
 
-        raise ValueError("No routing rules defined and no default agent")
+        raise ValueError(
+            "No routing rules defined and no default agent (see https://loopy.dev/docs/api#errors)"
+        )
 
 
 class TaskDecomposer:

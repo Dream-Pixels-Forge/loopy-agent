@@ -95,7 +95,9 @@ class ProviderConfig:
             self._window_start = now
 
         if self._request_count >= self.rpm:
-            raise RuntimeError(f"Rate limit exceeded for {self.provider.value}")
+            raise RuntimeError(
+                f"Rate limit exceeded for {self.provider.value} (see https://loopy.dev/docs/gateway#errors)"
+            )
 
     def record_request(self) -> None:
         """Increment the request counter for rate tracking."""
@@ -238,7 +240,9 @@ class Gateway:
         if self.providers:
             name, config = next(iter(self.providers.items()))
             return name, config
-        raise ValueError("No providers configured. Call add_provider() first.")
+        raise ValueError(
+            "No providers configured. Call add_provider() first. (see https://loopy.dev/docs/gateway#errors)"
+        )
 
     def _resolve_provider_with_cap(
         self,
@@ -401,7 +405,10 @@ class Gateway:
         try:
             handler_name = self._PROVIDER_HANDLERS.get(config.provider)
             if handler_name is None:
-                raise ValueError(f"Unsupported provider: {config.provider}")
+                raise ValueError(
+                    f"Unsupported provider: {config.provider} (see https://loopy.dev/docs/gateway#errors)"
+                )
+
             handler = getattr(self, handler_name)
             response = await handler(config, message, system, temperature, max_tokens)
         except Exception as e:
@@ -829,9 +836,14 @@ class TestModel:
             pattern = self.raise_on_message
             if isinstance(pattern, str):
                 if pattern in message:
-                    raise RuntimeError(f"Test model forced error: {pattern!r} in message")
+                    raise RuntimeError(
+                        f"Test model forced error: {pattern!r} in message (see https://loopy.dev/docs/gateway#errors)"
+                    )
+
             elif pattern.search(message):
-                raise RuntimeError(f"Test model forced error on {pattern.pattern!r}")
+                raise RuntimeError(
+                    f"Test model forced error on {pattern.pattern!r} (see https://loopy.dev/docs/gateway#errors)"
+                )
 
         self.calls.append({"message": message, "system": system})
 
@@ -885,6 +897,6 @@ def _resolve_test_model_arg(  # noqa: PLR0911 - small discriminated switch
     if isinstance(value, str) and value == TEST_MODEL_SENTINEL:
         return TestModel()
     raise ValueError(
-        f"Unsupported value for Gateway.chat(model=): {value!r}. "
+        f"Unsupported value for Gateway.chat(model=): {value!r}.  (see https://loopy.dev/docs/gateway#errors)"
         f"Pass a TestModel, the sentinel 'test', or None."
     )

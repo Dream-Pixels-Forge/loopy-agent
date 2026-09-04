@@ -449,7 +449,7 @@ Respond in JSON:
         """
         fn = model_fn or self.model_fn
         if not fn:
-            raise ValueError("No model function provided")
+            raise ValueError("No model function provided (see https://loopy.dev/docs/api#errors)")
 
         report = EvalReport(suite_name=suite.name)
 

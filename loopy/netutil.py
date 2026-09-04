@@ -80,11 +80,18 @@ def validate_outbound_url(
     parsed = urlparse(url)
     scheme = (parsed.scheme or "").lower()
     if scheme not in allow_schemes:
-        raise ValueError(f"URL scheme '{parsed.scheme or ''}' not allowed")
+        raise ValueError(
+            f"URL scheme '{parsed.scheme or ''}' not allowed (see https://loopy.dev/docs/security#ssrf-guard)"
+        )
+
     host = parsed.hostname
     if not host:
-        raise ValueError("URL has no host")
+        raise ValueError("URL has no host (see https://loopy.dev/docs/security#ssrf-guard)")
 
     if not allow_private and is_private_host(host):
-        raise ValueError(f"URL host '{host}' resolves to a private/loopback address (SSRF guard)")
+        raise ValueError(
+            f"URL host '{host}' resolves to a private/loopback address "
+            "(SSRF guard) (see https://loopy.dev/docs/security#ssrf-guard)"
+        )
+
     return url

@@ -141,7 +141,9 @@ class PluginRegistry:
         # Check dependencies
         for dep in info.requires:
             if dep not in self._plugins:
-                raise RuntimeError(f"Plugin {info.name} requires {dep}, which is not loaded")
+                raise RuntimeError(
+                    f"Plugin {info.name} requires {dep}, which is not loaded (see https://loopy.dev/docs/plugins#errors)"
+                )
 
         # Load the plugin
         await plugin.setup(self)
@@ -163,10 +165,14 @@ class PluginRegistry:
             plugin_instance = getattr(module, "plugin", None)
 
             if plugin_instance is None:
-                raise ValueError(f"No 'plugin' attribute in {module_path}")
+                raise ValueError(
+                    f"No 'plugin' attribute in {module_path} (see https://loopy.dev/docs/plugins#errors)"
+                )
 
             if not isinstance(plugin_instance, Plugin):
-                raise TypeError(f"'plugin' in {module_path} is not a Plugin instance")
+                raise TypeError(
+                    f"'plugin' in {module_path} is not a Plugin instance (see https://loopy.dev/docs/plugins#errors)"
+                )
 
             await self.load(plugin_instance)
 
@@ -298,7 +304,7 @@ class PluginRegistry:
         handler = self._tools.get(name)
         if handler is None:
             self._denials.append({"tool": name, "reason": "not_found"})
-            raise ValueError(f"Tool not found: {name}")
+            raise ValueError(f"Tool not found: {name} (see https://loopy.dev/docs/plugins#errors)")
 
         spec = self._tool_specs.get(name, {})
         arguments = arguments or {}
@@ -313,7 +319,7 @@ class PluginRegistry:
                     }
                 )
                 raise PermissionError(
-                    f"Tool '{name}' requires approval and no approver is configured"
+                    f"Tool '{name}' requires approval and no approver is configured (see https://loopy.dev/docs/plugins#errors)"
                 )
             approved = await approver(name, arguments)
             if not approved:
@@ -324,14 +330,18 @@ class PluginRegistry:
                         "arguments": redact_arguments(arguments),
                     }
                 )
-                raise PermissionError(f"Tool '{name}' was not approved")
+                raise PermissionError(
+                    f"Tool '{name}' was not approved (see https://loopy.dev/docs/plugins#errors)"
+                )
 
         allowed = spec.get("allowed_values") or {}
         for param, values in allowed.items():
             value = arguments.get(param)
             if value is not None and value not in values:
                 self._denials.append({"tool": name, "reason": f"parameter '{param}' out of range"})
-                raise ValueError(f"Parameter '{param}' outside allowed values")
+                raise ValueError(
+                    f"Parameter '{param}' outside allowed values (see https://loopy.dev/docs/plugins#errors)"
+                )
 
         return await handler(**arguments)
 

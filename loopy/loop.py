@@ -136,7 +136,7 @@ class Interrupt:
     def __post_init__(self) -> None:
         if self.decision is not None and self.decision not in {"approve", "reject"}:
             raise ValueError(
-                f"decision must be None, 'approve', or 'reject'; got {self.decision!r}"
+                f"decision must be None, 'approve', or 'reject'; got {self.decision!r} (see https://loopy.dev/docs/agent-loop#errors)"
             )
 
 
@@ -217,7 +217,7 @@ class AgentLoop:
         if resume_from is not None:
             if resume_from.decision is None:
                 raise ValueError(
-                    "resume_from must carry a decision ('approve' or 'reject'); "
+                    "resume_from must carry a decision ('approve' or 'reject');  (see https://loopy.dev/docs/agent-loop#errors)"
                     "received Interrupt with decision=None"
                 )
             if resume_from.decision == "reject":
@@ -225,6 +225,7 @@ class AgentLoop:
                     proposal=resume_from.proposed_action,
                     context=resume_from.context,
                 )
+            # See https://loopy.dev/docs/agent-loop#interrupts
             # decision == "approve" — re-enter at the same step so the
             # after-gate (if any) still fires for the same step. The
             # before-gate we just approved is suppressed via _skip_before.
