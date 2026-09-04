@@ -144,6 +144,8 @@ from loopy.compliance import (
     ComplianceFramework,
     DataClassification,
 )
+from loopy.config import LoopyConfig
+from loopy.config import load as load_config
 from loopy.cost import BudgetExceeded, CostReport, CostTracker
 from loopy.drift import DriftDetector, DriftIssue, DriftReport
 from loopy.durable import DAG, ResumeToken, Step, TestEnv
