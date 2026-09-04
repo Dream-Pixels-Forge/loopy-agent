@@ -336,17 +336,19 @@ class TestLoopConfigInterruptValidation:
             LoopConfig(planner=_planner, max_steps=1, interrupt_after=["nope"])
 
     def test_max_steps_zero_with_interrupts_raises(self):
-        with pytest.raises(ValueError, match="max_steps >= 1"):
+        with pytest.raises(ValueError, match="max_steps"):
             LoopConfig(
                 planner=_planner,
                 max_steps=0,
                 interrupt_before=["actor"],
             )
 
-    def test_max_steps_zero_without_interrupts_allowed(self):
-        # Regression: no-interrupt config with max_steps=0 stays legal.
-        cfg = LoopConfig(max_steps=0)
-        assert cfg.max_steps == 0
+    def test_max_steps_zero_raises_v1_1(self):
+        # v1.1 — max_steps=0 is now universally rejected (the loop
+        # never runs anything). Previously this was only enforced
+        # when interrupts were configured.
+        with pytest.raises(ValueError, match="max_steps"):
+            LoopConfig(max_steps=0)
 
 
 class TestInterruptStatePersistence:
