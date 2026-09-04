@@ -66,6 +66,33 @@
 
 ## 🚀 What's New
 
+### v1.1.0 — "Try It Now" (adoptability)
+
+- **`loopy init <name>`** — one-command project bootstrap.
+  Scaffolds a self-contained project directory with
+  `pyproject.toml` (pinning `loopy-agent[all]>=1.0.0`), `agent.py`
+  (TestModel-backed, no API key required), `loopy.yml`,
+  `.gitignore`, `README.md`, and `tests/test_agent.py`. Supports
+  `--no-test` to skip the test file. Refuses path-traversal,
+  absolute paths, empty names, and non-empty existing
+  directories.
+- **10 recipes in `examples/`** — single-file, <100 lines each,
+  no API key required, all runnable with
+  `python examples/0X_name.py`. Covers: hello world, streaming,
+  cost-cap, policies, durable, verified, federation, hitl,
+  redaction, otel. See `examples/README.md` for the index.
+- **Error-message audit infrastructure** — `scripts/audit_errors.py`
+  walks `loopy/`, classifies every `raise` site as `passes` (has
+  a `loopy.dev/docs/...#anchor` URL) or `needs_work`, and writes
+  `dev-notes/ERROR_AUDIT.json`. 12 of the most-touched public
+  exceptions are now hand-pinned (LoopConfig, Step, DAG,
+  ResumeToken, FederatedServer, Policy, validate_outbound_url).
+  Bulk pass rate is the goal of v1.1.1.
+- **Stricter input validation** — `LoopConfig(max_steps<1)` is
+  now universally rejected (the loop never runs anything);
+  `FederatedServer.__init__` validates `port` is an `int` in
+  `[0, 65535]` and fails fast.
+
 ### v1.0.0 — Production-Grade by Default (durable runtime + verified agents + federated HTTP)
 
 - **`loopy.durable.DAG` / `Step` / `Workflow`** — declarative

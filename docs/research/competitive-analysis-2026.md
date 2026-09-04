@@ -1,6 +1,6 @@
 # Competitive Analysis & Roadmap — 2026
 
-> **Status:** Living document. Last updated 2026-09-03 alongside v1.0.0 release (T1.1 graph flow, T1.2 HITL, T1.3 OTel, T2.1 A2A handoff, T2.2 policies, T2.3 cost-aware routing, T3.1 durable runtime, T3.2 verified agents, T3.3 federated runtime, T3.4 release-gate all shipped).
+> **Status:** Living document. Last updated 2026-09-04 alongside v1.1.0 release (T1.1 `loopy init`, T1.2 10 recipes, T1.3 error-message audit tooling + 12 pinned exception messages; Playground UI deferred to v1.1.1).
 > **Owner:** Dream Pixels Forge
 > **Purpose:** Capture the strategic landscape so future contributors don't repeat the survey.
 

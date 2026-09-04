@@ -587,7 +587,12 @@ class TestCLI:
             text=True,
         )
         assert result.returncode == 0
-        assert "0." in result.stdout  # Check for version number
+        # Check for a version number ("X.Y" or "X.Y.Z" pattern).
+        import re
+
+        assert re.search(r"\d+\.\d+", result.stdout), (
+            f"expected a semver-like version in {result.stdout!r}"
+        )
 
     def test_guard_command(self):
         """Test guard CLI command."""

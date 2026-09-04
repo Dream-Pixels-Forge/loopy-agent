@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-09-04
+
+**v1.1.0 — "Try It Now"** ships the three adoptability
+primitives: ``loopy init`` (one-command project scaffold),
+10 hand-written copy-pasteable recipes, and the error-message
+audit infrastructure. The Playground UI is deferred to v1.1.1.
+
+### Added
+
+- **`loopy init <name>`** (T1.1) — new CLI subcommand that
+  scaffolds a self-contained project directory with
+  ``pyproject.toml`` (pinning ``loopy-agent[all]>=1.0.0``),
+  ``agent.py`` (TestModel-backed, no API key required),
+  ``loopy.yml``, ``.gitignore``, ``README.md``, and
+  ``tests/test_agent.py``. Supports ``--no-test`` to skip the
+  test file. Refuses path-traversal, absolute paths, empty
+  names, and non-empty existing directories.
+- **`loopy.config.LoopyConfig` + `load(path)`** (T1.1) — the
+  ``loopy.yml`` config dataclass with `provider`, `model`,
+  `max_steps`, `interrupt_before`, `interrupt_after`,
+  `policy_engine_path`, `state_manager_path`, `redactor_config`
+  fields. ``load()`` parses + validates with structured error
+  messages that include docs URLs.
+- **10 recipes in `examples/`** (T1.2) — single-file, < 100
+  lines each, no API key required, all runnable with
+  ``python examples/0X_name.py``: ``00_hello_world``,
+  ``01_streaming``, ``02_cost_capped``, ``03_policies``,
+  ``04_durable``, ``05_verified``, ``06_federation``,
+  ``07_hitl``, ``08_redaction``, ``09_otel``.
+- **`scripts/audit_errors.py`** (T1.3) — walks ``loopy/``,
+  classifies every ``raise`` site as ``passes`` (contains a
+  ``loopy.dev/docs/...#anchor`` URL) or ``needs_work``, writes
+  ``dev-notes/ERROR_AUDIT.json``. Exposes an ``EXEMPT_LINES``
+  table for re-raises and internal sentinels.
+
+### Changed
+
+- **Error messages on 12 public exceptions** (T1.3) now include
+  a ``loopy.dev/docs/...`` URL with what-went-wrong / how-to-fix
+  guidance: ``LoopConfig(max_steps<1)`` (new universal rule),
+  ``LoopConfig(unknown phase)``, ``Step(name empty)``,
+  ``Step(name contains '/')``, ``DAG(steps empty)``,
+  ``DAG(duplicate step name)``, ``ResumeToken(malformed)``,
+  ``Workflow.resume(not a ResumeToken)``,
+  ``FederatedServer(port wrong type)``, ``Policy(name empty)``,
+  ``Policy(conditions empty)``, ``validate_outbound_url(...)``.
+- **`LoopConfig(max_steps<1)` is now universally rejected**
+  (v1.1.0). Previously only enforced when interrupts were
+  configured; a zero-step loop never runs anything.
+- **`FederatedServer.__init__` validates `port`** (v1.1.0): must
+  be an ``int`` in ``[0, 65535]``. Fails fast rather than
+  surfacing a confusing socket error later.
+
+### Fixed
+
+- ``tests/test_loop_interrupt.py::test_max_steps_zero_without_interrupts_allowed``
+  replaced by ``test_max_steps_zero_raises_v1_1`` to reflect
+  the new universal ``max_steps >= 1`` rule.
+
+### Deferred to v1.1.1
+
+- Bulk error-message audit pass rate (≥ 95% of all raise
+  sites). v1.1.0 ships the 12 most-touched public messages +
+  the tooling; the bulk pass is the goal of v1.1.1. The
+  ``test_audit_at_least_95_percent_pass_rate`` test is marked
+  ``xfail``.
+- The Playground UI is being built in a separate repo
+  (`loopy-playground`) and ships as v1.1.1.
+
 ## [1.0.1] - 2026-09-03
 
 Patch release fixing a public-import collision in v1.0.0.
