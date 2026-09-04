@@ -250,7 +250,7 @@ class Workflow:
     ) -> State:
         if not Path(token.journal_path).exists():
             raise FileNotFoundError(
-                f"ResumeToken journal_path does not exist: {token.journal_path}"
+                f"ResumeToken journal_path does not exist: {token.journal_path} (see https://loopy.dev/docs/durable#errors)"
             )
         return await Workflow._run(
             dag,
@@ -402,7 +402,10 @@ class DurableTestEnv:
             float(seconds) + float(minutes) * 60.0 + float(hours) * 3600.0 + float(days) * 86400.0
         )
         if total < 0:
-            raise ValueError("sleep duration must be non-negative")
+            raise ValueError(
+                "sleep duration must be non-negative (see https://loopy.dev/docs/durable#errors)"
+            )
+
         self._advance(total)
         # Yield once so an awaiter between sleeps gets a chance to
         # run, then immediately persist the new clock.

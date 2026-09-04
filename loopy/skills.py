@@ -203,13 +203,21 @@ class Skill:
         lists are preserved in ``metadata`` for round-trip fidelity.
         """
         if not isinstance(card, dict):
-            raise TypeError(f"a2a card must be a dict, got {type(card).__name__}")
+            raise TypeError(
+                f"a2a card must be a dict, got {type(card).__name__} (see https://loopy.dev/docs/api#errors)"
+            )
+
         name = card.get("name")
         description = card.get("description")
         if not name:
-            raise ValueError("a2a Skill primitive requires a non-empty 'name'")
+            raise ValueError(
+                "a2a Skill primitive requires a non-empty 'name' (see https://loopy.dev/docs/api#errors)"
+            )
+
         if description is None:
-            raise ValueError("a2a Skill primitive requires a 'description'")
+            raise ValueError(
+                "a2a Skill primitive requires a 'description' (see https://loopy.dev/docs/api#errors)"
+            )
 
         triggers = [str(t) for t in card.get("tags", []) if t]
         instructions = "\n".join(card.get("examples", [])) or card.get("description", "")

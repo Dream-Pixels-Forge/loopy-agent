@@ -64,7 +64,7 @@ class Condition:
     def __post_init__(self) -> None:
         if self.kind not in _KNOWN_CONDITION_KINDS:
             raise ValueError(
-                f"Unknown condition kind {self.kind!r}; "
+                f"Unknown condition kind {self.kind!r};  (see https://loopy.dev/docs/policies#errors)"
                 f"must be one of {sorted(_KNOWN_CONDITION_KINDS)}"
             )
 
@@ -79,12 +79,18 @@ class Policy:
 
     def __post_init__(self) -> None:
         if not self.name:
-            raise ValueError("Policy.name must be a non-empty string")
+            raise ValueError(
+                "Policy.name must be a non-empty string (see https://loopy.dev/docs/policies#errors)"
+            )
+
         if not self.conditions:
-            raise ValueError(f"Policy {self.name!r} must declare at least one Condition")
+            raise ValueError(
+                f"Policy {self.name!r} must declare at least one Condition (see https://loopy.dev/docs/policies#errors)"
+            )
+
         if self.severity not in _KNOWN_SEVERITIES:
             raise ValueError(
-                f"Policy {self.name!r} severity {self.severity!r} is not allowed; "
+                f"Policy {self.name!r} severity {self.severity!r} is not allowed;  (see https://loopy.dev/docs/policies#errors)"
                 f"must be one of {sorted(_KNOWN_SEVERITIES)}"
             )
 

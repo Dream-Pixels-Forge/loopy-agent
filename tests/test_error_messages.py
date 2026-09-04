@@ -45,15 +45,6 @@ def _run_audit() -> dict:
 
 
 class TestErrorAuditThreshold:
-    @pytest.mark.xfail(
-        reason=(
-            "bulk pass rate is the goal of v1.1.1; v1.1.0 ships "
-            "the audit tooling + the 12 hand-pinned exceptions "
-            "(TestKeyExceptionMessages below). Track progress in "
-            "dev-notes/ERROR_AUDIT.json."
-        ),
-        strict=False,
-    )
     def test_audit_at_least_95_percent_pass_rate(self):
         """The v1.1 GOAL.md Phase C target: >= 95% of raise sites
         have a docs URL in their message. Marked xfail for v1.1.0;

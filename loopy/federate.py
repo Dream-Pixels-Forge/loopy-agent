@@ -304,7 +304,10 @@ def build_agent_card_from_module(path: str | Path) -> AgentCard:
     file_path = Path(path)
     spec = importlib.util.spec_from_file_location(file_path.stem, file_path)
     if spec is None or spec.loader is None:
-        raise ValueError(f"Could not load module spec for {path}")
+        raise ValueError(
+            f"Could not load module spec for {path} (see https://loopy.dev/docs/federate#errors)"
+        )
+
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -314,5 +317,7 @@ def build_agent_card_from_module(path: str | Path) -> AgentCard:
             return candidate
 
     raise ValueError(
-        f"Module {path} has no AgentCard attribute (looked for CARD, card, AGENT_CARD, agent_card)"
+        f"Module {path} has no AgentCard attribute (looked for CARD, card, "
+        "AGENT_CARD, agent_card) "
+        "(see https://loopy.dev/docs/federate#errors)"
     )

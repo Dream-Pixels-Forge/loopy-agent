@@ -316,7 +316,9 @@ def _eval_math(expression: str) -> float:
             return _ALLOWED_BINOPS[type(node.op)](_walk(node.left), _walk(node.right))
         if isinstance(node, ast.UnaryOp) and type(node.op) in _ALLOWED_UNARY:
             return _ALLOWED_UNARY[type(node.op)](_walk(node.operand))
-        raise ValueError(f"Unsupported expression element: {type(node).__name__}")
+        raise ValueError(
+            f"Unsupported expression element: {type(node).__name__} (see https://loopy.dev/docs/api#errors)"
+        )
 
     return _walk(tree)
 

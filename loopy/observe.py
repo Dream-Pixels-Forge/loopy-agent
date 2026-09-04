@@ -174,7 +174,7 @@ class Redactor:
         """
         if name in self.enabled:
             raise ValueError(
-                f"{name!r} is a built-in pattern; disable it first if you want to override."
+                f"{name!r} is a built-in pattern; disable it first if you want to override. (see https://loopy.dev/docs/observability#errors)"
             )
         self.extra[name] = re.compile(pattern)
 

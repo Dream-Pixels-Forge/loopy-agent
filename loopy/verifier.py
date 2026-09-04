@@ -66,7 +66,9 @@ class VerificationSpec:
 
     def __post_init__(self) -> None:
         if not self.invariants and not self.properties:
-            raise ValueError("VerificationSpec must declare at least one Invariant or Property")
+            raise ValueError(
+                "VerificationSpec must declare at least one Invariant or Property (see https://loopy.dev/docs/api#errors)"
+            )
 
 
 @dataclass

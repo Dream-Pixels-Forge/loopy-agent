@@ -52,7 +52,9 @@ class MediaContent:
         """Load media from file."""
         file_path = Path(path)
         if not file_path.exists():
-            raise FileNotFoundError(f"Media file not found: {path}")
+            raise FileNotFoundError(
+                f"Media file not found: {path} (see https://loopy.dev/docs/api#errors)"
+            )
 
         suffix = file_path.suffix.lower()
         mime_map = {
@@ -345,7 +347,8 @@ class RealtimeSession:
     async def send(self, payload: dict[str, Any]) -> None:
         """Send a payload upstream through the transport."""
         if self._closed:
-            raise RuntimeError("RealtimeSession is closed")
+            raise RuntimeError("RealtimeSession is closed (see https://loopy.dev/docs/api#errors)")
+
         await self._transport.send(payload)
 
     async def close(self) -> None:

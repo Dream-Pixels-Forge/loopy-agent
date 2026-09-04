@@ -182,7 +182,7 @@ class A2ATask:
     def __post_init__(self) -> None:
         if self.state not in _TASK_STATES:
             raise ValueError(
-                f"A2ATask.state must be one of {sorted(_TASK_STATES)}; got {self.state!r}"
+                f"A2ATask.state must be one of {sorted(_TASK_STATES)}; got {self.state!r} (see https://loopy.dev/docs/a2a#errors)"
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -342,7 +342,7 @@ class A2AClient:
         """
         if card.authentication not in _ALLOWED_AUTHENTICATION:
             raise ValueError(
-                f"Authentication method {card.authentication!r} is not allowed; "
+                f"Authentication method {card.authentication!r} is not allowed;  (see https://loopy.dev/docs/a2a#errors)"
                 f"must be one of {sorted(_ALLOWED_AUTHENTICATION)}"
             )
         registry = AgentRegistry()
@@ -386,7 +386,10 @@ class A2AClient:
         except A2AError:
             raise
         except Exception as exc:
-            raise A2AError(f"Could not load Agent Card from {url}: {exc}") from exc
+            raise A2AError(
+                f"Could not load Agent Card from {url}: {exc} "
+                "(see https://loopy.dev/docs/a2a#errors)"
+            ) from exc
 
         return self._parse_agent_card(data, url)
 
@@ -404,11 +407,13 @@ class A2AClient:
 
     def _parse_agent_card(self, data: dict[str, Any], url: str) -> AgentCard:
         if "name" not in data:
-            raise A2AError(f"Agent Card at {url} is missing required field 'name'")
+            raise A2AError(
+                f"Agent Card at {url} is missing required field 'name' (see https://loopy.dev/docs/a2a#errors)"
+            )
 
         auth = data.get("authentication") or {}
         schemes = auth.get("schemes") if isinstance(auth, dict) else None
-        authentication = schemes[0] if schemes else "none"
+        authentication = schemes[0] if schemes else "none (see https://loopy.dev/docs/a2a#errors)"
 
         provider_field = data.get("provider") or {}
         if isinstance(provider_field, dict):
@@ -459,7 +464,7 @@ class A2AClient:
         skill_ids = {s.get("id") for s in self.agent_card.skills if isinstance(s, dict)}
         if skill_id not in skill_ids:
             raise A2AError(
-                f"Unknown skill {skill_id!r}; available: {sorted(x for x in skill_ids if x)}"
+                f"Unknown skill {skill_id!r}; available: {sorted(x for x in skill_ids if x)} (see https://loopy.dev/docs/a2a#errors)"
             )
 
         body: dict[str, Any] = {
