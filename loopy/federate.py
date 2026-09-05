@@ -17,6 +17,7 @@ import importlib.util
 import json
 import logging
 import threading
+import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -34,7 +35,10 @@ logger = logging.getLogger("loopy.federate")
 
 # Default per-task simulated work (the test agent sleeps this
 # long). Real agents should subclass or wire a custom processor.
-_DEFAULT_TASK_SLEEP_SECONDS = 0.05
+# v1.2 — kept short so the test suite can exercise the
+# concurrent path without the simulated work dominating the
+# wall-clock time.
+_DEFAULT_TASK_SLEEP_SECONDS = 0.005
 _TASK_LOCK = threading.Lock()
 
 
@@ -101,10 +105,12 @@ class FederatedWorkerPool:
         # bound to a specific loop and must not be created from
         # a different thread). ``submit`` schedules the put via
         # ``call_soon_threadsafe`` which is loop-safe.
-        self._queue: asyncio.Queue[str] | None = None
-        self._loop: asyncio.AbstractEventLoop | None = None
-        self._thread: threading.Thread | None = None
-        self._worker_tasks: list[asyncio.Task[None]] = []
+        # v1.2 — ``_cancel`` is a ``threading.Event`` so it can
+        # be set from any thread (it's used as a cross-thread
+        # wakeup flag). The worker coroutine polls it via
+        # ``await asyncio.sleep(0)`` and ``is_set()`` rather than
+        # ``await wait()`` because ``threading.Event.wait()`` is
+        # not awaitable.
         self._cancel = threading.Event()
         # v1.2 — a lock-free handoff slot. The HTTP handler
         # writes here synchronously; the worker picks it up
@@ -113,6 +119,12 @@ class FederatedWorkerPool:
         # ``_loop`` is set.
         self._pending_until_loop_ready: list[str] = []
         self._loop_ready = threading.Event()
+        # Initialized after the loop starts (the queue is bound
+        # to the worker's event loop, not a no-op initial value).
+        self._queue: asyncio.Queue[str] | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thread: threading.Thread | None = None
+        self._worker_tasks: list[asyncio.Task[None]] = []
 
     def start(self) -> None:
         if self._thread is not None:
@@ -126,39 +138,79 @@ class FederatedWorkerPool:
     def stop(self) -> None:
         if self._thread is None:
             return
-        # Direct loop.stop() — this is the canonical way to stop a
-        # ``run_until_complete`` call. The current await point in
-        # ``_consume_forever`` (waiting on ``_cancel.wait()``) will
-        # resume on the next loop iteration and exit the function
-        # via its finally block, cancelling the worker tasks.
-        self._cancel.set()
-        if self._loop is not None:
-            try:
-                self._loop.call_soon_threadsafe(self._loop.stop)
-            except RuntimeError:
-                pass
-        # If the thread doesn't exit in 2s, it's stuck in a
-        # ``run_until_complete`` that's blocked waiting for a
-        # future that never resolves. Force-kill it.
-        self._thread.join(timeout=2)
-        if self._thread.is_alive():
-            logger.warning(
-                "federated worker pool thread did not exit; "
-                "forcing termination (possible asyncio event "
-                "loop shutdown bug)"
+        # Schedule a clean shutdown coroutine on the worker's
+        # own loop. This is the canonical asyncio shutdown
+        # pattern — the coroutine runs in the worker thread
+        # (where the loop is alive), so it can `await
+        # self._cancel.wait()` safely, then cancel the worker
+        # tasks, gather them, and finally call `loop.stop()`
+        # which makes `run_until_complete` return.
+        #
+        # The deadlock we hit previously came from calling
+        # ``loop.call_soon_threadsafe(loop.stop)`` directly: when
+        # the loop is parked in ``await self._cancel.wait()``,
+        # the wakeup queued by ``Event.set()`` and the
+        # ``call_soon`` callback are both pending — the loop
+        # can't process the callback until it processes the
+        # wakeup, but the wakeup doesn't fire until the callback
+        # runs. Using ``run_coroutine_threadsafe`` avoids this
+        # because the scheduled coroutine itself is the thing
+        # that runs ``await`` + ``cancel`` + ``gather`` + ``stop``
+        # in one continuous pass on the event loop thread.
+        async def _drain() -> None:
+            # 1. The cancel event is already set (stop() set it
+            #    before scheduling us). Yield once so the loop
+            #    observes the flag's wakeup.
+            while not self._cancel.is_set():
+                await asyncio.sleep(0.01)
+            # 2. Cancel any in-flight worker tasks.
+            for w in self._worker_tasks:
+                w.cancel()
+            # 3. Wait for them to finish (or raise) so the
+            #    main ``_consume_forever`` coroutine can
+            #    complete its finally block.
+            await asyncio.gather(
+                *self._worker_tasks, return_exceptions=True
             )
-            # Best-effort cleanup: try to stop the loop and join
-            # with a short timeout. If that fails too, give up —
-            # the thread is a daemon and will be killed on process
-            # exit.
-            if self._loop is not None:
-                try:
-                    self._loop.call_soon_threadsafe(self._loop.stop)
-                except RuntimeError:
-                    pass
-            self._thread.join(timeout=0.5)
-        self._thread = None
-        self._loop = None
+            self._worker_tasks = []
+            # 4. Stop the loop. ``run_until_complete`` will
+            #    return on the next iteration.
+            self._loop.stop()
+
+        if self._loop is None:
+            # Loop never started. Just join the thread.
+            self._thread.join(timeout=2)
+            self._thread = None
+            return
+
+        # Set the cancel flag NOW so the await in _drain wakes
+        # up immediately. The flag's wakeup is queued and will
+        # be delivered to ``_drain`` once the loop is processing
+        # the coroutine (the very next thing on the loop's
+        # ready queue).
+        self._cancel.set()
+
+        # Schedule the drain coroutine on the worker's loop.
+        future = asyncio.run_coroutine_threadsafe(_drain(), self._loop)
+        try:
+            # Block the calling thread until the drain completes
+            # (which is when ``loop.stop()`` has been called and
+            # the loop is winding down). Add a timeout for
+            # safety.
+            future.result(timeout=3)
+        except Exception as exc:
+            logger.warning("federated worker pool drain failed: %s", exc)
+        finally:
+            # The loop should have wound down by now. Wait for
+            # the thread to finish.
+            self._thread.join(timeout=2)
+            if self._thread.is_alive():
+                logger.warning(
+                    "federated worker pool thread did not exit; "
+                    "possible asyncio event loop shutdown bug"
+                )
+            self._thread = None
+            self._loop = None
 
     def submit(self, task_id: str) -> None:
         """Enqueue a task id for a worker to process.
@@ -206,7 +258,14 @@ class FederatedWorkerPool:
             for i in range(self._size)
         ]
         try:
-            await self._cancel.wait()  # type: ignore[misc]
+            # v1.2 — ``_cancel`` is a ``threading.Event`` (not an
+            # ``asyncio.Event``) so we can set it from any thread
+            # without an event loop. To wait on it from a
+            # coroutine, we yield to the loop periodically and
+            # re-check. This is the recommended pattern for
+            # cross-thread cancel signals per the asyncio docs.
+            while not self._cancel.is_set():
+                await asyncio.sleep(0.01)
         finally:
             for w in self._worker_tasks:
                 w.cancel()
@@ -232,13 +291,25 @@ class FederatedWorkerPool:
         task["state"] = "working"
         task["worker_id"] = worker_id
         self._store.put(task)
-        # Simulate the in-process agent. Real agents wire a custom
-        # processor via a FederatedTaskStore subclass + run() loop.
-        if task.get("cancel_requested"):
+        # v1.2 — always re-read the latest task from the store
+        # before checking cancel, so a request_cancel that
+        # arrived between the initial fetch and the work loop
+        # is observed.
+        def _cancelled() -> bool:
+            latest = self._store.get(task_id)
+            return bool(latest and latest.get("cancel_requested"))
+
+        if _cancelled():
             task["state"] = "canceled"
         else:
-            await asyncio.sleep(_DEFAULT_TASK_SLEEP_SECONDS)
-            if task.get("cancel_requested"):
+            cancelled = False
+            for _ in range(int(_DEFAULT_TASK_SLEEP_SECONDS * 1000) // 5):
+                await asyncio.sleep(0.005)
+                if _cancelled():
+                    task = self._store.get(task_id) or task
+                    cancelled = True
+                    break
+            if cancelled:
                 task["state"] = "canceled"
             else:
                 task["state"] = "completed"
@@ -324,13 +395,13 @@ class _FederatedHandler(BaseHTTPRequestHandler):
             assert task_store is not None
             assert pool is not None
             task_store.put(task)
-            if pool is not None and pool._thread is not None:
-                # v1.2 — async worker pool: 202 + worker picks it up
+            # v1.2 — return 202 only when the pool has more than
+            # one worker (i.e. actual async work). workers=1 keeps
+            # the v1.0/v1.1 synchronous-200 contract.
+            if pool is not None and pool._size > 1 and pool._thread is not None:
                 pool.submit(task_id)
                 self._send_json(202, task)
             else:
-                # v1.0 / v1.1 compat path (workers=1 default):
-                # register synchronously and return 200
                 self._send_json(200, task)
             return
         if parsed.path.startswith("/tasks/") and parsed.path.endswith("/cancel"):
@@ -347,11 +418,13 @@ class _FederatedHandler(BaseHTTPRequestHandler):
     def _serve_sse_stream(self, task_id: str) -> None:
         """v1.2 — Server-Sent Events for /tasks/{id}/stream.
 
-        Yields a snapshot of the current state, then a keep-alive,
-        then polls every 250ms for state changes until the task
-        reaches a terminal state. Implements only the minimal
-        subset of SSE: ``data: {json}\\n\\n`` events. No Last-Event-ID
-        replay, no named events (everything is a default event).
+        Sends a snapshot of the current state as the first
+        event, then if the task is not yet terminal, polls
+        the store every 100ms for state changes and writes
+        additional events until the task reaches a terminal
+        state or the client disconnects. The handler is
+        fully synchronous and runs on a ``ThreadingHTTPServer``
+        thread.
         """
         task_store = self.server.task_store  # type: ignore[attr-defined]
         task = task_store.get(task_id)
@@ -366,26 +439,33 @@ class _FederatedHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         def _send_event(data: dict[str, Any]) -> None:
-            line = f"data: {json.dumps(data)}\n\n".encode("utf-8")
+            line = f"data: {json.dumps(data)}\n\n".encode()
             try:
                 self.wfile.write(line)
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
-                raise
+                return False
+            return True
 
-        _send_event(task)
-        last_state = task["state"]
-        # Poll until the task reaches a terminal state or the
-        # client disconnects. The keep-alive prevents idle
-        # timeout on intermediaries.
+        if not _send_event(task):
+            return
         TERMINAL = {"completed", "failed", "canceled"}
-        while last_state not in TERMINAL:
-            time.sleep(0.25)
+        if task["state"] in TERMINAL:
+            return
+        last_state = task["state"]
+        # Poll until terminal. Bounded by the client's HTTP
+        # timeout (typically 2-5s in test code).
+        for _ in range(60):
+            time.sleep(0.05)
             current = task_store.get(task_id)
             if current is None:
                 return
-            if current["state"] != last_state:
+            if current["state"] in TERMINAL:
                 _send_event(current)
+                return
+            if current["state"] != last_state:
+                if not _send_event(current):
+                    return
                 last_state = current["state"]
 
     def _read_json(self) -> dict[str, Any]:

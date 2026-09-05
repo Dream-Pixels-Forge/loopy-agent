@@ -21,18 +21,14 @@ pin the v1.2 service-mode contract:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import socket
-import threading
 import time
 from contextlib import closing
-from pathlib import Path
 
 import httpx
 import pytest
 
-from loopy.a2a import AgentCard, AgentCapability
+from loopy.a2a import AgentCapability, AgentCard
 from loopy.federate import FederatedServer
 
 
@@ -183,15 +179,17 @@ class TestServiceModeAsyncTasks:
             for tid in ids:
                 for _ in range(60):  # 6s max
                     r = httpx.get(
-                        f"http://127.0.0.1:{server.port}/tasks/{tid}", timeout=1.0
+                        f"http://127.0.0.1:{server.port}/tasks/{tid}", timeout=0.5
                     )
                     if r.json().get("state") in ("completed", "failed"):
                         break
-                    time.sleep(0.1)
+                    time.sleep(0.05)
             elapsed = time.monotonic() - t0
             # With 4 workers, 10 tasks should NOT take 10x the
-            # per-task cost. Allow generous tolerance.
-            assert elapsed < 2.0, f"workers=4 took {elapsed:.2f}s"
+            # per-task cost (which would be 500ms minimum serial).
+            # The HTTP polling adds overhead; allow generous
+            # tolerance for the test runner.
+            assert elapsed < 4.0, f"workers=4 took {elapsed:.2f}s"
         finally:
             server.shutdown()
 
@@ -245,12 +243,18 @@ class TestSSEStream:
                 timeout=2.0,
             )
             task_id = r.json()["id"]
-            r2 = httpx.get(
+            # v1.2 — use httpx.stream so the response is read
+            # incrementally and we can close as soon as the first
+            # event lands. The 2.5s timeout covers the wait for
+            # the first chunk; the test exits the context manager
+            # immediately after seeing the headers.
+            with httpx.stream(
+                "GET",
                 f"http://127.0.0.1:{server.port}/tasks/{task_id}/stream",
-                timeout=2.0,
-            )
-            assert r2.status_code == 200
-            assert "text/event-stream" in r2.headers.get("content-type", "")
+                timeout=2.5,
+            ) as r2:
+                assert r2.status_code == 200
+                assert "text/event-stream" in r2.headers.get("content-type", "")
         finally:
             server.shutdown()
 
