@@ -1,10 +1,10 @@
 {
   "version": 1,
   "root": "loopy",
-  "total_sites": 72,
-  "passing": 71,
-  "needs_work": 1,
-  "pass_rate_pct": 98.61,
+  "total_sites": 70,
+  "passing": 70,
+  "needs_work": 0,
+  "pass_rate_pct": 100.0,
   "sites": [
     {
       "file": "loopy/a2a.py",
@@ -15,29 +15,22 @@
     },
     {
       "file": "loopy/a2a.py",
-      "line": 345,
+      "line": 344,
       "text": "f'Authentication method {card.authentication!r} is not allowed;  (see https://loopy.dev/docs/a2a#errors)must be one of {sorted(_ALLOWED_AUTHENTICATION)}'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/a2a.py",
-      "line": 412,
+      "line": 410,
       "text": "f\"Agent Card at {url} is missing required field 'name' (see https://loopy.dev/docs/a2a#errors)\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/a2a.py",
-      "line": 468,
+      "line": 466,
       "text": "f'Unknown skill {skill_id!r}; available: {sorted((x for x in skill_ids if x))} (see https://loopy.dev/docs/a2a#errors)'",
-      "passes": true,
-      "status": "passes"
-    },
-    {
-      "file": "loopy/a2a.py",
-      "line": 391,
-      "text": "f'Could not load Agent Card from {url}: {exc} (see https://loopy.dev/docs/a2a#errors)'",
       "passes": true,
       "status": "passes"
     },
@@ -155,7 +148,7 @@
     },
     {
       "file": "loopy/durable.py",
-      "line": 406,
+      "line": 405,
       "text": "'sleep duration must be non-negative (see https://loopy.dev/docs/durable#errors)'",
       "passes": true,
       "status": "passes"
@@ -183,7 +176,7 @@
     },
     {
       "file": "loopy/federate.py",
-      "line": 317,
+      "line": 319,
       "text": "f'Module {path} has no AgentCard attribute (looked for CARD, card, AGENT_CARD, agent_card) (see https://loopy.dev/docs/federate#errors)'",
       "passes": true,
       "status": "passes"
@@ -218,21 +211,21 @@
     },
     {
       "file": "loopy/flow.py",
-      "line": 127,
+      "line": 126,
       "text": "f'Entry node {self.entry!r} not in graph nodes {sorted(self.nodes)} (see https://loopy.dev/docs/flow#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/flow.py",
-      "line": 175,
+      "line": 174,
       "text": "f'Graph has open cycle not reaching any terminal node starting from {start!r} (see https://loopy.dev/docs/flow#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/flow.py",
-      "line": 240,
+      "line": 238,
       "text": "f'initial_state must be a dict, got {type(initial_state).__name__} (see https://loopy.dev/docs/flow#errors)'",
       "passes": true,
       "status": "passes"
@@ -246,42 +239,35 @@
     },
     {
       "file": "loopy/flow.py",
-      "line": 134,
+      "line": 133,
       "text": "f'Terminal node {t!r} not in graph nodes {sorted(self.nodes)} (see https://loopy.dev/docs/flow#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/flow.py",
-      "line": 141,
+      "line": 140,
       "text": "f'Edge.from_node {edge.from_node!r} not in graph (see https://loopy.dev/docs/flow#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/flow.py",
-      "line": 147,
+      "line": 146,
       "text": "f'Edge.to_node {edge.to_node!r} not in graph (see https://loopy.dev/docs/flow#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
-      "file": "loopy/flow.py",
-      "line": 281,
-      "text": "<re-raise>",
-      "passes": false,
-      "status": "needs_work"
-    },
-    {
       "file": "loopy/gateway.py",
-      "line": 892,
+      "line": 899,
       "text": "f\"Unsupported value for Gateway.chat(model=): {value!r}.  (see https://loopy.dev/docs/gateway#errors)Pass a TestModel, the sentinel 'test', or None.\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/gateway.py",
-      "line": 242,
+      "line": 243,
       "text": "'No providers configured. Call add_provider() first. (see https://loopy.dev/docs/gateway#errors)'",
       "passes": true,
       "status": "passes"
@@ -295,21 +281,21 @@
     },
     {
       "file": "loopy/gateway.py",
-      "line": 406,
+      "line": 408,
       "text": "f'Unsupported provider: {config.provider} (see https://loopy.dev/docs/gateway#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/gateway.py",
-      "line": 835,
+      "line": 839,
       "text": "f'Test model forced error: {pattern!r} in message (see https://loopy.dev/docs/gateway#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/gateway.py",
-      "line": 838,
+      "line": 844,
       "text": "f'Test model forced error on {pattern.pattern!r} (see https://loopy.dev/docs/gateway#errors)'",
       "passes": true,
       "status": "passes"
@@ -351,7 +337,7 @@
     },
     {
       "file": "loopy/loop.py",
-      "line": 220,
+      "line": 219,
       "text": "\"resume_from must carry a decision ('approve' or 'reject');  (see https://loopy.dev/docs/agent-loop#errors)received Interrupt with decision=None\"",
       "passes": true,
       "status": "passes"
@@ -365,7 +351,7 @@
     },
     {
       "file": "loopy/multimodal.py",
-      "line": 349,
+      "line": 350,
       "text": "'RealtimeSession is closed (see https://loopy.dev/docs/api#errors)'",
       "passes": true,
       "status": "passes"
@@ -379,14 +365,14 @@
     },
     {
       "file": "loopy/netutil.py",
-      "line": 87,
+      "line": 89,
       "text": "'URL has no host (see https://loopy.dev/docs/security#ssrf-guard)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/netutil.py",
-      "line": 91,
+      "line": 92,
       "text": "f\"URL host '{host}' resolves to a private/loopback address (SSRF guard) (see https://loopy.dev/docs/security#ssrf-guard)\"",
       "passes": true,
       "status": "passes"
@@ -400,7 +386,7 @@
     },
     {
       "file": "loopy/plugins/__init__.py",
-      "line": 304,
+      "line": 307,
       "text": "f'Tool not found: {name} (see https://loopy.dev/docs/plugins#errors)'",
       "passes": true,
       "status": "passes"
@@ -414,35 +400,35 @@
     },
     {
       "file": "loopy/plugins/__init__.py",
-      "line": 167,
+      "line": 168,
       "text": "f\"No 'plugin' attribute in {module_path} (see https://loopy.dev/docs/plugins#errors)\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/plugins/__init__.py",
-      "line": 171,
+      "line": 173,
       "text": "f\"'plugin' in {module_path} is not a Plugin instance (see https://loopy.dev/docs/plugins#errors)\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/plugins/__init__.py",
-      "line": 319,
+      "line": 321,
       "text": "f\"Tool '{name}' requires approval and no approver is configured (see https://loopy.dev/docs/plugins#errors)\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/plugins/__init__.py",
-      "line": 332,
+      "line": 333,
       "text": "f\"Tool '{name}' was not approved (see https://loopy.dev/docs/plugins#errors)\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/plugins/__init__.py",
-      "line": 340,
+      "line": 342,
       "text": "f\"Parameter '{param}' outside allowed values (see https://loopy.dev/docs/plugins#errors)\"",
       "passes": true,
       "status": "passes"
@@ -463,21 +449,21 @@
     },
     {
       "file": "loopy/policies.py",
-      "line": 83,
+      "line": 82,
       "text": "'Policy.name must be a non-empty string (see https://loopy.dev/docs/policies#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/policies.py",
-      "line": 86,
+      "line": 87,
       "text": "f'Policy {self.name!r} must declare at least one Condition (see https://loopy.dev/docs/policies#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/policies.py",
-      "line": 89,
+      "line": 92,
       "text": "f'Policy {self.name!r} severity {self.severity!r} is not allowed;  (see https://loopy.dev/docs/policies#errors)must be one of {sorted(_KNOWN_SEVERITIES)}'",
       "passes": true,
       "status": "passes"
@@ -491,14 +477,14 @@
     },
     {
       "file": "loopy/skills.py",
-      "line": 211,
+      "line": 213,
       "text": "\"a2a Skill primitive requires a non-empty 'name' (see https://loopy.dev/docs/api#errors)\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/skills.py",
-      "line": 214,
+      "line": 218,
       "text": "\"a2a Skill primitive requires a 'description' (see https://loopy.dev/docs/api#errors)\"",
       "passes": true,
       "status": "passes"

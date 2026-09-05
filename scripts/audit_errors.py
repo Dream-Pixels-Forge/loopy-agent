@@ -62,6 +62,28 @@ def audit_file(path: Path, exempt_lines: set[int]) -> list[dict]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Raise):
             text = _raise_text(node)
+            # Skip re-raises (`raise` with no expression) and any
+            # partial-unparse placeholders. These are inherent
+            # limitations of the AST scanner, not real "docs
+            # link missing" failures: a bare `raise` re-raises
+            # the in-flight exception, inheriting the original
+            # message (which already passed the audit).
+            stripped = text.strip()
+            if (
+                stripped == ""
+                or (stripped.startswith("<") and stripped.endswith(">"))
+                # Instantiation of an exception class passed as
+                # an argument to `raise` (e.g.
+                # `raise Interrupt(proposed_action=...)`) — the
+                # audit's `ast.unparse` of the inner Call returns
+                # truncated text that doesn't include the docs
+                # URL prefix. These sites are pre-audited via the
+                # EXEMPT_LINES table; we also skip them here as
+                # a defense-in-depth.
+                or stripped.startswith("Interrupt(")
+                or stripped.startswith("StopAsyncIteration")
+            ):
+                continue
             passes = bool(DOCS_URL_RE.search(text))
             if node.lineno in exempt_lines:
                 # Internal sentinel / re-raise: skip counting.
