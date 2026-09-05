@@ -1,8 +1,8 @@
 {
   "version": 1,
   "root": "loopy",
-  "total_sites": 70,
-  "passing": 70,
+  "total_sites": 73,
+  "passing": 73,
   "needs_work": 0,
   "pass_rate_pct": 100.0,
   "sites": [
@@ -176,29 +176,50 @@
     },
     {
       "file": "loopy/federate.py",
-      "line": 319,
+      "line": 736,
       "text": "f'Module {path} has no AgentCard attribute (looked for CARD, card, AGENT_CARD, agent_card) (see https://loopy.dev/docs/federate#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/federate.py",
-      "line": 307,
+      "line": 724,
       "text": "f'Could not load module spec for {path} (see https://loopy.dev/docs/federate#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/federate.py",
-      "line": 137,
+      "line": 100,
+      "text": "'FederatedWorkerPool size must be >= 1 (see https://loopy.dev/docs/federate#federated-server)'",
+      "passes": true,
+      "status": "passes"
+    },
+    {
+      "file": "loopy/federate.py",
+      "line": 510,
       "text": "f'port must be an int, got {type(port).__name__} (use 0 for OS-assigned; see https://loopy.dev/docs/federate#federated-server)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/federate.py",
-      "line": 143,
+      "line": 516,
       "text": "f'port must be in [0, 65535], got {port} (see https://loopy.dev/docs/federate#federated-server)'",
+      "passes": true,
+      "status": "passes"
+    },
+    {
+      "file": "loopy/federate.py",
+      "line": 524,
+      "text": "f'workers must be an int, got {type(workers).__name__} (see https://loopy.dev/docs/federate#federated-server)'",
+      "passes": true,
+      "status": "passes"
+    },
+    {
+      "file": "loopy/federate.py",
+      "line": 529,
+      "text": "f'workers >= 1 required, got {workers} (see https://loopy.dev/docs/federate#federated-server)'",
       "passes": true,
       "status": "passes"
     },

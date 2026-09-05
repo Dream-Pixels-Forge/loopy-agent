@@ -97,7 +97,10 @@ class FederatedWorkerPool:
         size: int = 1,
     ) -> None:
         if size < 1:
-            raise ValueError("FederatedWorkerPool size must be >= 1")
+            raise ValueError(
+                "FederatedWorkerPool size must be >= 1 "
+                "(see https://loopy.dev/docs/federate#federated-server)"
+            )
         self._store = store
         self._size = size
         # v1.2 — ``_queue`` is created lazily inside ``_run`` on
