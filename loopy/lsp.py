@@ -216,7 +216,8 @@ class LspServer:
         if not _HAS_PYGLS:
             raise ImportError(
                 "pygls is required for the language server. "
-                "Install it with: pip install loopy-agent[language-server]"
+                "Install it with: pip install loopy-agent[language-server] "
+                "(see https://loopy.dev/docs/lsp#install)"
             )
         self._server = LanguageServer(
             name="loopy-agent-lsp",

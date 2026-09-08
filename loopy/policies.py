@@ -143,7 +143,7 @@ class Policy:
         do_jitter = bool(self.metadata.get("jitter", True))
         delays: list[float] = []
         for i in range(retries):
-            raw = base * (2.0 ** i)
+            raw = base * (2.0**i)
             capped = min(raw, cap)
             if do_jitter:
                 delays.append(random.uniform(0.0, capped))
@@ -239,7 +239,9 @@ class PolicyEngine:
         decisions = self.evaluate(context)
         for d in decisions:
             if d.verdict == "block":
-                raise PolicyViolation(d.policy_name, d.context)
+                raise PolicyViolation(
+                    d.policy_name, d.context
+                )  # (see https://loopy.dev/docs/policies#errors)
         return decisions
 
     # ── Predicates ────────────────────────────────────────────

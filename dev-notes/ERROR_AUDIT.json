@@ -1,8 +1,8 @@
 {
   "version": 1,
   "root": "loopy",
-  "total_sites": 73,
-  "passing": 73,
+  "total_sites": 76,
+  "passing": 76,
   "needs_work": 0,
   "pass_rate_pct": 100.0,
   "sites": [
@@ -43,28 +43,28 @@
     },
     {
       "file": "loopy/cli.py",
-      "line": 338,
+      "line": 357,
       "text": "'project name must be non-empty (see https://loopy.dev/docs/init#usage)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/cli.py",
-      "line": 340,
+      "line": 359,
       "text": "f\"project name {name!r} must not contain '/' or '..' (see https://loopy.dev/docs/init#path-traversal)\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/cli.py",
-      "line": 345,
+      "line": 364,
       "text": "f'project name {name!r} must be relative, not absolute (see https://loopy.dev/docs/init#path-traversal)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/cli.py",
-      "line": 352,
+      "line": 371,
       "text": "f'directory {name!r} already exists and is not empty; refusing to overwrite (see https://loopy.dev/docs/init#refuse-overwrite)'",
       "passes": true,
       "status": "passes"
@@ -108,6 +108,20 @@
       "file": "loopy/config.py",
       "line": 81,
       "text": "f'unknown keys in {file_path}: {exc} (see https://loopy.dev/docs/init#loopy-yml)'",
+      "passes": true,
+      "status": "passes"
+    },
+    {
+      "file": "loopy/dev.py",
+      "line": 24,
+      "text": "f'Script not found: {path} (see https://loopy.dev/docs/dev#usage)'",
+      "passes": true,
+      "status": "passes"
+    },
+    {
+      "file": "loopy/dev.py",
+      "line": 16,
+      "text": "'watchfiles is required for `loopy dev`. Install it with: pip install loopy-agent[dev] (see https://loopy.dev/docs/dev#install)'",
       "passes": true,
       "status": "passes"
     },
@@ -176,14 +190,14 @@
     },
     {
       "file": "loopy/federate.py",
-      "line": 736,
+      "line": 738,
       "text": "f'Module {path} has no AgentCard attribute (looked for CARD, card, AGENT_CARD, agent_card) (see https://loopy.dev/docs/federate#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/federate.py",
-      "line": 724,
+      "line": 726,
       "text": "f'Could not load module spec for {path} (see https://loopy.dev/docs/federate#errors)'",
       "passes": true,
       "status": "passes"
@@ -197,28 +211,28 @@
     },
     {
       "file": "loopy/federate.py",
-      "line": 510,
+      "line": 514,
       "text": "f'port must be an int, got {type(port).__name__} (use 0 for OS-assigned; see https://loopy.dev/docs/federate#federated-server)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/federate.py",
-      "line": 516,
+      "line": 520,
       "text": "f'port must be in [0, 65535], got {port} (see https://loopy.dev/docs/federate#federated-server)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/federate.py",
-      "line": 524,
+      "line": 528,
       "text": "f'workers must be an int, got {type(workers).__name__} (see https://loopy.dev/docs/federate#federated-server)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/federate.py",
-      "line": 529,
+      "line": 533,
       "text": "f'workers >= 1 required, got {workers} (see https://loopy.dev/docs/federate#federated-server)'",
       "passes": true,
       "status": "passes"
@@ -281,14 +295,14 @@
     },
     {
       "file": "loopy/gateway.py",
-      "line": 899,
+      "line": 1011,
       "text": "f\"Unsupported value for Gateway.chat(model=): {value!r}.  (see https://loopy.dev/docs/gateway#errors)Pass a TestModel, the sentinel 'test', or None.\"",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/gateway.py",
-      "line": 243,
+      "line": 257,
       "text": "'No providers configured. Call add_provider() first. (see https://loopy.dev/docs/gateway#errors)'",
       "passes": true,
       "status": "passes"
@@ -302,21 +316,21 @@
     },
     {
       "file": "loopy/gateway.py",
-      "line": 408,
+      "line": 499,
       "text": "f'Unsupported provider: {config.provider} (see https://loopy.dev/docs/gateway#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/gateway.py",
-      "line": 839,
+      "line": 951,
       "text": "f'Test model forced error: {pattern!r} in message (see https://loopy.dev/docs/gateway#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/gateway.py",
-      "line": 844,
+      "line": 956,
       "text": "f'Test model forced error on {pattern.pattern!r} (see https://loopy.dev/docs/gateway#errors)'",
       "passes": true,
       "status": "passes"
@@ -360,6 +374,13 @@
       "file": "loopy/loop.py",
       "line": 219,
       "text": "\"resume_from must carry a decision ('approve' or 'reject');  (see https://loopy.dev/docs/agent-loop#errors)received Interrupt with decision=None\"",
+      "passes": true,
+      "status": "passes"
+    },
+    {
+      "file": "loopy/lsp.py",
+      "line": 217,
+      "text": "'pygls is required for the language server. Install it with: pip install loopy-agent[language-server] (see https://loopy.dev/docs/lsp#install)'",
       "passes": true,
       "status": "passes"
     },
@@ -463,28 +484,28 @@
     },
     {
       "file": "loopy/policies.py",
-      "line": 66,
+      "line": 67,
       "text": "f'Unknown condition kind {self.kind!r};  (see https://loopy.dev/docs/policies#errors)must be one of {sorted(_KNOWN_CONDITION_KINDS)}'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/policies.py",
-      "line": 82,
+      "line": 84,
       "text": "'Policy.name must be a non-empty string (see https://loopy.dev/docs/policies#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/policies.py",
-      "line": 87,
+      "line": 89,
       "text": "f'Policy {self.name!r} must declare at least one Condition (see https://loopy.dev/docs/policies#errors)'",
       "passes": true,
       "status": "passes"
     },
     {
       "file": "loopy/policies.py",
-      "line": 92,
+      "line": 94,
       "text": "f'Policy {self.name!r} severity {self.severity!r} is not allowed;  (see https://loopy.dev/docs/policies#errors)must be one of {sorted(_KNOWN_SEVERITIES)}'",
       "passes": true,
       "status": "passes"

@@ -577,8 +577,13 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 
     issues: list[str] = []
 
-    if sys.version_info < (3, 10):
-        issues.append(f"Python {sys.version_info.major}.{sys.version_info.minor} < 3.10 required")
+    # v1.2 — Python 3.10 is the minimum; this check is always false
+    # at runtime but kept as a runnable self-diagnostic so `loopy doctor`
+    # can surface it when the process is actually <3.10.
+    _sys_major = sys.version_info.major
+    _sys_minor = sys.version_info.minor
+    if _sys_major < 3 or (_sys_major == 3 and _sys_minor < 10):  # noqa: PLR2004
+        issues.append(f"Python {_sys_major}.{_sys_minor} < 3.10 required")
 
     for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]:
         if not os.environ.get(key):

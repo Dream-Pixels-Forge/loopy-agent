@@ -14,12 +14,14 @@ async def run_dev(script_path: str) -> None:
         import watchfiles
     except ImportError as err:  # pragma: no cover — tested via mock
         raise ImportError(
-            "watchfiles is required for `loopy dev`. Install it with: pip install loopy-agent[dev]"
+            "watchfiles is required for `loopy dev`. "
+            "Install it with: pip install loopy-agent[dev] "
+            "(see https://loopy.dev/docs/dev#install)"
         ) from err
 
     path = Path(script_path).resolve()
     if not path.exists():
-        raise FileNotFoundError(f"Script not found: {path}")
+        raise FileNotFoundError(f"Script not found: {path} (see https://loopy.dev/docs/dev#usage)")
 
     logger.info("Watching %s for changes...", path)
     async for changes in watchfiles.awatch(path):
