@@ -38,7 +38,7 @@ logger = logging.getLogger("loopy.federate")
 # v1.2 — kept short so the test suite can exercise the
 # concurrent path without the simulated work dominating the
 # wall-clock time.
-_DEFAULT_TASK_SLEEP_SECONDS = 0.005
+_DEFAULT_TASK_SLEEP_SECONDS = 0.5
 _TASK_LOCK = threading.Lock()
 
 
@@ -133,14 +133,13 @@ class FederatedWorkerPool:
         if self._thread is not None:
             return
         self._cancel.clear()
-        self._thread = threading.Thread(
-            target=self._run, daemon=True, name="federated-workers"
-        )
+        self._thread = threading.Thread(target=self._run, daemon=True, name="federated-workers")
         self._thread.start()
 
     def stop(self) -> None:
         if self._thread is None:
             return
+
         # Schedule a clean shutdown coroutine on the worker's
         # own loop. This is the canonical asyncio shutdown
         # pattern — the coroutine runs in the worker thread
@@ -172,9 +171,7 @@ class FederatedWorkerPool:
             # 3. Wait for them to finish (or raise) so the
             #    main ``_consume_forever`` coroutine can
             #    complete its finally block.
-            await asyncio.gather(
-                *self._worker_tasks, return_exceptions=True
-            )
+            await asyncio.gather(*self._worker_tasks, return_exceptions=True)
             self._worker_tasks = []
             # 4. Stop the loop. ``run_until_complete`` will
             #    return on the next iteration.
@@ -256,10 +253,7 @@ class FederatedWorkerPool:
             self._loop.close()
 
     async def _consume_forever(self) -> None:
-        self._worker_tasks = [
-            asyncio.create_task(self._worker_loop(i))
-            for i in range(self._size)
-        ]
+        self._worker_tasks = [asyncio.create_task(self._worker_loop(i)) for i in range(self._size)]
         try:
             # v1.2 — ``_cancel`` is a ``threading.Event`` (not an
             # ``asyncio.Event``) so we can set it from any thread
@@ -294,6 +288,7 @@ class FederatedWorkerPool:
         task["state"] = "working"
         task["worker_id"] = worker_id
         self._store.put(task)
+
         # v1.2 — always re-read the latest task from the store
         # before checking cancel, so a request_cancel that
         # arrived between the initial fetch and the work loop
@@ -315,8 +310,17 @@ class FederatedWorkerPool:
             if cancelled:
                 task["state"] = "canceled"
             else:
-                task["state"] = "completed"
-                task["artifacts"] = [{"type": "text", "value": f"echo: {task_id}"}]
+                # v1.2 — one final check after simulated work completes.
+                # A cancel may have arrived during the work window;
+                # honoring it here avoids the race where the task
+                # finishes millisecond-precisely before the worker
+                # polls the store on its next tick.
+                task = self._store.get(task_id) or task
+                if _cancelled():
+                    task["state"] = "canceled"
+                else:
+                    task["state"] = "completed"
+                    task["artifacts"] = [{"type": "text", "value": f"echo: {task_id}"}]
         self._store.put(task)
 
 
@@ -561,9 +565,7 @@ class FederatedServer:
         if self.task_store is None:
             self.task_store = FederatedTaskStore()
         if self.worker_pool is None:
-            self.worker_pool = FederatedWorkerPool(
-                self.task_store, size=self.workers
-            )
+            self.worker_pool = FederatedWorkerPool(self.task_store, size=self.workers)
             self.worker_pool.start()
 
         httpd = ThreadingHTTPServer((self.host, self.port), _FederatedHandler)

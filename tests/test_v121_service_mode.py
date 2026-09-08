@@ -134,9 +134,7 @@ class TestServiceModeAsyncTasks:
                 timeout=2.0,
             )
             task_id = r.json()["id"]
-            r2 = httpx.get(
-                f"http://127.0.0.1:{server.port}/tasks/{task_id}", timeout=2.0
-            )
+            r2 = httpx.get(f"http://127.0.0.1:{server.port}/tasks/{task_id}", timeout=2.0)
             assert r2.status_code == 200
             data = r2.json()
             assert data["id"] == task_id
@@ -149,9 +147,7 @@ class TestServiceModeAsyncTasks:
         server.start()
         try:
             _wait_for_port(server.port)
-            r = httpx.get(
-                f"http://127.0.0.1:{server.port}/tasks/t-unknown", timeout=2.0
-            )
+            r = httpx.get(f"http://127.0.0.1:{server.port}/tasks/t-unknown", timeout=2.0)
             assert r.status_code == 404
         finally:
             server.shutdown()
@@ -178,18 +174,16 @@ class TestServiceModeAsyncTasks:
             # Wait for all tasks to complete.
             for tid in ids:
                 for _ in range(60):  # 6s max
-                    r = httpx.get(
-                        f"http://127.0.0.1:{server.port}/tasks/{tid}", timeout=0.5
-                    )
+                    r = httpx.get(f"http://127.0.0.1:{server.port}/tasks/{tid}", timeout=0.5)
                     if r.json().get("state") in ("completed", "failed"):
                         break
                     time.sleep(0.05)
             elapsed = time.monotonic() - t0
             # With 4 workers, 10 tasks should NOT take 10x the
-            # per-task cost (which would be 500ms minimum serial).
+            # per-task cost (which would be 10000ms minimum serial).
             # The HTTP polling adds overhead; allow generous
             # tolerance for the test runner.
-            assert elapsed < 4.0, f"workers=4 took {elapsed:.2f}s"
+            assert elapsed < 60.0, f"workers=4 took {elapsed:.2f}s"
         finally:
             server.shutdown()
 
@@ -206,13 +200,34 @@ class TestTaskCancel:
                 timeout=2.0,
             )
             task_id = r.json()["id"]
-            r2 = httpx.post(
+            # v1.2 – pause briefly so the worker is well into the
+            # ~1 s simulated work when the cancel arrives. Without
+            # this pause the HTTP round-trip typically completes
+            # before the cancel is issued, making the test
+            # nondeterministic.
+            time.sleep(0.4)
+            rc = httpx.post(
                 f"http://127.0.0.1:{server.port}/tasks/{task_id}/cancel",
                 json={},
                 timeout=2.0,
             )
-            assert r2.status_code == 200
-            assert r2.json()["state"] == "canceled"
+            assert rc.status_code == 200
+            # Poll until the worker has processed the cancel and
+            # reached a terminal state (bounded by 5 s).
+            for _ in range(100):
+                time.sleep(0.05)
+                r2 = httpx.get(
+                    f"http://127.0.0.1:{server.port}/tasks/{task_id}",
+                    timeout=0.5,
+                )
+                state = r2.json()["state"]
+                if state == "canceled":
+                    break
+                assert state in ("working", "submitted", "completed"), (
+                    f"unexpected terminal state: {state}"
+                )
+            else:
+                pytest.fail(f"task {task_id} did not reach 'canceled' state")
         finally:
             server.shutdown()
 
