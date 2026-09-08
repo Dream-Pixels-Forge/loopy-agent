@@ -2,8 +2,11 @@
 
 import asyncio
 
+import pytest
+
 from loopy.safety import (
     EscalationReason,
+    PermissionMode,
     SafetyCheck,
     SafetyGate,
     SafetyResult,
@@ -17,6 +20,23 @@ class TestEscalationReason:
         assert EscalationReason.DENYLIST_PATH.value == "denylist_path"
         assert EscalationReason.LOW_CONFIDENCE.value == "low_confidence"
         assert EscalationReason.AMBIGUOUS_INPUT.value == "ambiguous_input"
+        assert EscalationReason.PERMISSION_DENIED.value == "permission_denied"
+
+
+class TestPermissionMode:
+    def test_all_modes_exist(self):
+        assert hasattr(PermissionMode, "READ_ONLY")
+        assert hasattr(PermissionMode, "PLAN")
+        assert hasattr(PermissionMode, "ACCEPT_EDITS")
+        assert hasattr(PermissionMode, "DONT_ASK")
+        assert hasattr(PermissionMode, "BYPASS")
+
+    def test_mode_values(self):
+        assert PermissionMode.READ_ONLY.value == "read_only"
+        assert PermissionMode.PLAN.value == "plan"
+        assert PermissionMode.ACCEPT_EDITS.value == "accept_edits"
+        assert PermissionMode.DONT_ASK.value == "dont_ask"
+        assert PermissionMode.BYPASS.value == "bypass"
 
 
 class TestSafetyCheck:
@@ -160,3 +180,84 @@ class TestSafetyGate:
         gate = SafetyGate()
         default_paths = " ".join(gate.denylist_paths).lower()
         assert "auth" in default_paths or "secret" in default_paths or ".env" in default_paths
+
+    # ── Permission mode checks ──────────────────────────────────────
+
+    def test_check_permission_bypass_allows_side_effecting(self):
+        gate = SafetyGate()
+        check = gate.check_permission(PermissionMode.BYPASS, "side_effecting")
+        assert check.passed is True
+
+    def test_check_permission_read_only_mode_denies_side_effecting(self):
+        gate = SafetyGate()
+        check = gate.check_permission(PermissionMode.READ_ONLY, "side_effecting")
+        assert check.passed is False
+        assert check.escalation == EscalationReason.PERMISSION_DENIED
+
+    def test_check_permission_plan_mode_denies_side_effecting(self):
+        gate = SafetyGate()
+        check = gate.check_permission(PermissionMode.PLAN, "side_effecting")
+        assert check.passed is False
+        assert check.escalation == EscalationReason.PERMISSION_DENIED
+
+    def test_check_permission_accept_edits_allows_side_effecting(self):
+        gate = SafetyGate()
+        check = gate.check_permission(PermissionMode.ACCEPT_EDITS, "side_effecting")
+        assert check.passed is True
+
+    def test_check_permission_dont_ask_allows_side_effecting(self):
+        gate = SafetyGate()
+        check = gate.check_permission(PermissionMode.DONT_ASK, "side_effecting")
+        assert check.passed is True
+
+    def test_check_permission_read_only_mode_allows_read_only_tool(self):
+        gate = SafetyGate()
+        check = gate.check_permission(PermissionMode.READ_ONLY, "read_only")
+        assert check.passed is True
+
+    def test_default_permission_mode_is_read_only(self):
+        gate = SafetyGate()
+        assert gate.default_permission_mode == PermissionMode.READ_ONLY
+
+    @pytest.mark.asyncio
+    async def test_full_check_with_permission_denied(self):
+        gate = SafetyGate()
+        result = await gate.check(
+            permission_mode=PermissionMode.READ_ONLY,
+            tool_scope="side_effecting",
+        )
+        assert result.safe is False
+        assert result.should_escalate is True
+
+    @pytest.mark.asyncio
+    async def test_full_check_with_permission_accepted(self):
+        gate = SafetyGate()
+        result = await gate.check(
+            permission_mode=PermissionMode.ACCEPT_EDITS,
+            tool_scope="side_effecting",
+        )
+        assert result.safe is True
+        assert not result.should_escalate
+
+    @pytest.mark.asyncio
+    async def test_full_check_permission_in_combined_result(self):
+        gate = SafetyGate(denylist_paths=["secrets/*"])
+        result = await gate.check(
+            path="src/main.py",
+            attempts=1,
+            confidence=0.9,
+            permission_mode=PermissionMode.READ_ONLY,
+            tool_scope="side_effecting",
+        )
+        assert result.safe is False  # permission denied
+        perm_checks = [c for c in result.checks if c.name == "permission_check"]
+        assert len(perm_checks) == 1
+        assert perm_checks[0].passed is False
+        assert perm_checks[0].escalation == EscalationReason.PERMISSION_DENIED
+
+    @pytest.mark.asyncio
+    async def test_full_check_respects_default_permission_mode(self):
+        """When no permission_mode is passed, defaults to READ_ONLY."""
+        gate = SafetyGate()
+        result = await gate.check(tool_scope="side_effecting")
+        assert result.safe is False  # default mode is READ_ONLY

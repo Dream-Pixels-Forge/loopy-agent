@@ -187,10 +187,23 @@ from loopy.policies import (
     PolicyEngine,
     PolicyViolation,
 )
-from loopy.safety import EscalationReason, SafetyCheck, SafetyGate, SafetyResult
+from loopy.safety import (
+    EscalationReason,
+    PermissionMode,
+    SafetyCheck,
+    SafetyGate,
+    SafetyResult,
+)
 from loopy.skills import Skill, SkillRegistry
 from loopy.state import LoopState, RunOutcome, RunRecord, StateManager
 from loopy.streaming import StreamBuffer, StreamChunk, Streamer, StreamEvent
+from loopy.tools import (
+    ToolCall,
+    ToolContext,
+    ToolDef,
+    ToolExecutor,
+    ToolParamSchema,
+)
 from loopy.verification import VerificationGate, VerificationStatus, VerifyResult
 from loopy.verifier import (
     Invariant,
@@ -374,6 +387,7 @@ __all__ = [
     "SafetyCheck",
     "SafetyResult",
     "EscalationReason",
+    "PermissionMode",
     # A2A
     "AgentCard",
     "AgentRegistry",
@@ -420,6 +434,12 @@ __all__ = [
     "RealtimeEventType",  # # v0.7.10
     "RealtimeSession",  # # v0.7.10
     "RealtimeTransport",  # # v0.7.10
+    # Tools (v1.3.0)
+    "ToolDef",
+    "ToolContext",
+    "ToolCall",
+    "ToolExecutor",
+    "ToolParamSchema",
     # Streaming
     "StreamEvent",
     "StreamChunk",

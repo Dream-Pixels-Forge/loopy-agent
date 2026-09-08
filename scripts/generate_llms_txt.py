@@ -60,6 +60,8 @@ PUBLIC_MODULES: dict[str, list[str]] = {
             "DecisionTracker", "DecisionTrace", "DecisionStep", "DecisionType",
             "PatternRegistry", "LoopPattern", "PatternCadence", "RiskLevel",
             "Hook", "HookContext", "HookRegistry", "HookResult", "HookType",
+            "ToolDef", "ToolContext", "ToolCall", "ToolExecutor", "ToolParamSchema",
+            "PermissionMode",
         ]
     ),
     "loopy.loop": ["AgentLoop", "LoopConfig", "StepResult", "StepStatus"],
@@ -93,7 +95,10 @@ PUBLIC_MODULES: dict[str, list[str]] = {
     ],
     "loopy.plugins": ["Plugin", "PluginInfo", "PluginLoader", "PluginRegistry"],
     "loopy.state": ["StateManager", "LoopState", "RunRecord", "RunOutcome"],
-    "loopy.safety": ["SafetyGate", "SafetyCheck", "SafetyResult", "EscalationReason"],
+    "loopy.safety": ["SafetyGate", "SafetyCheck", "SafetyResult", "EscalationReason", "PermissionMode"],
+    "loopy.tools": [
+        "ToolDef", "ToolContext", "ToolCall", "ToolExecutor", "ToolParamSchema",
+    ],
     "loopy.cost": ["CostTracker", "CostReport", "BudgetExceeded"],
     "loopy.drift": ["DriftDetector", "DriftIssue", "DriftReport"],
     "loopy.skills": ["Skill", "SkillRegistry"],
