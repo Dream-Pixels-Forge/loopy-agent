@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-09-08
+
+**v1.2.0 — "Bring Your Team"** is the first distributed-runtime
+release. It turns loopy-agent from a single-process toolkit into a
+multi-tenant, multi-worker runtime with a hot-reload dev server and
+a language server for IDE integration.
+
+### Added
+
+- **Service-mode `FederatedServer`** (T2.1) — `python -m loopy serve
+  --workers N` runs N asyncio task workers that process tasks in
+  parallel. New endpoints: `/tasks` (async POST → 202 Accepted),
+  `/tasks/{id}` (GET state), `/tasks/{id}/stream` (SSE events),
+  `/tasks/{id}/cancel` (soft-cancel). Backward-compat: `workers=1`
+  keeps the original synchronous behaviour.
+- **Multi-tenant gateway** (T2.2) — `Gateway(tenant="acme",
+  cost_tracker=tracker)` partitions token and USD cost per tenant.
+  `CostTracker.tenant_totals(tenant_id)` returns
+  `{"used": int, "limit": int, "remaining": int}`.
+  `CostTracker.record_tenant()` tracks per-tenant usage.
+- **`Policy.exponential(max_attempts=5, base=1.0, cap=30.0,
+  jitter=True)`** factory (T2.3) — creates a retry policy that
+  fires when retries exceed the schedule. Integrated into
+  `Gateway.chat()` so the gateway stops retrying when the policy
+  fires. `RetryMiddleware` and `CircuitBreakerMiddleware` also
+  evaluate the policy engine before each retry.
+- **Hot-reload dev server** (T2.4) — `python -m loopy dev
+  <script.py>` watches the script via `watchfiles` and re-runs it
+  on every change. New `loopy doctor` subcommand diagnoses common
+  config issues (missing API keys, wrong Python version).
+- **Language server** (T2.5) — `pip install
+  loopy-agent[language-server]` adds `pygls>=1.3.0`. New
+  `loopy.lsp.LspServer` provides `textDocument/completion`
+  (loopy public symbols), `textDocument/hover` (docstrings via
+  `inspect.getdoc`), and `textDocument/definition` (go-to-
+  definition).
+
+### Changed
+
+- `CostTracker` gains `per_tenant` mode, `record_tenant()`,
+  `tenant_totals()`, and `tenant_cost_usd()`.
+- `Gateway.__init__` accepts optional `tenant` and `cost_tracker`
+  kwargs.
+- `Policy` gains `metadata` field and `exponential()` classmethod.
+
+### Tests
+
+- `tests/test_v2_multi_tenant.py` — 26 tests
+- `tests/test_retry.py` — 27 tests
+- `tests/test_dev.py` — 14 tests
+- `tests/test_lsp.py` — 12 tests
+- Total: **968 passed, 1 skipped** (up from 889)
+- Error-message audit: 100% (76/76 non-exempt sites)
+
 ## [1.1.1] - 2026-09-04
 
 **v1.1.1 — "Try It More"** is a patch release that takes the
