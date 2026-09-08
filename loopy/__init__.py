@@ -41,6 +41,16 @@ from loopy.agents import (
     TaskDecomposer,
 )
 from loopy.cache import CacheStats, LLMCache
+from loopy.errors import (
+    AgentError,
+    HookError,
+    PermissionDeniedError,
+    ProcessError,
+    ResultError,
+    ToolNotFoundError,
+    process_error,
+    result_error,
+)
 from loopy.evals import (
     EvalCase,
     EvalGate,
@@ -188,6 +198,16 @@ from loopy.verifier import (
 __all__ = [
     # Version
     "__version__",
+    # Errors (v1.3.0)
+    "AgentError",
+    "ResultError",
+    "ProcessError",
+    "SessionError",
+    "ToolNotFoundError",
+    "PermissionDeniedError",
+    "HookError",
+    "result_error",
+    "process_error",
     # Agentic Loop
     "AgentLoop",
     "StepResult",
