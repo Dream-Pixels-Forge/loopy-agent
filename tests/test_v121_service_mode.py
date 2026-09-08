@@ -194,11 +194,22 @@ class TestTaskCancel:
         server.start()
         try:
             _wait_for_port(server.port)
-            r = httpx.post(
-                f"http://127.0.0.1:{server.port}/tasks",
-                json={"skill_id": "echo", "inputs": {}},
-                timeout=2.0,
-            )
+            # v1.2 — on Windows the HTTP connection can be aborted
+            # (WinError 10053) when the previous test's server drain
+            # is still winding down. Retry once with a short back-off.
+            for _attempt in range(2):
+                try:
+                    r = httpx.post(
+                        f"http://127.0.0.1:{server.port}/tasks",
+                        json={"skill_id": "echo", "inputs": {}},
+                        timeout=2.0,
+                    )
+                    break
+                except httpx.ReadError:
+                    time.sleep(0.2)
+                    continue
+            else:
+                pytest.fail("task POST failed after retries")
             task_id = r.json()["id"]
             # v1.2 – pause briefly so the worker is well into the
             # ~1 s simulated work when the cancel arrives. Without
@@ -236,11 +247,24 @@ class TestTaskCancel:
         server.start()
         try:
             _wait_for_port(server.port)
-            r = httpx.post(
-                f"http://127.0.0.1:{server.port}/tasks/t-unknown/cancel",
-                json={},
-                timeout=2.0,
-            )
+            # v1.2 — on Windows the HTTP connection can be aborted
+            # (WinError 10053) when the previous test's server drain
+            # is still winding down and the OS has not fully
+            # released the networking stack for the new port.
+            # Retry once with a short back-off to absorb the race.
+            for _attempt in range(2):
+                try:
+                    r = httpx.post(
+                        f"http://127.0.0.1:{server.port}/tasks/t-unknown/cancel",
+                        json={},
+                        timeout=2.0,
+                    )
+                    break
+                except httpx.ReadError:
+                    time.sleep(0.2)
+                    continue
+            else:
+                pytest.fail("cancel request failed after retries")
             assert r.status_code == 404
         finally:
             server.shutdown()
