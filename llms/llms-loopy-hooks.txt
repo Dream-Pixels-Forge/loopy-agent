@@ -1,0 +1,21 @@
+# loopy.hooks
+
+## Hook
+
+> Could not import `loopy.hooks.Hook`: No module named 'loopy.hooks'
+
+## HookContext
+
+> Could not import `loopy.hooks.HookContext`: No module named 'loopy.hooks'
+
+## HookRegistry
+
+> Could not import `loopy.hooks.HookRegistry`: No module named 'loopy.hooks'
+
+## HookResult
+
+> Could not import `loopy.hooks.HookResult`: No module named 'loopy.hooks'
+
+## HookType
+
+> Could not import `loopy.hooks.HookType`: No module named 'loopy.hooks'

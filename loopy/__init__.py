@@ -74,6 +74,13 @@ from loopy.gateway import (
     TestModel,
 )
 from loopy.guardrails import FilterAction, GuardrailPipeline, InputFilter, OutputFilter
+from loopy.hooks import (
+    Hook,
+    HookContext,
+    HookRegistry,
+    HookResult,
+    HookType,
+)
 from loopy.loop import (
     AgentLoop,
     AgentLoopRejected,
@@ -208,6 +215,12 @@ __all__ = [
     "HookError",
     "result_error",
     "process_error",
+    # Hooks (v1.3.0)
+    "Hook",
+    "HookContext",
+    "HookRegistry",
+    "HookResult",
+    "HookType",
     # Agentic Loop
     "AgentLoop",
     "StepResult",

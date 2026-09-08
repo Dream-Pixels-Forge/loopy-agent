@@ -59,6 +59,7 @@ PUBLIC_MODULES: dict[str, list[str]] = {
             "ComplianceChecker", "AuditLogger",
             "DecisionTracker", "DecisionTrace", "DecisionStep", "DecisionType",
             "PatternRegistry", "LoopPattern", "PatternCadence", "RiskLevel",
+            "Hook", "HookContext", "HookRegistry", "HookResult", "HookType",
         ]
     ),
     "loopy.loop": ["AgentLoop", "LoopConfig", "StepResult", "StepStatus"],
@@ -69,6 +70,9 @@ PUBLIC_MODULES: dict[str, list[str]] = {
     ],
     "loopy.guardrails": [
         "GuardrailPipeline", "InputFilter", "OutputFilter", "FilterAction",
+    ],
+    "loopy.hooks": [
+        "Hook", "HookContext", "HookRegistry", "HookResult", "HookType",
     ],
     "loopy.evals": [
         "EvalSuite", "EvalCase", "EvalResult", "EvalReport",
