@@ -107,6 +107,25 @@ def create_parser() -> argparse.ArgumentParser:
     # --- info command ---
     subparsers.add_parser("info", help="Show loopy info")
 
+    # --- dev command (v1.2) ---
+    dev_parser = subparsers.add_parser(
+        "dev",
+        help="Watch a Python script and hot-reload it on changes",
+    )
+    dev_parser.add_argument("script", help="Path to Python script to watch")
+
+    # --- doctor command (v1.2) ---
+    subparsers.add_parser(
+        "doctor",
+        help="Diagnose common loopy configuration issues",
+    )
+
+    # --- lsp command (v1.2.0) ---
+    subparsers.add_parser(
+        "lsp",
+        help="Start the loopy-agent language server (stdio)",
+    )
+
     return parser
 
 
@@ -543,6 +562,38 @@ def _write_test_agent(project_dir) -> None:
     (project_dir / "tests" / "test_agent.py").write_text(_TEST_AGENT_TEMPLATE, encoding="utf-8")
 
 
+def cmd_dev(args: argparse.Namespace) -> None:
+    """v1.2 — watch a Python script and re-run it on changes."""
+    import asyncio
+
+    from loopy.dev import run_dev
+
+    asyncio.run(run_dev(args.script))
+
+
+def cmd_doctor(args: argparse.Namespace) -> None:
+    """v1.2 — diagnose common loopy configuration issues."""
+    import os
+
+    issues: list[str] = []
+
+    if sys.version_info < (3, 10):
+        issues.append(f"Python {sys.version_info.major}.{sys.version_info.minor} < 3.10 required")
+
+    for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]:
+        if not os.environ.get(key):
+            issues.append(f"Missing environment variable: {key}")
+
+    if issues:
+        print("loopy doctor: issues found")
+        for issue in issues:
+            print(f"  ✗ {issue}")
+        sys.exit(1)
+    else:
+        print("loopy doctor: all checks passed ✓")
+        sys.exit(0)
+
+
 def cmd_info(args: argparse.Namespace) -> None:
     """Show loopy info."""
     print(f"""
@@ -606,6 +657,13 @@ def cmd_serve(args: argparse.Namespace) -> None:
         server.shutdown()
 
 
+def cmd_lsp(args: argparse.Namespace) -> None:
+    """v1.2.0 — start the loopy-agent language server over stdio."""
+    from loopy.lsp import LspServer
+
+    LspServer().start()
+
+
 def main() -> None:
     """Main CLI entry point."""
     # Force UTF-8 output on Windows
@@ -628,6 +686,9 @@ def main() -> None:
         "init": cmd_init,  # v1.1
         "serve": cmd_serve,  # v1.0.0
         "info": cmd_info,
+        "dev": cmd_dev,  # v1.2
+        "doctor": cmd_doctor,  # v1.2
+        "lsp": cmd_lsp,  # v1.2.0
     }
 
     if args.command in commands:
