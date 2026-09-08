@@ -21,6 +21,7 @@ The engine is intentionally pure (no I/O) so it stays fast
 from __future__ import annotations
 
 import logging
+import random
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -76,6 +77,7 @@ class Policy:
     name: str
     conditions: list[Condition]
     severity: Severity = "warn"
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -93,6 +95,61 @@ class Policy:
                 f"Policy {self.name!r} severity {self.severity!r} is not allowed;  (see https://loopy.dev/docs/policies#errors)"
                 f"must be one of {sorted(_KNOWN_SEVERITIES)}"
             )
+
+    @classmethod
+    def exponential(
+        cls,
+        max_attempts: int = 5,
+        base: float = 1.0,
+        cap: float = 30.0,
+        jitter: bool = True,
+    ) -> Policy:
+        """Create a retry policy that fires when retries exceed the exponential backoff schedule.
+
+        This policy is designed to be used with the Gateway's retry
+        middleware.  The policy checks ``context["retries"]`` against
+        the exponential schedule.
+
+        Args:
+            max_attempts: Maximum number of retry attempts (default 5).
+            base: Base delay in seconds for exponential backoff (default 1.0).
+            cap: Maximum delay cap in seconds (default 30.0).
+            jitter: Whether to add random jitter (default True, full jitter).
+
+        Returns:
+            A new :class:`Policy` instance with a ``max_retries``
+            condition and backoff metadata.
+        """
+        return cls(
+            name="exponential-retry",
+            conditions=[Condition(kind="max_retries", value=max_attempts)],
+            severity="warn",
+            metadata={
+                "base_delay": base,
+                "max_delay": cap,
+                "jitter": jitter,
+            },
+        )
+
+    def backoff_delays(self, retries: int) -> list[float]:
+        """Yield the backoff delays for *retries* attempts.
+
+        When ``jitter`` is ``True`` (full jitter), each delay is a
+        random float in ``[0, min(base * 2**i, cap)]``.  When
+        ``jitter`` is ``False``, the raw exponential value is used.
+        """
+        base = float(self.metadata.get("base_delay", 1.0))
+        cap = float(self.metadata.get("max_delay", 30.0))
+        do_jitter = bool(self.metadata.get("jitter", True))
+        delays: list[float] = []
+        for i in range(retries):
+            raw = base * (2.0 ** i)
+            capped = min(raw, cap)
+            if do_jitter:
+                delays.append(random.uniform(0.0, capped))
+            else:
+                delays.append(capped)
+        return delays
 
 
 @dataclass(frozen=True)

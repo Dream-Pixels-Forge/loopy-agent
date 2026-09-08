@@ -206,7 +206,14 @@ class Gateway:
         await self.close()
         return False
 
-    def __init__(self, *, policy_engine: Any = None):
+    def __init__(
+        self,
+        *,
+        policy_engine: Any = None,
+        retry_policy: Any = None,
+        tenant: str | None = None,
+        cost_tracker: Any = None,
+    ):
         self.providers: dict[str, ProviderConfig] = {}
         self._pool: ConnectionPool = ConnectionPool()
         self._logs: list[dict[str, Any]] = []
@@ -216,6 +223,13 @@ class Gateway:
         # provider I/O. ``warn`` / ``info`` decisions are recorded
         # but do not abort the call.
         self.policy_engine = policy_engine
+        # v1.2.0 — optional retry policy. When set, transient errors
+        # in :meth:`chat` are retried up to the policy's
+        # ``max_attempts`` before raising.
+        self.retry_policy = retry_policy
+        # v1.2.0 — optional tenant/scoped cost tracking.
+        self.tenant = tenant or None
+        self.cost_tracker = cost_tracker
 
     def add_provider(self, name: str, config: ProviderConfig) -> None:
         """Register a provider."""
@@ -356,6 +370,8 @@ class Gateway:
         """
         # v0.7.9 - Test model routing: short-circuit to local handler.
         test_model = self._resolve_test_model(model)
+        # v1.2.0 — Per-tenant budget check before any I/O.
+        self._check_tenant_budget()
         if test_model is not None:
             # v0.9.0 — Compliance-as-Code: policies still apply on
             # the test-model path so unit tests can exercise the gate.
@@ -374,13 +390,16 @@ class Gateway:
                     max_tokens,
                     max_cost_usd,
                 )
-            return await self._call_test(
-                test_model,
-                message,
-                system,
-                temperature,
-                max_tokens,
-                response_format,
+            return await self._chat_with_retry(
+                retry_policy=self.retry_policy,
+                attempt_fn=lambda: self._call_test(
+                    test_model,
+                    message,
+                    system,
+                    temperature,
+                    max_tokens,
+                    response_format,
+                ),
             )
 
         provider, config = self._resolve_provider_with_cap(provider, max_tokens, max_cost_usd)
@@ -396,6 +415,78 @@ class Gateway:
             context.setdefault("max_tokens", max_tokens)
             self.policy_engine.gate(context)
 
+        return await self._chat_with_retry(
+            retry_policy=self.retry_policy,
+            attempt_fn=lambda: self._do_provider_chat(
+                provider, config, message, system, temperature, max_tokens, response_format
+            ),
+        )
+
+    async def _chat_with_retry(
+        self,
+        *,
+        retry_policy: Any,
+        attempt_fn: Callable[[], Any],
+    ) -> Any:
+        """Execute *attempt_fn* with exponential-backoff retry governed
+        by an optional :class:`Policy`.
+
+        When ``retry_policy`` is ``None`` the attempt is executed once
+        (legacy behaviour).  When it is set, each failed attempt is
+        checked against the policy via :class:`PolicyEngine`; if the
+        policy fires (e.g. ``retries > max_attempts``) the exception
+        is re-raised immediately.  Otherwise the gateway sleeps for
+        the next backoff delay and retries.
+        """
+        from loopy.policies import PolicyEngine
+
+        policy_engine: PolicyEngine | None = None
+        if retry_policy is not None:
+            policy_engine = PolicyEngine([retry_policy])
+
+        retries = 0
+        last_exc: Exception | None = None
+
+        while True:
+            try:
+                return await attempt_fn()
+            except Exception as exc:
+                last_exc = exc
+                if policy_engine is None:
+                    raise
+                # Check whether the retry policy allows another attempt.
+                decisions = policy_engine.evaluate({"retries": retries})
+                if decisions:
+                    logger.warning(
+                        "Retry policy fired after %d attempts: %s",
+                        retries,
+                        decisions[0].policy_name,
+                    )
+                    raise
+                # Policy didn't fire — sleep and retry.
+                delays = retry_policy.backoff_delays(retries + 1)
+                delay = delays[-1] if delays else 0.0
+                logger.info("Retrying in %.2fs (attempt %d)", delay, retries + 1)
+                await asyncio.sleep(delay)
+                retries += 1
+
+        # NOTE: the loop above is guaranteed to either return or raise,
+        # so we never reach here.
+        raise last_exc  # type: ignore[misc]
+
+    async def _do_provider_chat(
+        self,
+        provider: str,
+        config: ProviderConfig,
+        message: str,
+        system: str | None,
+        temperature: float,
+        max_tokens: int,
+        response_format: type[Any] | None,
+    ) -> GatewayResponse:
+        """v1.2.0 — Core provider-chat logic extracted for retry
+        support.  Raises on any failure; the caller wraps this in
+        :meth:`_chat_with_retry`."""
         # Check rate limits
         config.check_rate_limit()
 
@@ -418,15 +509,20 @@ class Gateway:
         latency_ms = (time.time() - start_time) * 1000
 
         # Log request
-        log_entry = {
+        log_entry: dict[str, Any] = {
             "provider": provider,
             "model": config.model,
             "latency_ms": latency_ms,
             "tokens": response.tokens_used,
             "timestamp": time.time(),
         }
+        if self.tenant:
+            log_entry["tenant_id"] = self.tenant
         self._logs.append(log_entry)
         config.record_request()
+        # v1.2.0 — per-tenant cost recording.
+        if self.tenant and self.cost_tracker is not None:
+            self.cost_tracker.record_tenant(self.tenant, response.tokens_used)
 
         response.latency_ms = latency_ms
 
@@ -712,15 +808,19 @@ class Gateway:
             response_format,
         )
         response.latency_ms = (time.time() - start_time) * 1000
-        self._logs.append(
-            {
-                "provider": "test",
-                "model": test_model.model_name,
-                "latency_ms": response.latency_ms,
-                "tokens": response.tokens_used,
-                "timestamp": time.time(),
-            }
-        )
+        # v1.2.0 — per-tenant cost recording.
+        if self.tenant and self.cost_tracker is not None:
+            self.cost_tracker.record_tenant(self.tenant, response.tokens_used)
+        log_entry: dict[str, Any] = {
+            "provider": "test",
+            "model": test_model.model_name,
+            "latency_ms": response.latency_ms,
+            "tokens": response.tokens_used,
+            "timestamp": time.time(),
+        }
+        if self.tenant:
+            log_entry["tenant_id"] = self.tenant
+        self._logs.append(log_entry)
         return response
 
     def get_logs(self) -> list[dict[str, Any]]:
@@ -730,6 +830,18 @@ class Gateway:
     async def close(self) -> None:
         """Close the connection pool."""
         await self._pool.close()
+
+    # ── v1.2.0 — Per-tenant budget guard ───────────────────────
+
+    def _check_tenant_budget(self) -> None:
+        """Raise ``BudgetExceeded`` when the current tenant has hit its limit."""
+        if not self.tenant or self.cost_tracker is None:
+            return
+        from loopy.cost import BudgetExceeded
+
+        totals = self.cost_tracker.tenant_totals(self.tenant)
+        if totals["used"] >= totals["limit"]:
+            raise BudgetExceeded(limit=totals["limit"], used=totals["used"])
 
 
 # ---------------------------------------------------------------------------

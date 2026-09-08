@@ -387,11 +387,13 @@ class RetryMiddleware(Middleware):
         base_delay: float = 1.0,
         max_delay: float = 30.0,
         retryable_exceptions: tuple[type[Exception], ...] = (Exception,),
+        policy_engine: Any = None,
     ):
         self.max_retries = max_retries
         self.base_delay = base_delay
         self.max_delay = max_delay
         self.retryable_exceptions = retryable_exceptions
+        self.policy_engine = policy_engine
 
     async def before(self, ctx: MiddlewareContext) -> MiddlewareContext:
         """Initialize per-execution retry state."""
@@ -404,9 +406,23 @@ class RetryMiddleware(Middleware):
 
         Checks the per-execution retry count stored in context
         metadata so state doesn't leak between pipeline calls.
+        When a ``policy_engine`` is set, the policy is evaluated
+        against the current retry count; if it fires the error is
+        re-raised immediately.
         """
         retry_count = ctx.metadata.get("_retry_count", 0)
         if isinstance(error, self.retryable_exceptions) and retry_count < self.max_retries:
+            # v1.2.0 — gate the retry against an optional policy engine.
+            if self.policy_engine is not None:
+                decisions = self.policy_engine.evaluate({"retries": retry_count})
+                if decisions:
+                    logger.warning(
+                        "Policy %s blocked retry #%d: %s",
+                        decisions[0].policy_name,
+                        retry_count + 1,
+                        error,
+                    )
+                    raise error
             delay = min(self.base_delay * (2**retry_count), self.max_delay)
             ctx.metadata["_retry_count"] = retry_count + 1
             logger.warning(
