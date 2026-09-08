@@ -68,10 +68,17 @@ class CostTracker:
         self,
         daily_limit: int = 10000,
         persist_path: str | None = None,
+        per_tenant: bool = False,
     ):
         self.daily_limit = daily_limit
         self.persist_path = Path(persist_path) if persist_path else None
+        self.per_tenant = per_tenant
         self._usage: dict[str, int] = {}
+        # v1.2.0 — per-tenant tracking. When ``per_tenant=True``,
+        # ``_tenants`` holds a dict keyed by tenant_id -> {date: tokens}.
+        self._tenants: dict[str, dict[str, int]] = {}
+        # Optional per-tenant cost rates (USD per 1k tokens).
+        self._tenant_rates: dict[str, float] = {}
         # v0.9.0 — USD totals across the run (not persisted; resets
         # on process restart). The token ``_usage`` dict is keyed by
         # day; the USD totals are session-scoped.
@@ -109,6 +116,50 @@ class CostTracker:
         if self.should_stop:
             logger.warning("Budget exceeded: %s/%s", self.used_today, self.daily_limit)
 
+    # ── v1.2.0 — Per-tenant tracking ───────────────────────────
+
+    def record_tenant(self, tenant_id: str, tokens: int) -> None:
+        """Record token usage for a specific tenant.
+
+        No-op when ``per_tenant`` is disabled.
+        """
+        if not self.per_tenant:
+            return
+        today = date.today().isoformat()
+        if tenant_id not in self._tenants:
+            self._tenants[tenant_id] = {}
+        self._tenants[tenant_id][today] = (
+            self._tenants[tenant_id].get(today, 0) + tokens
+        )
+
+    def tenant_totals(self, tenant_id: str) -> dict[str, int]:
+        """Return {used, limit, remaining} for a specific tenant."""
+        if not self.per_tenant:
+            return {"used": 0, "limit": self.daily_limit, "remaining": self.daily_limit}
+        today = date.today().isoformat()
+        used = self._tenants.get(tenant_id, {}).get(today, 0)
+        return {
+            "used": used,
+            "limit": self.daily_limit,
+            "remaining": max(0, self.daily_limit - used),
+        }
+
+    def tenant_cost_usd(self, tenant_id: str) -> float:
+        """Return estimated USD for a specific tenant."""
+        totals = self.tenant_totals(tenant_id)
+        rate = self._tenant_rates.get(tenant_id, 0.0)
+        return (totals["used"] / 1000.0) * rate
+
+    def reset(self) -> None:
+        """Reset daily usage."""
+        self._usage.clear()
+        self._tenants.clear()
+        self._estimated_usd = 0.0
+        self._actual_usd = 0.0
+        self._savings_usd = 0.0
+        if self.persist_path:
+            self._save()
+
     # ── v0.9.0 — Cost-Aware Routing ───────────────────────────
 
     def record_estimated(self, usd: float) -> None:
@@ -142,15 +193,6 @@ class CostTracker:
             actual_usd=self._actual_usd,
             savings_usd=self._savings_usd,
         )
-
-    def reset(self) -> None:
-        """Reset daily usage."""
-        self._usage.clear()
-        self._estimated_usd = 0.0
-        self._actual_usd = 0.0
-        self._savings_usd = 0.0
-        if self.persist_path:
-            self._save()
 
     def _save(self) -> None:
         """Save usage to disk."""
