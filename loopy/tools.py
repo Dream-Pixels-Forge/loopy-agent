@@ -226,10 +226,7 @@ class ToolExecutor:
 
         Returns results in the same order as the input list.
         """
-        tasks = [
-            self.call(name, args, session_id=session_id)
-            for name, args in calls
-        ]
+        tasks = [self.call(name, args, session_id=session_id) for name, args in calls]
         return await asyncio.gather(*tasks, return_exceptions=False)
 
     # ------------------------------------------------------------------

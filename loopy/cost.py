@@ -128,9 +128,7 @@ class CostTracker:
         today = date.today().isoformat()
         if tenant_id not in self._tenants:
             self._tenants[tenant_id] = {}
-        self._tenants[tenant_id][today] = (
-            self._tenants[tenant_id].get(today, 0) + tokens
-        )
+        self._tenants[tenant_id][today] = self._tenants[tenant_id].get(today, 0) + tokens
 
     def tenant_totals(self, tenant_id: str) -> dict[str, int]:
         """Return {used, limit, remaining} for a specific tenant."""

@@ -195,6 +195,7 @@ class TestToolExecutorErrors:
         async def make_fn(i: int):
             async def fn(ctx: ToolContext, x: int = 0, _i: int = i) -> str:
                 return f"res{_i}:{x}"
+
             return fn
 
         for i in range(3):
