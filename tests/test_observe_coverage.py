@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -169,30 +170,36 @@ class TestTraceExporter:
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("loopy.observe.httpx.AsyncClient") as mock_cls:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_resp)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_client
+        mock_httpx = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_httpx.AsyncClient.return_value = mock_client
 
+        # Import the module directly via importlib to avoid loopy's
+        # __all__ shadowing ``observe`` with the decorator function.
+        loopy_observe_module = importlib.import_module("loopy.observe")
+        with patch.object(loopy_observe_module, "httpx", mock_httpx):
             result = await exporter.export_http("http://localhost:14268/api/traces")
-            assert result is True
+        assert result is True
 
     @pytest.mark.asyncio
     async def test_export_http_failure(self):
         tracer = Tracer(service="test")
         exporter = TraceExporter(tracer)
 
-        with patch("loopy.observe.httpx.AsyncClient") as mock_cls:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(side_effect=ConnectionError("refused"))
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_client
+        mock_httpx = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=ConnectionError("refused"))
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_httpx.AsyncClient.return_value = mock_client
 
+        loopy_observe_module = importlib.import_module("loopy.observe")
+        with patch.object(loopy_observe_module, "httpx", mock_httpx):
             result = await exporter.export_http("http://bad:1234/api/traces", max_retries=1)
-            assert result is False
+        assert result is False
 
 
 # ── MetricsCollector ─────────────────────────────────────────
