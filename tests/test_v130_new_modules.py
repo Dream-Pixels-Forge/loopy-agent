@@ -9,7 +9,13 @@ from typing import Any
 
 import pytest
 
-from loopy.agents import AgentResult, AgentStatus, Orchestrator, RoutingRule, SubAgent
+from loopy.agents import (
+    AgentResult,
+    AgentStatus,
+    Orchestrator,
+    RoutingRule,
+    SubAgent,
+)
 from loopy.patterns import (
     AdversarialVerification,
     ClassifyAndAct,
@@ -161,6 +167,20 @@ class TestFanOutSynthesize:
         assert result.success is True
         assert result.synthesized == ""
 
+    @pytest.mark.asyncio
+    async def test_agent_handler_raises(self):
+        async def boom_handler(task, ctx):
+            raise ValueError("agent boom")
+
+        orch = Orchestrator()
+        orch.add_agent(SubAgent(name="boom", handler=boom_handler))
+        pattern = FanOutSynthesize()
+        result = await pattern.run(orch, "input")
+        assert result.success is False
+        assert len(result.results) == 1
+        assert result.results[0].status == AgentStatus.FAILED
+        assert "agent boom" in result.results[0].error
+
 
 # ---------------------------------------------------------------------------
 # ClassifyAndAct tests
@@ -265,6 +285,40 @@ class TestTournament:
         pattern = Tournament(prefer_shorter=False)
         result = await pattern.run(orch, "input")
         assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_all_agents_fail(self):
+        async def fail_handler(task, ctx):
+            raise ValueError("always fails")
+
+        orch = Orchestrator()
+        orch.add_agent(SubAgent(name="bad1", handler=fail_handler))
+        orch.add_agent(SubAgent(name="bad2", handler=fail_handler))
+        pattern = Tournament(prefer_shorter=True)
+        result = await pattern.run(orch, "input")
+        # When all fail, _pick_winner returns ra (first arg)
+        assert result.pattern == PatternType.TOURNAMENT
+
+    def test_pick_winner_both_failed(self):
+        pattern = Tournament()
+        ra = AgentResult(agent_name="a", status=AgentStatus.FAILED, error="err")
+        rb = AgentResult(agent_name="b", status=AgentStatus.FAILED, error="err")
+        winner = pattern._pick_winner(ra, rb)
+        assert winner is ra
+
+    def test_pick_winner_rb_failed(self):
+        pattern = Tournament()
+        ra = AgentResult(agent_name="a", status=AgentStatus.COMPLETED, output="ok")
+        rb = AgentResult(agent_name="b", status=AgentStatus.FAILED, error="err")
+        winner = pattern._pick_winner(ra, rb)
+        assert winner is ra
+
+    def test_pick_winner_ra_failed(self):
+        pattern = Tournament()
+        ra = AgentResult(agent_name="a", status=AgentStatus.FAILED, error="err")
+        rb = AgentResult(agent_name="b", status=AgentStatus.COMPLETED, output="ok")
+        winner = pattern._pick_winner(ra, rb)
+        assert winner is rb
 
 
 # ---------------------------------------------------------------------------
@@ -604,3 +658,80 @@ class TestIsolatedAgentPool:
         result = await pool.run("task", agent_name="noop")
         assert result.status == AgentStatus.COMPLETED
         assert "noop" in result.output
+
+    @pytest.mark.asyncio
+    async def test_worktree_isolation(self, tmp_path: Path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "main.py").write_text("print('hi')")
+
+        async def wt_handler(task, ctx):
+            return ctx.get("_worktree", "")
+
+        pool = IsolatedAgentPool()
+        pool.add_agent(
+            IsolatedSubAgent(
+                name="wt",
+                handler=wt_handler,
+                config=SubagentConfig(isolation=IsolationLevel.WORKTREE),
+            )
+        )
+        result = await pool.run("task", agent_name="wt", source_dir=src)
+        assert result.status == AgentStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_none_isolation(self):
+        async def raw_handler(task, ctx):
+            return "raw"
+
+        pool = IsolatedAgentPool()
+        pool.add_agent(
+            IsolatedSubAgent(
+                name="raw",
+                handler=raw_handler,
+                config=SubagentConfig(isolation=IsolationLevel.NONE),
+            )
+        )
+        result = await pool.run("task", agent_name="raw")
+        assert result.status == AgentStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_run_all_with_exceptions(self):
+        async def boom(_task, _ctx):
+            raise ValueError("crash")
+
+        pool = IsolatedAgentPool()
+        pool.add_agent(
+            IsolatedSubAgent(
+                name="boom",
+                handler=boom,
+                config=SubagentConfig(isolation=IsolationLevel.CONTEXT),
+            )
+        )
+        results = await pool.run_all("task")
+        assert len(results) == 1
+        assert results[0].status == AgentStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_summary_empty_history(self):
+        pool = IsolatedAgentPool()
+        summary = pool.get_summary()
+        assert summary["total_runs"] == 0
+        assert summary["completed"] == 0
+        assert summary["failed"] == 0
+        assert summary["avg_duration_ms"] == 0
+
+    @pytest.mark.asyncio
+    async def test_save_all_with_callback(self, tmp_path: Path):
+        saved_paths: list[Path] = []
+
+        def on_save(session: Session, path: Path) -> None:
+            saved_paths.append(path)
+
+        mgr = SessionManager(auto_save_path=tmp_path, auto_save_fn=on_save)
+        s = await mgr.create()
+        s.append_user("data")
+        paths = await mgr.save_all()
+        assert len(paths) == 1
+        assert len(saved_paths) == 1
+        assert saved_paths[0] == paths[0]
