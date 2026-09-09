@@ -1,0 +1,17 @@
+# loopy.subagents
+
+## IsolatedAgentPool
+
+> Could not import `loopy.subagents.IsolatedAgentPool`: No module named 'loopy.subagents'
+
+## IsolatedSubAgent
+
+> Could not import `loopy.subagents.IsolatedSubAgent`: No module named 'loopy.subagents'
+
+## IsolationLevel
+
+> Could not import `loopy.subagents.IsolationLevel`: No module named 'loopy.subagents'
+
+## SubagentConfig
+
+> Could not import `loopy.subagents.SubagentConfig`: No module named 'loopy.subagents'

@@ -1,0 +1,21 @@
+# loopy.session
+
+## Session
+
+> Could not import `loopy.session.Session`: No module named 'loopy.session'
+
+## SessionConfig
+
+> Could not import `loopy.session.SessionConfig`: No module named 'loopy.session'
+
+## SessionManager
+
+> Could not import `loopy.session.SessionManager`: No module named 'loopy.session'
+
+## TranscriptEntry
+
+> Could not import `loopy.session.TranscriptEntry`: No module named 'loopy.session'
+
+## MessageOrigin
+
+> Could not import `loopy.session.MessageOrigin`: No module named 'loopy.session'

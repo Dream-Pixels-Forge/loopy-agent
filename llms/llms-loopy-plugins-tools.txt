@@ -1,0 +1,237 @@
+# loopy.plugins.tools
+
+## `loopy.plugins.tools.Tool` (class)
+
+A tool that agents can use.
+
+Security-relevant fields: deny-by-default, least privilege, and
+human-in-the-loop enforcement live on the tool. ``scope``, ``enabled``,
+``requires_approval`` and ``allowed_values`` are checked by
+:meth:`ToolRegistry.execute` before a handler ever runs.
+
+```python
+@dataclass
+class Tool:
+    """A tool that agents can use.
+
+    Security-relevant fields: deny-by-default, least privilege, and
+    human-in-the-loop enforcement live on the tool. ``scope``, ``enabled``,
+    ``requires_approval`` and ``allowed_values`` are checked by
+    :meth:`ToolRegistry.execute` before a handler ever runs.
+    """
+
+    name: str
+    description: str
+    handler: Callable[..., Awaitable[Any]]
+    parameters: list[ToolParameter] = field(default_factory=list)
+
+    # --- capability scoping (security) ---
+    scope: str = "side_effecting"  # "read_only" | "side_effecting"
+    enabled: bool = True  # deny-by-default — False = never executes
+    requires_approval: bool = False  # HITL gate, enforced in execute()
+    # Enumerate legal values per parameter (allow-list for free-text args)
+    allowed_values: dict[str, set[str]] | None = None
+
+    def is_read_only(self) -> bool:
+        """Return True if the tool has no side effects."""
+        return self.scope == "read_only"
+
+    def to_schema(self) -> dict[str, Any]:
+        """Convert to OpenAI function calling schema."""
+        properties = {}
+        required = []
+
+        for param in self.parameters:
+            properties[param.name] = param.to_schema()
+            if param.required:
+                required.append(param.name)
+
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required,
+                },
+            },
+        }
+```
+
+## `loopy.plugins.tools.ToolResult` (class)
+
+Result of a tool execution.
+
+```python
+@dataclass
+class ToolResult:
+    """Result of a tool execution."""
+
+    success: bool
+    output: Any = None
+    error: str | None = None
+    duration_ms: float = 0
+    metadata: dict[str, Any] = field(default_factory=dict)
+```
+
+## `loopy.plugins.tools.ToolsPlugin` (class)
+
+Tool-use plugin for function calling.
+
+Provides a registry for tools that agents can use during execution.
+
+Example:
+    plugin = ToolsPlugin()
+    await registry.load(plugin)
+
+    tool_registry = plugin.tool_registry
+
+    # Register custom tools
+    tool_registry.register(Tool(
+        name="calculate",
+        description="Perform a calculation",
+        handler=calculate_fn,
+    ))
+
+    # Execute
+    result = await tool_registry.execute("calculate", {"expression": "2+2"})
+
+```python
+class ToolsPlugin(Plugin):
+    """
+    Tool-use plugin for function calling.
+
+    Provides a registry for tools that agents can use during execution.
+
+    Example:
+        plugin = ToolsPlugin()
+        await registry.load(plugin)
+
+        tool_registry = plugin.tool_registry
+
+        # Register custom tools
+        tool_registry.register(Tool(
+            name="calculate",
+            description="Perform a calculation",
+            handler=calculate_fn,
+        ))
+
+        # Execute
+        result = await tool_registry.execute("calculate", {"expression": "2+2"})
+    """
+
+    @property
+    def info(self) -> PluginInfo:
+        return PluginInfo(
+            name="loopy-tools",
+            version="0.3.0",
+            description="Tool-use and function calling for loopy agents",
+            author="Dream Pixels Forge",
+            capabilities=["tool", "registry"],
+            requires=[],
+        )
+
+    async def setup(self, registry: PluginRegistry) -> None:
+        """Initialize the Tools plugin."""
+        self.tool_registry = ToolRegistry()
+
+        # Register built-in tools
+        self._register_builtins()
+
+        # Register read-only registry introspection tools (agent-visible).
+        # NOTE: a universal 'execute_tool' meta-tool is deliberately NOT
+        # registered — it would grant the model arbitrary execution over the
+        # whole registry (excessive agency). Executing a tool is the caller's
+        # job via ToolRegistry.execute(), which enforces capability gates.
+        registry.register_tool("list_tools", self._list_tools, scope="read_only")
+        registry.register_tool("get_tool_schema", self._get_tool_schema, scope="read_only")
+
+        logger.info("Tools plugin initialized")
+
+    def _register_builtins(self) -> None:
+        """Register built-in tools (read-only, no approval needed)."""
+        # Calculator tool
+        self.tool_registry.register(
+            Tool(
+                name="calculator",
+                description="Perform basic arithmetic calculations",
+                handler=self._calculator,
+                scope="read_only",
+                parameters=[
+                    ToolParameter(
+                        name="expression",
+                        type="string",
+                        description="Math expression (e.g., '2 + 2')",
+                    ),
+                ],
+            )
+        )
+
+        # JSON parser tool
+        self.tool_registry.register(
+            Tool(
+                name="parse_json",
+                description="Parse a JSON string",
+                handler=self._parse_json,
+                scope="read_only",
+                parameters=[
+                    ToolParameter(name="text", type="string", description="JSON string to parse"),
+                ],
+            )
+        )
+
+    async def _calculator(self, expression: str) -> Any:
+        """Calculate a math expression using an AST whitelist (no ``eval``).
+
+        Only numeric literals, ``+ - * / % ** //`` and unary ``+/-`` are
+        accepted. Attribute access, calls, names, and comprehensions are
+        rejected outright, so arbitrary code cannot run.
+
+        Raises:
+            ValueError: If the expression uses unsupported syntax.
+        """
+        return {"result": _eval_math(expression), "expression": expression}
+
+    async def _parse_json(self, text: str) -> Any:
+        """Parse JSON text."""
+        return json.loads(text)
+
+    async def _execute_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Execute a tool via the registry (operator use only).
+
+        Not registered as an agent-visible tool — intended for programmatic
+        / operator callers. Capability gates are enforced by
+        :meth:`ToolRegistry.execute`.
+        """
+        result = await self.tool_registry.execute(name, arguments or {})
+        return {
+            "success": result.success,
+            "output": result.output,
+            "error": result.error,
+            "duration_ms": result.duration_ms,
+        }
+
+    async def _list_tools(self) -> list[dict[str, Any]]:
+        """List all available tools."""
+        return [
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": len(tool.parameters),
+            }
+            for tool in self.tool_registry.list_all()
+        ]
+
+    async def _get_tool_schema(self, name: str) -> dict[str, Any] | None:
+        """Get a tool's schema."""
+        tool = self.tool_registry.get(name)
+        if tool:
+            return tool.to_schema()
+        return None
+```

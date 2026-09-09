@@ -2,8 +2,8 @@
 
 ## Verifier
 
-> Could not import `loopy.verification.Verifier`: No module named 'loopy'
+> Not exported by `loopy.verification`.
 
 ## AssertionResult
 
-> Could not import `loopy.verification.AssertionResult`: No module named 'loopy'
+> Not exported by `loopy.verification`.

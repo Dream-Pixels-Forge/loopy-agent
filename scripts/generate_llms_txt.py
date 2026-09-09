@@ -95,7 +95,10 @@ PUBLIC_MODULES: dict[str, list[str]] = {
     ],
     "loopy.plugins": ["Plugin", "PluginInfo", "PluginLoader", "PluginRegistry"],
     "loopy.state": ["StateManager", "LoopState", "RunRecord", "RunOutcome"],
-    "loopy.safety": ["SafetyGate", "SafetyCheck", "SafetyResult", "EscalationReason", "PermissionMode"],
+    "loopy.safety": [
+        "SafetyGate", "SafetyCheck", "SafetyResult",
+        "EscalationReason", "PermissionMode",
+    ],
     "loopy.tools": [
         "ToolDef", "ToolContext", "ToolCall", "ToolExecutor", "ToolParamSchema",
     ],
@@ -116,6 +119,36 @@ PUBLIC_MODULES: dict[str, list[str]] = {
     ],
     "loopy.patterns": [
         "PatternRegistry", "LoopPattern", "PatternCadence", "RiskLevel",
+        "PatternType", "PatternResult", "DynamicPatternRegistry",
+        "FanOutSynthesize", "ClassifyAndAct", "AdversarialVerification",
+        "Tournament",
+    ],
+    "loopy.session": [
+        "Session", "SessionConfig", "SessionManager",
+        "TranscriptEntry", "MessageOrigin",
+    ],
+    "loopy.subagents": [
+        "IsolatedAgentPool", "IsolatedSubAgent",
+        "IsolationLevel", "SubagentConfig",
+    ],
+    "loopy.a2a": [
+        "A2AClient", "A2AError", "A2ATask",
+        "AgentCapability", "AgentCard", "AgentRegistry",
+        "AgentRequest", "AgentResponse",
+    ],
+    "loopy.lsp": ["LspServer"],
+    "loopy.plugins.audio": [
+        "AudioPlugin", "SpeechToText", "TextToSpeech",
+        "AudioConfig", "TranscriptionResult", "SynthesisResult",
+    ],
+    "loopy.plugins.memory": [
+        "Memory", "MemoryPlugin", "MemoryStore",
+    ],
+    "loopy.plugins.rag": [
+        "Document", "RAGPlugin", "Retriever",
+    ],
+    "loopy.plugins.tools": [
+        "Tool", "ToolResult", "ToolsPlugin",
     ],
 }
 
@@ -138,9 +171,9 @@ def _format_symbol(mod_name: str, sym_name: str) -> str:
 
     header = f"## `{mod_name}.{sym_name}`"
     if inspect.isclass(sym):
-        header += f" (class)"
+        header += " (class)"
     elif callable(sym):
-        header += f" (callable)"
+        header += " (callable)"
 
     doc = _safe_doc(sym)
     try:
