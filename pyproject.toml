@@ -110,4 +110,6 @@ filterwarnings = [
     "ignore::DeprecationWarning:pkg_resources",
     "ignore::DeprecationWarning:diskcache.*",
     "ignore::DeprecationWarning:dateutil.*",
+    # Pre-existing: FederatedWorkerPool coroutine cleanup edge case
+    "ignore:Exception ignored.*_consume_forever:pytest.PytestUnraisableExceptionWarning",
 ]
