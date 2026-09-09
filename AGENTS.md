@@ -113,3 +113,4 @@ in one package, zero heavy core dependencies (just `httpx` +
 - `loopy/mcp.py` — security-sensitive (SSRF guard, capability gates)
 - `loopy/marketplace.py` (in `loopy/plugins/`) — supply-chain security
 - `.github/workflows/` — CI release pipeline
+

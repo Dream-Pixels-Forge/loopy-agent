@@ -1,10 +1,10 @@
 {
   "version": 1,
   "root": "loopy",
-  "total_sites": 76,
+  "total_sites": 77,
   "passing": 76,
-  "needs_work": 0,
-  "pass_rate_pct": 100.0,
+  "needs_work": 1,
+  "pass_rate_pct": 98.7,
   "sites": [
     {
       "file": "loopy/a2a.py",
@@ -509,6 +509,13 @@
       "text": "f'Policy {self.name!r} severity {self.severity!r} is not allowed;  (see https://loopy.dev/docs/policies#errors)must be one of {sorted(_KNOWN_SEVERITIES)}'",
       "passes": true,
       "status": "passes"
+    },
+    {
+      "file": "loopy/session.py",
+      "line": 209,
+      "text": "f'Session file not found: {p}'",
+      "passes": false,
+      "status": "needs_work"
     },
     {
       "file": "loopy/skills.py",

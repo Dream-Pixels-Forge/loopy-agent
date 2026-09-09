@@ -74,9 +74,7 @@ class TestEvalReportSerialization:
 
     def test_save_and_load_json(self, tmp_path: Path):
         case = EvalCase(name="add", input_text="2+2", expected_output="4")
-        result = EvalResult(
-            case=case, actual_output="4", verdict=Verdict.PASS, score=1.0
-        )
+        result = EvalResult(case=case, actual_output="4", verdict=Verdict.PASS, score=1.0)
         report = EvalReport(suite_name="math", results=[result])
         path = tmp_path / "report.json"
         report.save(str(path))

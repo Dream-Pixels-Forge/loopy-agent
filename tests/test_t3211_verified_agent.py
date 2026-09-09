@@ -192,8 +192,7 @@ class TestProperties:
 
 
 class TestHypothesisOptional:
-    @pytest.mark.asyncio
-    async def test_hypothesis_generated_inputs_do_not_crash(self):
+    def test_hypothesis_generated_inputs_do_not_crash(self):
         """When hypothesis is installed, ``n_cases`` becomes a
         Hypothesis ``given`` strategy. The agent must not crash on
         any of the generated inputs."""
@@ -203,22 +202,20 @@ class TestHypothesisOptional:
         except ImportError:
             pytest.skip("hypothesis not installed")
 
-        async def planner(_):
-            return "ok"
+        import asyncio
 
-        agent = AgentLoop(LoopConfig(planner=planner, max_steps=1))
+        agent = make_text_agent("ok")
         spec = VerificationSpec(
             invariants=[output_must_contain("ok")],
         )
         verifier = VerifiedAgent(agent=agent, spec=spec)
 
         @given(st.text(min_size=0, max_size=50))
-        @pytest.mark.asyncio
-        async def inner(inp):
-            report = await verifier.verify(n_cases=2)
+        def inner(inp):
+            report = asyncio.run(verifier.verify(n_cases=2, input_generator=lambda n: [inp] * n))
             assert report.failures == 0
 
-        await inner()
+        inner()
 
 
 # ── VerificationReport ──────────────────────────────────────

@@ -54,9 +54,7 @@ class TestValidateOutboundUrl:
 
     def test_disallowed_scheme_custom_tuple(self):
         with pytest.raises(ValueError, match="not allowed"):
-            validate_outbound_url(
-                "ws://example.com/socket", allow_schemes=("http", "https")
-            )
+            validate_outbound_url("ws://example.com/socket", allow_schemes=("http", "https"))
 
     def test_no_host_with_scheme_raises(self):
         with pytest.raises(ValueError, match="no host"):
@@ -72,9 +70,7 @@ class TestValidateOutboundUrl:
             validate_outbound_url("http://127.0.0.1:8080/internal")
 
     def test_private_host_allowed_when_flagged(self):
-        url = validate_outbound_url(
-            "http://127.0.0.1:8080/internal", allow_private=True
-        )
+        url = validate_outbound_url("http://127.0.0.1:8080/internal", allow_private=True)
         assert url == "http://127.0.0.1:8080/internal"
 
     def test_public_host_allows(self):

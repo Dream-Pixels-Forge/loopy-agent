@@ -244,12 +244,8 @@ class TestSkillRegistryExtended:
 
     def test_match_one_returns_best(self):
         registry = SkillRegistry()
-        registry.add(
-            Skill(name="a", description="A", instructions="i", triggers=["deploy"])
-        )
-        registry.add(
-            Skill(name="b", description="B", instructions="i", triggers=["ci failed"])
-        )
+        registry.add(Skill(name="a", description="A", instructions="i", triggers=["deploy"]))
+        registry.add(Skill(name="b", description="B", instructions="i", triggers=["ci failed"]))
         result = registry.match_one("deploy the service")
         assert result is not None
         assert result.name == "a"
@@ -284,9 +280,7 @@ class TestSkillRegistryExtended:
 
     def test_to_a2a_skills(self):
         registry = SkillRegistry()
-        registry.add(
-            Skill(name="s1", description="First", instructions="i", triggers=["t1"])
-        )
+        registry.add(Skill(name="s1", description="First", instructions="i", triggers=["t1"]))
         cards = registry.to_a2a_skills()
         assert len(cards) == 1
         assert cards[0]["name"] == "s1"
