@@ -245,7 +245,11 @@ class LspServer:
         except AttributeError:
             word = ""
 
-        obj, doc, sig = _find_symbol_at_position(self._symbols, word.strip())
+        word = word.strip()
+        if not word:
+            return None
+
+        obj, doc, sig = _find_symbol_at_position(self._symbols, word)
         if obj is None or doc is None:
             return None
 
