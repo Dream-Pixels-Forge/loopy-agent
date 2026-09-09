@@ -179,7 +179,19 @@ from loopy.multimodal import (
     RealtimeTransport,
 )
 from loopy.observe import TraceExporter
-from loopy.patterns import LoopPattern, PatternCadence, PatternRegistry, RiskLevel
+from loopy.patterns import (
+    AdversarialVerification,
+    ClassifyAndAct,
+    DynamicPatternRegistry,
+    FanOutSynthesize,
+    LoopPattern,
+    PatternCadence,
+    PatternRegistry,
+    PatternResult,
+    PatternType,
+    RiskLevel,
+    Tournament,
+)
 from loopy.policies import (
     Condition,
     Policy,
@@ -194,9 +206,17 @@ from loopy.safety import (
     SafetyGate,
     SafetyResult,
 )
+from loopy.session import (
+    MessageOrigin,
+    Session,
+    SessionConfig,
+    SessionManager,
+    TranscriptEntry,
+)
 from loopy.skills import Skill, SkillRegistry
 from loopy.state import LoopState, RunOutcome, RunRecord, StateManager
 from loopy.streaming import StreamBuffer, StreamChunk, Streamer, StreamEvent
+from loopy.subagents import IsolatedAgentPool, IsolatedSubAgent, IsolationLevel, SubagentConfig
 from loopy.tools import (
     ToolCall,
     ToolContext,
@@ -440,6 +460,25 @@ __all__ = [
     "ToolCall",
     "ToolExecutor",
     "ToolParamSchema",
+    # Session (v1.3.0)
+    "Session",
+    "SessionConfig",
+    "SessionManager",
+    "TranscriptEntry",
+    "MessageOrigin",
+    # Subagents (v1.3.0)
+    "IsolatedSubAgent",
+    "IsolatedAgentPool",
+    "IsolationLevel",
+    "SubagentConfig",
+    # Patterns (v1.3.0)
+    "FanOutSynthesize",
+    "ClassifyAndAct",
+    "AdversarialVerification",
+    "Tournament",
+    "PatternResult",
+    "PatternType",
+    "DynamicPatternRegistry",
     # Streaming
     "StreamEvent",
     "StreamChunk",
