@@ -173,9 +173,14 @@ class FederatedWorkerPool:
             #    complete its finally block.
             await asyncio.gather(*self._worker_tasks, return_exceptions=True)
             self._worker_tasks = []
-            # 4. Stop the loop. ``run_until_complete`` will
-            #    return on the next iteration.
-            self._loop.stop()
+            # NOTE: we deliberately do NOT call ``self._loop.stop()``
+            # here. Calling stop() from within the running loop raises
+            # ``RuntimeError: Event loop stopped before Future
+            # completed.``.  ``_consume_forever`` checks the cancel
+            # flag on its next sleep iteration, exits the while loop,
+            # and its finally block cancels any remaining workers and
+            # gathers them — after which ``run_until_complete``
+            # returns naturally.
 
         if self._loop is None:
             # Loop never started. Just join the thread.
